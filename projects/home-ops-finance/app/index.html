@@ -55,6 +55,17 @@
 
       <div class="grid two">
         <article class="card">
+          <h2>Pruefhinweise</h2>
+          <ul class="signal-list" id="validationSignals"></ul>
+        </article>
+        <article class="card">
+          <h2>Monatslage</h2>
+          <dl class="detail-list" id="monthHealth"></dl>
+        </article>
+      </div>
+
+      <div class="grid two">
+        <article class="card">
           <h2>Top Ausgabenmonate</h2>
           <table>
             <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
@@ -96,7 +107,17 @@
 
     <section id="months" class="tab-panel">
       <article class="card">
-        <h2>Monatsplanung</h2>
+        <div class="section-head">
+          <div>
+            <h2>Monatsplanung</h2>
+            <p class="section-copy">Filtere zuerst die kritischen Monate, bevor wir spaeter Bearbeitung und Imports direkt in die App ziehen.</p>
+          </div>
+          <div class="filter-group" id="monthFilters">
+            <button class="pill is-active" data-filter="all">Alle</button>
+            <button class="pill" data-filter="negative">Nur Defizite</button>
+            <button class="pill" data-filter="future">Nur Zukunft</button>
+          </div>
+        </div>
         <table>
           <thead><tr><th>Monat</th><th>Profil</th><th>Baseline</th><th>Zufluesse</th><th>Ausgaben</th><th>Ergebnis</th></tr></thead>
           <tbody id="monthlyRows"></tbody>
