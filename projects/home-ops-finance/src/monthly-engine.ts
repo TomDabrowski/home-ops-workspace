@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import type { ExpenseEntry, ImportDraft, IncomeEntry, MonthlyBaseline } from "./types.js";
+import type { BaselineLineItem, ExpenseEntry, ImportDraft, IncomeEntry, MonthlyBaseline } from "./types.js";
 
 interface MonthlyPlanRow {
   monthKey: string;
@@ -53,6 +53,31 @@ function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEn
 
 function compareMonthKeys(left: string, right: string): number {
   return left.localeCompare(right);
+}
+
+function selectBaselineLineItemsForMonth(
+  lineItems: BaselineLineItem[],
+  monthKey: string,
+): BaselineLineItem[] {
+  const currentByKey = new Map<string, BaselineLineItem>();
+
+  for (const item of [...lineItems].sort((left, right) => compareMonthKeys(left.effectiveFrom, right.effectiveFrom))) {
+    if (compareMonthKeys(item.effectiveFrom, monthKey) > 0) {
+      continue;
+    }
+
+    currentByKey.set(`${item.category}:${item.label}`, item);
+  }
+
+  return [...currentByKey.values()];
+}
+
+function sumLineItems(items: BaselineLineItem[], category: BaselineLineItem["category"]): number {
+  return roundCurrency(
+    items
+      .filter((item) => item.category === category)
+      .reduce((sum, item) => sum + item.amount, 0),
+  );
 }
 
 function selectBaselineForMonth(baselines: MonthlyBaseline[], monthKey: string): MonthlyBaseline {
@@ -114,7 +139,11 @@ function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   return monthKeys.map((monthKey) => {
     const selectedBaseline = selectBaselineForMonth(draft.monthlyBaselines, monthKey);
     const baseline = buildBaselineForMonth(selectedBaseline, monthKey);
-    const annualReserveAmount = baseline.annualReserveAmount ?? 0;
+    const activeLineItems = selectBaselineLineItemsForMonth(draft.baselineLineItems, monthKey);
+    const fixedAmount = sumLineItems(activeLineItems, "fixed");
+    const variableAmount = sumLineItems(activeLineItems, "variable");
+    const annualReserveAmount = sumLineItems(activeLineItems, "annual_reserve");
+    const plannedSavingsAmount = sumLineItems(activeLineItems, "savings");
     const importedIncomeAmount = sumIncomeForMonth(draft.incomeEntries, monthKey);
     const importedExpenseAmount = sumExpensesForMonth(draft.expenseEntries, monthKey);
 
@@ -122,23 +151,23 @@ function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       monthKey,
       baselineProfile: baseline.baselineProfile,
       netSalaryAmount: baseline.netSalaryAmount,
-      baselineFixedAmount: baseline.fixedExpensesAmount,
-      baselineVariableAmount: baseline.baselineVariableAmount,
+      baselineFixedAmount: fixedAmount,
+      baselineVariableAmount: variableAmount,
       annualReserveAmount,
-      plannedSavingsAmount: baseline.plannedSavingsAmount,
+      plannedSavingsAmount,
       baselineAvailableAmount: roundCurrency(
         baseline.netSalaryAmount -
-          baseline.fixedExpensesAmount -
-          baseline.baselineVariableAmount -
-          baseline.plannedSavingsAmount,
+          fixedAmount -
+          variableAmount -
+          plannedSavingsAmount,
       ),
       importedIncomeAmount,
       importedExpenseAmount,
       netAfterImportedFlows: roundCurrency(
         baseline.netSalaryAmount -
-          baseline.fixedExpensesAmount -
-          baseline.baselineVariableAmount -
-          baseline.plannedSavingsAmount +
+          fixedAmount -
+          variableAmount -
+          plannedSavingsAmount +
           importedIncomeAmount -
           importedExpenseAmount,
       ),

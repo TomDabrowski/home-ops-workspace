@@ -423,6 +423,7 @@ function buildMonthlyBaselines(): MonthlyBaseline[] {
 }
 
 function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
+  const historicalStart = "2023-01";
   return [
     {
       id: "fixed-rent",
@@ -430,7 +431,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 1080,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-phone",
@@ -438,7 +439,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 5,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-electricity",
@@ -446,7 +447,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 84,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-internet",
@@ -454,7 +455,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 29.99,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-freiheit-plus",
@@ -462,7 +463,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 30,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-chatgpt",
@@ -470,7 +471,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 20.5,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-robby-insurance",
@@ -478,7 +479,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 6,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "fixed-patreon",
@@ -486,7 +487,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 11,
       category: "fixed",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "variable-food",
@@ -494,7 +495,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 120,
       category: "variable",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "variable-other",
@@ -502,7 +503,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 200,
       category: "variable",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
     },
     {
       id: "reserve-annual",
@@ -510,7 +511,7 @@ function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
       amount: 102.08,
       category: "annual_reserve",
       cadence: "monthly",
-      effectiveFrom: anchorMonthKey,
+      effectiveFrom: historicalStart,
       notes: "Derived from Bilanz reserve block sum.",
     },
     {
