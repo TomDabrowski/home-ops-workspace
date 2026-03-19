@@ -1,0 +1,18 @@
+{
+  "name": "home-ops-finance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Workbook-driven personal finance tracker and migration tooling.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "import:workbook": "node --experimental-strip-types src/workbook-importer.ts",
+    "report:draft": "node --experimental-strip-types src/draft-report.ts",
+    "plan:months": "node --experimental-strip-types src/monthly-engine.ts",
+    "build:dashboard": "node --experimental-strip-types src/build-dashboard.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.2"
+  }
+}

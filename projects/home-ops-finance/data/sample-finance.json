@@ -1,0 +1,75 @@
+{
+  "accounts": [
+    {
+      "id": "acc-giro",
+      "name": "Girokonto",
+      "type": "checking",
+      "currency": "EUR",
+      "isActive": true
+    },
+    {
+      "id": "acc-savings",
+      "name": "Tagesgeld",
+      "type": "savings",
+      "currency": "EUR",
+      "isActive": true
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-reserve",
+      "name": "Ruecklage",
+      "type": "reserve",
+      "currentValue": 0,
+      "notes": ""
+    }
+  ],
+  "incomeEntries": [
+    {
+      "id": "inc-salary-2026-03",
+      "date": "2026-03-01",
+      "source": "Hauptjob",
+      "category": "main_job",
+      "amount": 0,
+      "isRecurring": true,
+      "notes": ""
+    }
+  ],
+  "expenseEntries": [
+    {
+      "id": "exp-rent-2026-03",
+      "date": "2026-03-03",
+      "payee": "Miete",
+      "category": "housing",
+      "amount": 0,
+      "expenseType": "fixed",
+      "isRecurring": true,
+      "notes": ""
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "sub-example",
+      "name": "Beispielabo",
+      "amount": 0,
+      "billingCycle": "monthly",
+      "nextChargeDate": "2026-04-01",
+      "cancellationDeadline": null,
+      "category": "subscriptions",
+      "isActive": true
+    }
+  ],
+  "monthlySnapshots": [
+    {
+      "id": "snap-2026-03",
+      "month": "2026-03",
+      "totalIncome": 0,
+      "totalFixedExpenses": 0,
+      "totalVariableExpenses": 0,
+      "netCashflow": 0,
+      "savingsRate": 0,
+      "netWorth": 0,
+      "notes": "Initial placeholder snapshot."
+    }
+  ]
+}
