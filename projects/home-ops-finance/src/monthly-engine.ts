@@ -5,6 +5,7 @@ import type { ExpenseEntry, ImportDraft, IncomeEntry, MonthlyBaseline } from "./
 
 interface MonthlyPlanRow {
   monthKey: string;
+  baselineProfile: "historical_liquidity" | "forecast_investing";
   netSalaryAmount: number;
   baselineFixedAmount: number;
   baselineVariableAmount: number;
@@ -50,10 +51,35 @@ function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEn
   return [...keys].sort((left, right) => left.localeCompare(right));
 }
 
-function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): MonthlyBaseline {
+function compareMonthKeys(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
+function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): MonthlyBaseline & {
+  baselineProfile: "historical_liquidity" | "forecast_investing";
+} {
+  const annualReserveAmount = anchor.annualReserveAmount ?? 0;
+  const historicalAvailable = roundCurrency(
+    anchor.netSalaryAmount - anchor.fixedExpensesAmount - anchor.baselineVariableAmount,
+  );
+
+  if (compareMonthKeys(monthKey, anchor.monthKey) < 0) {
+    return {
+      ...anchor,
+      monthKey,
+      plannedSavingsAmount: 0,
+      availableBeforeIrregulars: historicalAvailable,
+      annualReserveAmount,
+      baselineProfile: "historical_liquidity",
+      notes: "Historical profile before the current investing baseline becomes active.",
+    };
+  }
+
   return {
     ...anchor,
     monthKey,
+    annualReserveAmount,
+    baselineProfile: "forecast_investing",
   };
 }
 
@@ -89,6 +115,7 @@ function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
 
     return {
       monthKey,
+      baselineProfile: baseline.baselineProfile,
       netSalaryAmount: baseline.netSalaryAmount,
       baselineFixedAmount: baseline.fixedExpensesAmount,
       baselineVariableAmount: baseline.baselineVariableAmount,
@@ -129,7 +156,7 @@ function buildMarkdown(report: MonthlyPlanReport): string {
 
   for (const row of report.rows.slice(-12)) {
     lines.push(
-      `- ${row.monthKey}: baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, imported income ${row.importedIncomeAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
+      `- ${row.monthKey} (${row.baselineProfile}): baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, imported income ${row.importedIncomeAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
     );
   }
 
