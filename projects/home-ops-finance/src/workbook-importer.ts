@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
 import type {
+  BaselineLineItem,
   DebtAccount,
   DebtSnapshot,
   ExpenseEntry,
@@ -411,6 +412,108 @@ function buildMonthlyBaselines(): MonthlyBaseline[] {
   ];
 }
 
+function buildBaselineLineItems(anchorMonthKey: string): BaselineLineItem[] {
+  return [
+    {
+      id: "fixed-rent",
+      label: "Miete",
+      amount: 1080,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-phone",
+      label: "Handy",
+      amount: 5,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-electricity",
+      label: "Strom",
+      amount: 84,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-internet",
+      label: "Internet 1&1",
+      amount: 29.99,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-freiheit-plus",
+      label: "Freiheit+",
+      amount: 30,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-chatgpt",
+      label: "ChatGPT",
+      amount: 20.5,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-robby-insurance",
+      label: "Robby Versicherung",
+      amount: 6,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "fixed-patreon",
+      label: "Patreon",
+      amount: 11,
+      category: "fixed",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "variable-food",
+      label: "Essen",
+      amount: 120,
+      category: "variable",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "variable-other",
+      label: "Sonstiges",
+      amount: 200,
+      category: "variable",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+    {
+      id: "reserve-annual",
+      label: "Jaehrliche Ruecklage",
+      amount: 102.08,
+      category: "annual_reserve",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+      notes: "Derived from Bilanz reserve block sum.",
+    },
+    {
+      id: "savings-investment",
+      label: "Monatliches Investment",
+      amount: 1050,
+      category: "savings",
+      cadence: "monthly",
+      effectiveFrom: anchorMonthKey,
+    },
+  ];
+}
+
 function buildIncomeStreams(): IncomeStream[] {
   return [
     {
@@ -771,13 +874,16 @@ function createImportDraft(workbookPath: string): ImportDraft {
   const context = createWorkbookContext(workbookPath);
   const musicIncomeEntries = extractMusicIncomeEntries(workbookPath, context);
   const irregularInflowEntries = extractIrregularInflowEntries(workbookPath, context);
+  const monthlyBaselines = buildMonthlyBaselines();
+  const baselineAnchor = monthlyBaselines[0];
 
   return {
     source: "xlsx",
     workbookPath,
     sheets: readWorkbookSheets(workbookPath),
     forecastAssumptions: buildAssumptions(),
-    monthlyBaselines: buildMonthlyBaselines(),
+    monthlyBaselines,
+    baselineLineItems: baselineAnchor ? buildBaselineLineItems(baselineAnchor.monthKey) : [],
     incomeStreams: buildIncomeStreams(),
     incomeEntries: [...musicIncomeEntries, ...irregularInflowEntries],
     expenseCategories: buildExpenseCategories(),

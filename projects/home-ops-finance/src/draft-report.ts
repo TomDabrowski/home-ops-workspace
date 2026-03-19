@@ -40,6 +40,12 @@ interface DraftReport {
     computedAvailableFromParts: number;
     deltaToAnchor: number;
   } | null;
+  baselineLineItems: Array<{
+    id: string;
+    label: string;
+    amount: number;
+    category: string;
+  }>;
   topExpenseMonths: MonthlySummary[];
   topIncomeMonths: MonthlySummary[];
   recentMonths: MonthlySummary[];
@@ -143,6 +149,12 @@ function buildMarkdown(report: DraftReport): string {
     lines.push(
       `- Available before irregulars: ${report.baselineSummary.availableBeforeIrregulars.toFixed(2)} EUR, recomputed ${report.baselineSummary.computedAvailableFromParts.toFixed(2)} EUR, delta ${report.baselineSummary.deltaToAnchor.toFixed(2)} EUR`,
     );
+    lines.push("");
+    lines.push("### Baseline Posten");
+    lines.push("");
+    for (const item of report.baselineLineItems) {
+      lines.push(`- ${item.label}: ${item.amount.toFixed(2)} EUR (${item.category})`);
+    }
   }
   lines.push("");
   lines.push("## Recent Months");
@@ -239,6 +251,12 @@ function main(): void {
       debtSnapshotCount: draft.debtSnapshots.length,
     },
     baselineSummary,
+    baselineLineItems: draft.baselineLineItems.map((item) => ({
+      id: item.id,
+      label: item.label,
+      amount: item.amount,
+      category: item.category,
+    })),
     topExpenseMonths: [...monthSummaries]
       .sort((left, right) => right.expenseTotal - left.expenseTotal)
       .slice(0, 5),

@@ -25,6 +25,16 @@ export interface MonthlyBaseline {
   notes?: string;
 }
 
+export interface BaselineLineItem {
+  id: string;
+  label: string;
+  amount: number;
+  category: "fixed" | "variable" | "annual_reserve" | "savings";
+  cadence: "monthly";
+  effectiveFrom: string;
+  notes?: string;
+}
+
 export interface IncomeStream {
   id: string;
   name: string;
@@ -116,6 +126,7 @@ export interface ImportDraft {
   sheets: WorkbookSheetSummary[];
   forecastAssumptions: ForecastAssumption[];
   monthlyBaselines: MonthlyBaseline[];
+  baselineLineItems: BaselineLineItem[];
   incomeStreams: IncomeStream[];
   incomeEntries: IncomeEntry[];
   expenseCategories: ExpenseCategory[];

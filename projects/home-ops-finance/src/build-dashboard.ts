@@ -23,6 +23,12 @@ interface DraftReport {
     computedAvailableFromParts: number;
     deltaToAnchor: number;
   } | null;
+  baselineLineItems: Array<{
+    id: string;
+    label: string;
+    amount: number;
+    category: string;
+  }>;
   topExpenseMonths: Array<{
     monthKey: string;
     incomeTotal: number;
@@ -110,6 +116,15 @@ function buildHtml(draftReport: DraftReport, monthlyPlan: MonthlyPlanReport): st
   }));
 
   const baseline = draftReport.baselineSummary;
+  const baselineItemRows = draftReport.baselineLineItems
+    .map(
+      (item) => `<tr>
+        <td>${escapeHtml(item.label)}</td>
+        <td>${escapeHtml(item.category)}</td>
+        <td>${currency(item.amount)}</td>
+      </tr>`,
+    )
+    .join("\n");
   const debtRows = draftReport.latestDebtBalances
     .map((debt) => {
       const className = debt.balance > 0 ? "negative" : "positive";
@@ -333,6 +348,18 @@ function buildHtml(draftReport: DraftReport, monthlyPlan: MonthlyPlanReport): st
           </thead>
           <tbody>
             ${renderTableRows(draftReport.topExpenseMonths, "netFlow")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Baseline-Posten</h2>
+        <table>
+          <thead>
+            <tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr>
+          </thead>
+          <tbody>
+            ${baselineItemRows}
           </tbody>
         </table>
       </div>

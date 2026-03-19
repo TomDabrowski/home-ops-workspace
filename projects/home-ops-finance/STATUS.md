@@ -19,10 +19,11 @@ Foundation
 - Baseline anchor comparison added, including the current delta between workbook availability and recomputed planning parts.
 - First deterministic monthly planning engine added on top of the import draft.
 - First local browser dashboard build step added from generated JSON reports.
+- Monthly planning now switches between a historical liquidity profile and a forecast investing profile instead of using one baseline for every month.
 
 ## Immediate Next Step
 
-Refine the monthly planning engine so baseline values can change over time and feed the browser dashboard with more accurate month-specific planning.
+Extract additional time-based baseline changes from the workbook so fixed costs and planning assumptions can evolve more precisely by period.
 
 ## Notes
 

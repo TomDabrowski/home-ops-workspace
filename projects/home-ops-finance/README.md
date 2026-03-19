@@ -49,6 +49,11 @@ The importer also normalizes workbook transaction signs:
 - positive irregular rows stay as expenses
 - negative irregular rows are converted into imported inflows such as refunds, sales, and payouts
 
+The current monthly engine uses two explicit baseline profiles:
+
+- `historical_liquidity`: before the current investment baseline is active
+- `forecast_investing`: from the current investment-oriented planning phase onward
+
 ## Next Steps
 
 - Turn the spreadsheet categories into the first real data model.
