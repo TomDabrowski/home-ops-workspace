@@ -1,9 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { BaselineLineItem, ExpenseEntry, ImportDraft, IncomeEntry, MonthlyBaseline } from "./types.js";
 
-interface MonthlyPlanRow {
+export interface MonthlyPlanRow {
   monthKey: string;
   baselineProfile: "historical_liquidity" | "forecast_investing";
   netSalaryAmount: number;
@@ -17,7 +18,7 @@ interface MonthlyPlanRow {
   netAfterImportedFlows: number;
 }
 
-interface MonthlyPlanReport {
+export interface MonthlyPlanReport {
   workbookPath: string;
   generatedAt: string;
   anchorMonthKey: string;
@@ -29,15 +30,15 @@ function readDraft(inputPath: string): ImportDraft {
   return JSON.parse(readFileSync(inputPath, "utf8")) as ImportDraft;
 }
 
-function roundCurrency(value: number): number {
+export function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function monthFromDate(value: string): string {
+export function monthFromDate(value: string): string {
   return value.slice(0, 7);
 }
 
-function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEntry[]): string[] {
+export function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEntry[]): string[] {
   const keys = new Set<string>();
 
   for (const entry of incomeEntries) {
@@ -51,11 +52,11 @@ function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEn
   return [...keys].sort((left, right) => left.localeCompare(right));
 }
 
-function compareMonthKeys(left: string, right: string): number {
+export function compareMonthKeys(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
-function selectBaselineLineItemsForMonth(
+export function selectBaselineLineItemsForMonth(
   lineItems: BaselineLineItem[],
   monthKey: string,
 ): BaselineLineItem[] {
@@ -72,7 +73,7 @@ function selectBaselineLineItemsForMonth(
   return [...currentByKey.values()];
 }
 
-function sumLineItems(items: BaselineLineItem[], category: BaselineLineItem["category"]): number {
+export function sumLineItems(items: BaselineLineItem[], category: BaselineLineItem["category"]): number {
   return roundCurrency(
     items
       .filter((item) => item.category === category)
@@ -80,7 +81,7 @@ function sumLineItems(items: BaselineLineItem[], category: BaselineLineItem["cat
   );
 }
 
-function selectBaselineForMonth(baselines: MonthlyBaseline[], monthKey: string): MonthlyBaseline {
+export function selectBaselineForMonth(baselines: MonthlyBaseline[], monthKey: string): MonthlyBaseline {
   const sorted = [...baselines].sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
   let selected = sorted[0];
 
@@ -95,7 +96,7 @@ function selectBaselineForMonth(baselines: MonthlyBaseline[], monthKey: string):
   return selected;
 }
 
-function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): MonthlyBaseline & {
+export function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): MonthlyBaseline & {
   baselineProfile: "historical_liquidity" | "forecast_investing";
 } {
   if (anchor.plannedSavingsAmount === 0) {
@@ -113,7 +114,7 @@ function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): Month
   };
 }
 
-function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
+export function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
       .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
@@ -121,7 +122,7 @@ function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   );
 }
 
-function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): number {
+export function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): number {
   return roundCurrency(
     entries
       .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
@@ -129,7 +130,7 @@ function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): number 
   );
 }
 
-function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
+export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   if (draft.monthlyBaselines.length === 0) {
     return [];
   }
@@ -175,7 +176,7 @@ function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   });
 }
 
-function buildMarkdown(report: MonthlyPlanReport): string {
+export function buildMarkdown(report: MonthlyPlanReport): string {
   const lines: string[] = [];
 
   lines.push("# Monthly Plan Report");
@@ -225,4 +226,6 @@ function main(): void {
   console.log(`Wrote monthly plan Markdown to ${outputMarkdownPath}`);
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

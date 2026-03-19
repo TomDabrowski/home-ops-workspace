@@ -20,10 +20,11 @@ Foundation
 - First deterministic monthly planning engine added on top of the import draft.
 - First local browser dashboard build step added from generated JSON reports.
 - Monthly planning now switches between a historical liquidity profile and a forecast investing profile instead of using one baseline for every month.
+- Typecheck and first monthly-engine unit tests are in place and passing.
 
 ## Immediate Next Step
 
-Extract additional time-based baseline changes from the workbook so fixed costs and planning assumptions can evolve more precisely by period.
+Build the first simple local app shell so the generated finance data can be explored interactively instead of only through static HTML.
 
 ## Notes
 

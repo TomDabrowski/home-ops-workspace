@@ -29,6 +29,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 ```bash
 npm install
 npm run typecheck
+npm test
 npm run import:workbook -- "/path/to/private/finance-workbook.xlsx"
 npm run report:draft -- data/import-draft.json
 npm run plan:months -- data/import-draft.json
