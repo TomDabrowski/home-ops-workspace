@@ -34,6 +34,7 @@ npm run import:workbook -- "/path/to/private/finance-workbook.xlsx"
 npm run report:draft -- data/import-draft.json
 npm run plan:months -- data/import-draft.json
 npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/dashboard.html
+npm run serve:app
 ```
 
 The current importer draft already extracts:
@@ -55,8 +56,18 @@ The current monthly engine uses two explicit baseline profiles:
 - `historical_liquidity`: before the current investment baseline is active
 - `forecast_investing`: from the current investment-oriented planning phase onward
 
+## Local App
+
+Run `npm run serve:app` and open `http://localhost:4310`.
+
+The local app shell currently serves:
+
+- `/`: browser entry point
+- `/data/*`: generated draft and monthly plan JSON
+- `/dist/*`: generated static dashboard output
+
 ## Next Steps
 
 - Turn the spreadsheet categories into the first real data model.
-- Decide whether the first version should be CLI-first or web-first.
-- Prepare sample data based on the existing spreadsheet structure.
+- Expand the local app from read-only review into the first interactive finance UI.
+- Add more validation tests against known workbook anchors and month totals.

@@ -21,10 +21,12 @@ Foundation
 - First local browser dashboard build step added from generated JSON reports.
 - Monthly planning now switches between a historical liquidity profile and a forecast investing profile instead of using one baseline for every month.
 - Typecheck and first monthly-engine unit tests are in place and passing.
+- Monthly planning now derives its baseline from detailed line items with effective dates instead of only from precomputed summary fields.
+- First local app shell added to serve browser UI assets, generated finance JSON, and dashboard output on `localhost:4310`.
 
 ## Immediate Next Step
 
-Build the first simple local app shell so the generated finance data can be explored interactively instead of only through static HTML.
+Turn the local app shell into the first real review UI for monthly planning, imported flows, and workbook consistency checks.
 
 ## Notes
 
