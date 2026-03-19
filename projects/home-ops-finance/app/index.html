@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Ops Finance App</title>
+  <link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero card">
+      <div>
+        <p class="eyebrow">Home Ops Finance</p>
+        <h1>Erste lokale App-Shell fuer deinen Finanz-Kern.</h1>
+        <p class="lede">Diese Ansicht liest die generierten JSON-Dateien direkt aus dem Projekt und gibt dir einen besseren ersten Testpunkt als nur statische Einzelberichte.</p>
+      </div>
+      <div class="hero-meta">
+        <div class="metric">
+          <span>Quelle</span>
+          <strong id="workbookPath">-</strong>
+        </div>
+        <div class="metric">
+          <span>Report-Stand</span>
+          <strong id="generatedAt">-</strong>
+        </div>
+      </div>
+    </section>
+
+    <nav class="tabs">
+      <button class="tab is-active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="baseline">Baseline</button>
+      <button class="tab" data-tab="months">Monate</button>
+      <button class="tab" data-tab="debt">Schulden</button>
+    </nav>
+
+    <section id="overview" class="tab-panel is-active">
+      <div class="grid four">
+        <article class="card stat">
+          <span>Importierter Nettofluss</span>
+          <strong id="netFlow">-</strong>
+        </article>
+        <article class="card stat">
+          <span>Einnahmen</span>
+          <strong id="incomeTotal">-</strong>
+        </article>
+        <article class="card stat">
+          <span>Ausgaben</span>
+          <strong id="expenseTotal">-</strong>
+        </article>
+        <article class="card stat">
+          <span>Snapshots Schulden</span>
+          <strong id="debtSnapshotCount">-</strong>
+        </article>
+      </div>
+
+      <div class="grid two">
+        <article class="card">
+          <h2>Top Ausgabenmonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topExpenseMonths"></tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Top Einnahmemonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topIncomeMonths"></tbody>
+          </table>
+        </article>
+      </div>
+    </section>
+
+    <section id="baseline" class="tab-panel">
+      <div class="grid two">
+        <article class="card">
+          <h2>Baseline-Anker</h2>
+          <dl class="detail-list" id="baselineSummary"></dl>
+        </article>
+        <article class="card">
+          <h2>Baseline-Phasen</h2>
+          <table>
+            <thead><tr><th>Ab</th><th>Verfuegbar</th><th>Sparen</th></tr></thead>
+            <tbody id="baselineProfiles"></tbody>
+          </table>
+        </article>
+      </div>
+      <article class="card">
+        <h2>Baseline-Posten</h2>
+        <table>
+          <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
+          <tbody id="baselineLineItems"></tbody>
+        </table>
+      </article>
+    </section>
+
+    <section id="months" class="tab-panel">
+      <article class="card">
+        <h2>Monatsplanung</h2>
+        <table>
+          <thead><tr><th>Monat</th><th>Profil</th><th>Baseline</th><th>Zufluesse</th><th>Ausgaben</th><th>Ergebnis</th></tr></thead>
+          <tbody id="monthlyRows"></tbody>
+        </table>
+      </article>
+    </section>
+
+    <section id="debt" class="tab-panel">
+      <article class="card">
+        <h2>Letzte Schuldenstaende</h2>
+        <table>
+          <thead><tr><th>Konto</th><th>Stand</th><th>Snapshot</th></tr></thead>
+          <tbody id="debtRows"></tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+
+  <script type="module" src="/app/app.js"></script>
+</body>
+</html>
