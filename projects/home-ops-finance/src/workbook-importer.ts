@@ -400,6 +400,16 @@ function buildAssumptions(): ForecastAssumption[] {
 function buildMonthlyBaselines(): MonthlyBaseline[] {
   return [
     {
+      monthKey: "2023-01",
+      netSalaryAmount: 2920,
+      fixedExpensesAmount: 1266.49,
+      baselineVariableAmount: 320,
+      plannedSavingsAmount: 0,
+      availableBeforeIrregulars: 1333.51,
+      annualReserveAmount: 102.08,
+      notes: "Historical liquidity profile before the investment-first planning phase.",
+    },
+    {
       monthKey: "2026-03",
       netSalaryAmount: 2920,
       fixedExpensesAmount: 1266.49,
@@ -875,7 +885,7 @@ function createImportDraft(workbookPath: string): ImportDraft {
   const musicIncomeEntries = extractMusicIncomeEntries(workbookPath, context);
   const irregularInflowEntries = extractIrregularInflowEntries(workbookPath, context);
   const monthlyBaselines = buildMonthlyBaselines();
-  const baselineAnchor = monthlyBaselines[0];
+  const baselineAnchor = monthlyBaselines[monthlyBaselines.length - 1];
 
   return {
     source: "xlsx",
