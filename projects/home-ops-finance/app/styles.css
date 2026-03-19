@@ -104,6 +104,37 @@ h2 {
   margin: 0 0 12px;
   font-size: 1.25rem;
 }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+.section-copy {
+  margin: -4px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 12px;
+}
+.pill.is-active {
+  color: white;
+  background: var(--ink);
+  border-color: var(--ink);
+}
 table {
   width: 100%;
   border-collapse: collapse;
@@ -141,8 +172,51 @@ th {
   margin: 0;
   font-weight: 600;
 }
+.signal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.signal-list li {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px;
+}
+.signal-label {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.signal-label.warn {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--danger);
+}
+.signal-label.info {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--accent);
+}
+.signal-list strong {
+  display: block;
+  margin: 8px 0 4px;
+}
+.signal-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
 .positive { color: var(--accent); }
 .negative { color: var(--danger); }
 @media (max-width: 960px) {
   .hero, .grid.two, .grid.four, .detail-list { grid-template-columns: 1fr; }
+  .section-head {
+    flex-direction: column;
+  }
 }
