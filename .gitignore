@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Generated local finance artifacts
+projects/home-ops-finance/dist/
+projects/home-ops-finance/data/import-draft.json
+projects/home-ops-finance/data/draft-report.json
+projects/home-ops-finance/data/draft-report.md
+projects/home-ops-finance/data/monthly-plan.json
+projects/home-ops-finance/data/monthly-plan.md
+
+# Sensitive local spreadsheet exports
+*.xlsx
+*.numbers
