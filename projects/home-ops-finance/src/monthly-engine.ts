@@ -18,6 +18,14 @@ export interface MonthlyPlanRow {
   netAfterImportedFlows: number;
 }
 
+export interface MonthReview {
+  monthKey: string;
+  row: MonthlyPlanRow;
+  baselineLineItems: BaselineLineItem[];
+  incomeEntries: IncomeEntry[];
+  expenseEntries: ExpenseEntry[];
+}
+
 export interface MonthlyPlanReport {
   workbookPath: string;
   generatedAt: string;
@@ -130,6 +138,14 @@ export function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): 
   );
 }
 
+export function selectIncomeEntriesForMonth(entries: IncomeEntry[], monthKey: string): IncomeEntry[] {
+  return entries.filter((entry) => monthFromDate(entry.entryDate) === monthKey);
+}
+
+export function selectExpenseEntriesForMonth(entries: ExpenseEntry[], monthKey: string): ExpenseEntry[] {
+  return entries.filter((entry) => monthFromDate(entry.entryDate) === monthKey);
+}
+
 export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   if (draft.monthlyBaselines.length === 0) {
     return [];
@@ -174,6 +190,23 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       ),
     };
   });
+}
+
+export function buildMonthReview(draft: ImportDraft, monthKey: string): MonthReview | null {
+  const rows = buildMonthlyRows(draft);
+  const row = rows.find((item) => item.monthKey === monthKey);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    monthKey,
+    row,
+    baselineLineItems: selectBaselineLineItemsForMonth(draft.baselineLineItems, monthKey),
+    incomeEntries: selectIncomeEntriesForMonth(draft.incomeEntries, monthKey),
+    expenseEntries: selectExpenseEntriesForMonth(draft.expenseEntries, monthKey),
+  };
 }
 
 export function buildMarkdown(report: MonthlyPlanReport): string {

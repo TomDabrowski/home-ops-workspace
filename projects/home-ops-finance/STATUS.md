@@ -23,10 +23,11 @@ Foundation
 - Typecheck and first monthly-engine unit tests are in place and passing.
 - Monthly planning now derives its baseline from detailed line items with effective dates instead of only from precomputed summary fields.
 - First local app shell added to serve browser UI assets, generated finance JSON, and dashboard output on `localhost:4310`.
+- The local review app now includes a month-by-month inspection view with active baseline items and imported income and expense rows.
 
 ## Immediate Next Step
 
-Turn the local app shell into the first real review UI for monthly planning, imported flows, and workbook consistency checks.
+Deepen workbook consistency checks so suspicious months and anchor mismatches can be highlighted automatically in the review UI.
 
 ## Notes
 
