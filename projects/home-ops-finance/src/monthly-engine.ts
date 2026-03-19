@@ -55,30 +55,35 @@ function compareMonthKeys(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
+function selectBaselineForMonth(baselines: MonthlyBaseline[], monthKey: string): MonthlyBaseline {
+  const sorted = [...baselines].sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
+  let selected = sorted[0];
+
+  for (const baseline of sorted) {
+    if (compareMonthKeys(baseline.monthKey, monthKey) <= 0) {
+      selected = baseline;
+    } else {
+      break;
+    }
+  }
+
+  return selected;
+}
+
 function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string): MonthlyBaseline & {
   baselineProfile: "historical_liquidity" | "forecast_investing";
 } {
-  const annualReserveAmount = anchor.annualReserveAmount ?? 0;
-  const historicalAvailable = roundCurrency(
-    anchor.netSalaryAmount - anchor.fixedExpensesAmount - anchor.baselineVariableAmount,
-  );
-
-  if (compareMonthKeys(monthKey, anchor.monthKey) < 0) {
+  if (anchor.plannedSavingsAmount === 0) {
     return {
       ...anchor,
       monthKey,
-      plannedSavingsAmount: 0,
-      availableBeforeIrregulars: historicalAvailable,
-      annualReserveAmount,
       baselineProfile: "historical_liquidity",
-      notes: "Historical profile before the current investing baseline becomes active.",
     };
   }
 
   return {
     ...anchor,
     monthKey,
-    annualReserveAmount,
     baselineProfile: "forecast_investing",
   };
 }
@@ -100,15 +105,15 @@ function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): number 
 }
 
 function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
-  const anchor = draft.monthlyBaselines[0];
-  if (!anchor) {
+  if (draft.monthlyBaselines.length === 0) {
     return [];
   }
 
   const monthKeys = uniqueMonthKeys(draft.incomeEntries, draft.expenseEntries);
 
   return monthKeys.map((monthKey) => {
-    const baseline = buildBaselineForMonth(anchor, monthKey);
+    const selectedBaseline = selectBaselineForMonth(draft.monthlyBaselines, monthKey);
+    const baseline = buildBaselineForMonth(selectedBaseline, monthKey);
     const annualReserveAmount = baseline.annualReserveAmount ?? 0;
     const importedIncomeAmount = sumIncomeForMonth(draft.incomeEntries, monthKey);
     const importedExpenseAmount = sumExpensesForMonth(draft.expenseEntries, monthKey);

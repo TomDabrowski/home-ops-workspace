@@ -40,6 +40,15 @@ interface DraftReport {
     computedAvailableFromParts: number;
     deltaToAnchor: number;
   } | null;
+  baselineProfiles: Array<{
+    monthKey: string;
+    netSalaryAmount: number;
+    fixedExpensesAmount: number;
+    baselineVariableAmount: number;
+    annualReserveAmount: number;
+    plannedSavingsAmount: number;
+    availableBeforeIrregulars: number;
+  }>;
   baselineLineItems: Array<{
     id: string;
     label: string;
@@ -155,6 +164,14 @@ function buildMarkdown(report: DraftReport): string {
     for (const item of report.baselineLineItems) {
       lines.push(`- ${item.label}: ${item.amount.toFixed(2)} EUR (${item.category})`);
     }
+    lines.push("");
+    lines.push("### Baseline-Phasen");
+    lines.push("");
+    for (const profile of report.baselineProfiles) {
+      lines.push(
+        `- ab ${profile.monthKey}: salary ${profile.netSalaryAmount.toFixed(2)} EUR, fixed ${profile.fixedExpensesAmount.toFixed(2)} EUR, variable ${profile.baselineVariableAmount.toFixed(2)} EUR, savings ${profile.plannedSavingsAmount.toFixed(2)} EUR, available ${profile.availableBeforeIrregulars.toFixed(2)} EUR`,
+      );
+    }
   }
   lines.push("");
   lines.push("## Recent Months");
@@ -206,7 +223,7 @@ function main(): void {
   const draft = readDraft(inputPath);
   const monthSummaries = summarizeMonths(draft.incomeEntries, draft.expenseEntries);
   const debtBalances = latestDebtBalances(draft.debtSnapshots);
-  const baseline = draft.monthlyBaselines[0] ?? null;
+  const baseline = draft.monthlyBaselines[draft.monthlyBaselines.length - 1] ?? null;
   const baselineSummary = baseline
     ? {
         monthKey: baseline.monthKey,
@@ -251,6 +268,15 @@ function main(): void {
       debtSnapshotCount: draft.debtSnapshots.length,
     },
     baselineSummary,
+    baselineProfiles: draft.monthlyBaselines.map((item) => ({
+      monthKey: item.monthKey,
+      netSalaryAmount: item.netSalaryAmount,
+      fixedExpensesAmount: item.fixedExpensesAmount,
+      baselineVariableAmount: item.baselineVariableAmount,
+      annualReserveAmount: item.annualReserveAmount ?? 0,
+      plannedSavingsAmount: item.plannedSavingsAmount,
+      availableBeforeIrregulars: item.availableBeforeIrregulars,
+    })),
     baselineLineItems: draft.baselineLineItems.map((item) => ({
       id: item.id,
       label: item.label,
