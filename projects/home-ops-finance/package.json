@@ -6,6 +6,7 @@
   "description": "Workbook-driven personal finance tracker and migration tooling.",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "import:workbook": "node --experimental-strip-types src/workbook-importer.ts",
     "report:draft": "node --experimental-strip-types src/draft-report.ts",
     "plan:months": "node --experimental-strip-types src/monthly-engine.ts",
