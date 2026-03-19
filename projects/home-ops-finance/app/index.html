@@ -123,6 +123,44 @@
           <tbody id="monthlyRows"></tbody>
         </table>
       </article>
+      <div class="grid two">
+        <article class="card">
+          <div class="section-head">
+            <div>
+              <h2>Monats-Review</h2>
+              <p class="section-copy">Waehle einen Monat und pruefe, welche Posten und Importe in die Rechnung eingehen.</p>
+            </div>
+            <label class="select-wrap">
+              <span>Monat</span>
+              <select id="monthReviewSelect"></select>
+            </label>
+          </div>
+          <dl class="detail-list" id="monthReviewSummary"></dl>
+        </article>
+        <article class="card">
+          <h2>Aktive Baseline-Posten</h2>
+          <table>
+            <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
+            <tbody id="monthReviewBaselineItems"></tbody>
+          </table>
+        </article>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <h2>Importierte Einnahmen des Monats</h2>
+          <table>
+            <thead><tr><th>Datum</th><th>Quelle</th><th>Betrag</th></tr></thead>
+            <tbody id="monthReviewIncomeRows"></tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Importierte Ausgaben des Monats</h2>
+          <table>
+            <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
+            <tbody id="monthReviewExpenseRows"></tbody>
+          </table>
+        </article>
+      </div>
     </section>
 
     <section id="debt" class="tab-panel">

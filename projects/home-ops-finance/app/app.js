@@ -21,6 +21,12 @@ function renderRows(targetId, rows, mapper) {
   target.innerHTML = rows.map(mapper).join("");
 }
 
+function renderEmptyRow(targetId, colspan, message) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  target.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">${message}</td></tr>`;
+}
+
 function makeMoneyCell(value) {
   return `<span class="${classForValue(value)}">${euro.format(value)}</span>`;
 }
@@ -136,6 +142,100 @@ function bindMonthFilters(monthlyPlan) {
   render("all");
 }
 
+function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
+  const row = monthlyPlan.rows.find((item) => item.monthKey === monthKey);
+  if (!row) return null;
+
+  const activeItems = importDraft.baselineLineItems.filter((item) => item.effectiveFrom <= monthKey);
+  const latestByKey = new Map();
+
+  for (const item of activeItems.sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom))) {
+    latestByKey.set(`${item.category}:${item.label}`, item);
+  }
+
+  return {
+    row,
+    baselineLineItems: [...latestByKey.values()],
+    incomeEntries: importDraft.incomeEntries.filter((entry) => entry.entryDate.slice(0, 7) === monthKey),
+    expenseEntries: importDraft.expenseEntries.filter((entry) => entry.entryDate.slice(0, 7) === monthKey),
+  };
+}
+
+function renderMonthReview(importDraft, monthlyPlan, monthKey) {
+  const review = buildMonthReviewData(importDraft, monthlyPlan, monthKey);
+  if (!review) return;
+
+  const summary = document.getElementById("monthReviewSummary");
+  if (summary) {
+    const entries = [
+      ["Monat", review.row.monthKey],
+      ["Profil", review.row.baselineProfile],
+      ["Baseline verfuegbar", euro.format(review.row.baselineAvailableAmount)],
+      ["Importierte Einnahmen", euro.format(review.row.importedIncomeAmount)],
+      ["Importierte Ausgaben", euro.format(review.row.importedExpenseAmount)],
+      ["Ergebnis", euro.format(review.row.netAfterImportedFlows)],
+    ];
+
+    summary.innerHTML = entries
+      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
+      .join("");
+  }
+
+  renderRows("monthReviewBaselineItems", review.baselineLineItems, (item) => `
+    <tr>
+      <td>${item.label}</td>
+      <td>${item.category}</td>
+      <td>${euro.format(item.amount)}</td>
+    </tr>
+  `);
+
+  if (review.incomeEntries.length > 0) {
+    renderRows("monthReviewIncomeRows", review.incomeEntries, (entry) => `
+      <tr>
+        <td>${entry.entryDate}</td>
+        <td>${entry.incomeStreamId}</td>
+        <td>${euro.format(entry.amount)}</td>
+      </tr>
+    `);
+  } else {
+    renderEmptyRow("monthReviewIncomeRows", 3, "Keine importierten Einnahmen fuer diesen Monat.");
+  }
+
+  if (review.expenseEntries.length > 0) {
+    renderRows("monthReviewExpenseRows", review.expenseEntries, (entry) => `
+      <tr>
+        <td>${entry.entryDate}</td>
+        <td>${entry.description}</td>
+        <td>${euro.format(entry.amount)}</td>
+      </tr>
+    `);
+  } else {
+    renderEmptyRow("monthReviewExpenseRows", 3, "Keine importierten Ausgaben fuer diesen Monat.");
+  }
+}
+
+function bindMonthReview(importDraft, monthlyPlan) {
+  const select = document.getElementById("monthReviewSelect");
+  if (!select) return;
+
+  const monthKeys = monthlyPlan.rows.map((row) => row.monthKey);
+  select.innerHTML = monthKeys
+    .slice()
+    .reverse()
+    .map((monthKey) => `<option value="${monthKey}">${monthKey}</option>`)
+    .join("");
+
+  const initialMonth = monthKeys.at(-1);
+  if (initialMonth) {
+    select.value = initialMonth;
+    renderMonthReview(importDraft, monthlyPlan, initialMonth);
+  }
+
+  select.addEventListener("change", () => {
+    renderMonthReview(importDraft, monthlyPlan, select.value);
+  });
+}
+
 function bindTabs() {
   const tabs = [...document.querySelectorAll(".tab")];
   const panels = [...document.querySelectorAll(".tab-panel")];
@@ -150,9 +250,10 @@ function bindTabs() {
 }
 
 async function load() {
-  const [draftReport, monthlyPlan] = await Promise.all([
+  const [draftReport, monthlyPlan, importDraft] = await Promise.all([
     fetch("/data/draft-report.json").then((response) => response.json()),
     fetch("/data/monthly-plan.json").then((response) => response.json()),
+    fetch("/data/import-draft.json").then((response) => response.json()),
   ]);
 
   setText("workbookPath", draftReport.workbookPath);
@@ -226,6 +327,7 @@ async function load() {
   renderValidationSignals(draftReport, monthlyPlan);
   renderMonthHealth(monthlyPlan);
   bindMonthFilters(monthlyPlan);
+  bindMonthReview(importDraft, monthlyPlan);
 }
 
 bindTabs();

@@ -66,8 +66,14 @@ The local app shell currently serves:
 - `/data/*`: generated draft and monthly plan JSON
 - `/dist/*`: generated static dashboard output
 
+The browser review currently supports:
+
+- validation signals for likely mismatches or risky months
+- month filters for deficits and future forecast rows
+- a month-by-month review with active baseline items and imported flows
+
 ## Next Steps
 
 - Turn the spreadsheet categories into the first real data model.
-- Expand the local app from read-only review into the first interactive finance UI.
-- Add more validation tests against known workbook anchors and month totals.
+- Add deeper workbook consistency checks against known anchor values and suspicious month totals.
+- Expand the review UI from inspection into the first editable finance workflow.

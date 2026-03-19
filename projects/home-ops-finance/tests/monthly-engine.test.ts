@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 
 import type { ImportDraft } from "../src/types.js";
 import {
+  buildMonthReview,
   buildMonthlyRows,
   selectBaselineForMonth,
   selectBaselineLineItemsForMonth,
+  selectExpenseEntriesForMonth,
+  selectIncomeEntriesForMonth,
   sumLineItems,
 } from "../src/monthly-engine.ts";
 
@@ -130,4 +133,23 @@ test("builds monthly rows with historical and investing profiles", () => {
   assert.equal(investing?.baselineProfile, "forecast_investing");
   assert.equal(investing?.baselineAvailableAmount, 283.51);
   assert.equal(investing?.netAfterImportedFlows, 683.51);
+});
+
+test("selects imported flows for a specific month", () => {
+  const draft = createDraft();
+
+  assert.equal(selectIncomeEntriesForMonth(draft.incomeEntries, "2024-01").length, 1);
+  assert.equal(selectExpenseEntriesForMonth(draft.expenseEntries, "2024-01").length, 1);
+  assert.equal(selectIncomeEntriesForMonth(draft.incomeEntries, "2025-02").length, 0);
+});
+
+test("builds a month review with baseline and imported flows", () => {
+  const review = buildMonthReview(createDraft(), "2026-03");
+
+  assert.ok(review);
+  assert.equal(review?.row.monthKey, "2026-03");
+  assert.equal(review?.baselineLineItems.length, 12);
+  assert.equal(review?.incomeEntries.length, 1);
+  assert.equal(review?.expenseEntries.length, 1);
+  assert.equal(review?.row.baselineAvailableAmount, 283.51);
 });
