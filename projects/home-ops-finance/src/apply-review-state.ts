@@ -38,9 +38,24 @@ interface BaselineOverrideState {
   updatedAt?: string;
 }
 
+interface MonthlyExpenseOverrideState {
+  id: string;
+  monthKey: string;
+  entryDate: string;
+  description: string;
+  amount: number;
+  expenseCategoryId?: string;
+  accountId?: string;
+  expenseType?: "variable" | "annual_reserve" | "debt_payment";
+  isActive?: boolean;
+  notes?: string;
+  updatedAt?: string;
+}
+
 type MappingState = Record<string, EntryMappingState>;
 type ReconciliationState = Record<string, ReconciliationMonthState>;
 type BaselineOverrideCollection = BaselineOverrideState[];
+type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
 
 function readJsonFile<T>(path: string, fallback: T): T {
   try {
@@ -60,6 +75,7 @@ export function applyReviewState(
   mappings: MappingState,
   reconciliation: ReconciliationState,
   baselineOverrides: BaselineOverrideCollection = [],
+  monthlyExpenseOverrides: MonthlyExpenseOverrideCollection = [],
 ): ImportDraft {
   const expenseCategoryById = new Map(draft.expenseCategories.map((category) => [category.id, category]));
   const activeBaselineOverrides = baselineOverrides
@@ -73,6 +89,22 @@ export function applyReviewState(
       effectiveFrom: entry.effectiveFrom,
       notes: mergeNotes(entry.notes, [
         entry.updatedAt ? `custom fixed cost ${entry.updatedAt}` : "custom fixed cost",
+      ]),
+    }));
+  const activeMonthlyExpenseOverrides = monthlyExpenseOverrides
+    .filter((entry) => entry.isActive !== false)
+    .map((entry) => ({
+      id: entry.id,
+      entryDate: entry.entryDate,
+      description: entry.description,
+      amount: entry.amount,
+      expenseCategoryId: entry.expenseCategoryId ?? "other",
+      accountId: entry.accountId ?? "giro",
+      expenseType: entry.expenseType ?? "variable",
+      isRecurring: false,
+      isPlanned: entry.monthKey >= "2026-01",
+      notes: mergeNotes(entry.notes, [
+        entry.updatedAt ? `manual monthly expense ${entry.updatedAt}` : "manual monthly expense",
       ]),
     }));
 
@@ -94,7 +126,8 @@ export function applyReviewState(
         ]),
       };
     }),
-    expenseEntries: draft.expenseEntries.map((entry) => {
+    expenseEntries: [
+      ...draft.expenseEntries.map((entry) => {
       const mapping = mappings[entry.id];
       const monthKey = entry.entryDate.slice(0, 7);
       const monthReview = reconciliation[monthKey];
@@ -113,7 +146,9 @@ export function applyReviewState(
           monthReview?.note ? `month note: ${monthReview.note}` : "",
         ]),
       };
-    }),
+      }),
+      ...activeMonthlyExpenseOverrides,
+    ],
   };
 }
 
@@ -122,7 +157,8 @@ function main(): void {
   const mappingPath = resolve(process.argv[3] ?? "data/import-mappings.json");
   const reconciliationPath = resolve(process.argv[4] ?? "data/reconciliation-state.json");
   const baselineOverridesPath = resolve(process.argv[5] ?? "data/baseline-overrides.json");
-  const outputPath = resolve(process.argv[6] ?? "data/import-draft-reviewed.json");
+  const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? "data/monthly-expense-overrides.json");
+  const outputPath = resolve(process.argv[7] ?? "data/import-draft-reviewed.json");
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -133,8 +169,15 @@ function main(): void {
   const mappings = readJsonFile<MappingState>(mappingPath, {});
   const reconciliation = readJsonFile<ReconciliationState>(reconciliationPath, {});
   const baselineOverrides = readJsonFile<BaselineOverrideCollection>(baselineOverridesPath, []);
+  const monthlyExpenseOverrides = readJsonFile<MonthlyExpenseOverrideCollection>(monthlyExpenseOverridesPath, []);
 
-  const reviewedDraft = applyReviewState(draft, mappings, reconciliation, baselineOverrides);
+  const reviewedDraft = applyReviewState(
+    draft,
+    mappings,
+    reconciliation,
+    baselineOverrides,
+    monthlyExpenseOverrides,
+  );
   writeFileSync(outputPath, JSON.stringify(reviewedDraft, null, 2) + "\n", "utf8");
 
   console.log(`Wrote reviewed import draft to ${outputPath}`);

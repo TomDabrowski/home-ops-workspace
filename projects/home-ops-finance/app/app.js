@@ -315,6 +315,15 @@ function targetMonthFromAges(currentAge, targetAge, startMonthKey) {
   return addMonths(startMonthKey, monthDelta);
 }
 
+function monthsUntilInclusive(startMonthKey, endMonthKey) {
+  return Math.max(
+    1,
+    ((Number(endMonthKey.slice(0, 4)) - Number(startMonthKey.slice(0, 4))) * 12) +
+      (Number(endMonthKey.slice(5, 7)) - Number(startMonthKey.slice(5, 7))) +
+      1,
+  );
+}
+
 function requiredConstantMusicForTarget(importDraft, monthlyPlan, targetMonthKey, requiredNestEgg, plannerAssumptions) {
   const forecastRows = futureForecastRows(monthlyPlan);
   if (forecastRows.length === 0) {
@@ -322,12 +331,7 @@ function requiredConstantMusicForTarget(importDraft, monthlyPlan, targetMonthKey
   }
 
   const firstForecastMonthKey = forecastRows[0].monthKey;
-  const months = Math.max(
-    1,
-    ((Number(targetMonthKey.slice(0, 4)) - Number(firstForecastMonthKey.slice(0, 4))) * 12) +
-      (Number(targetMonthKey.slice(5, 7)) - Number(firstForecastMonthKey.slice(5, 7))) +
-      1,
-  );
+  const months = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
 
   const baselineRun = simulateForecast(importDraft, monthlyPlan, {
     months,
@@ -1643,10 +1647,25 @@ function renderGoals(importDraft, monthlyPlan) {
   musicGrowthRateInput.value = plannerSettings.musicGrowthRate;
   musicTaxRateInput.value = plannerSettings.musicTaxRate;
 
+  function syncAgeBounds(currentAge, targetAge) {
+    const normalizedCurrentAge = Math.max(18, currentAge);
+    const normalizedTargetAge = Math.max(normalizedCurrentAge, targetAge);
+    targetAgeInput.min = String(normalizedCurrentAge);
+    targetAgeSlider.min = String(normalizedCurrentAge);
+    return {
+      currentAge: normalizedCurrentAge,
+      targetAge: normalizedTargetAge,
+    };
+  }
+
   function update() {
+    const requestedCurrentAge = Number(currentAgeInput.value) || Number(currentAgeSlider.value) || plannerSettings.currentAge;
+    const requestedTargetAge = Number(targetAgeInput.value) || Number(targetAgeSlider.value) || plannerSettings.targetAge;
+    const ageBounds = syncAgeBounds(requestedCurrentAge, requestedTargetAge);
+
     const settings = {
-      currentAge: Math.max(18, Number(currentAgeInput.value) || Number(currentAgeSlider.value) || plannerSettings.currentAge),
-      targetAge: Math.max(18, Number(targetAgeInput.value) || Number(targetAgeSlider.value) || plannerSettings.targetAge),
+      currentAge: ageBounds.currentAge,
+      targetAge: ageBounds.targetAge,
       retirementSpend: Math.max(0, Number(retirementSpendInput.value) || plannerSettings.retirementSpend),
       withdrawalRate: Math.max(1, Number(withdrawalRateInput.value) || plannerSettings.withdrawalRate),
       inflationRate: Math.max(0, Number(inflationRateInput.value) || plannerSettings.inflationRate),
@@ -1670,9 +1689,10 @@ function renderGoals(importDraft, monthlyPlan) {
       musicGrowthRate: settings.musicGrowthRate,
       musicTaxRate: settings.musicTaxRate,
     };
-    const baseSimulation = simulateForecast(importDraft, monthlyPlan, { months: 480, ...plannerAssumptions });
-    const firstForecastMonthKey = baseSimulation[0]?.monthKey ?? "2026-03";
+    const firstForecastMonthKey = futureForecastRows(monthlyPlan)[0]?.monthKey ?? "2026-03";
     const targetMonthKey = targetMonthFromAges(settings.currentAge, settings.targetAge, firstForecastMonthKey);
+    const retirementMonths = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
+    const baseSimulation = simulateForecast(importDraft, monthlyPlan, { months: retirementMonths, ...plannerAssumptions });
     const targetYears = Math.max(0, (settings.targetAge - settings.currentAge));
     const retirementSpendAtTarget =
       settings.retirementSpend * Math.pow(1 + settings.inflationRate / 100, targetYears);
@@ -1708,14 +1728,14 @@ function renderGoals(importDraft, monthlyPlan) {
     );
 
     assumptionsTarget.textContent =
-      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Nach dem vorhandenen Planungshorizont wird das letzte bekannte 12-Monats-Muster fortgeschrieben.`;
+      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
 
     summaryTarget.innerHTML = [
       ["Startvermoegen", euro.format(currentWealth)],
       ["Zielmonat Rente", formatMonthLabel(targetMonthKey)],
       ["Bedarf in Zieljahren", euro.format(retirementSpendAtTarget)],
       ["Nest Egg noetig", euro.format(requiredNestEgg)],
-      ["Geplantes Vermoegen im letzten Forecast", euro.format(latestProjectedWealth)],
+      ["Vermoegen im Zielmonat", euro.format(latestProjectedWealth)],
       ["Musik konstant noetig", euro.format(constantMusicNeeded)],
       ["Musik brutto im Zielpfad", euro.format(targetPathAverageGross)],
       ["Musik netto im Zielpfad", euro.format(targetPathAverageNet)],
@@ -1730,7 +1750,7 @@ function renderGoals(importDraft, monthlyPlan) {
           <p>${
             item.hitMonthKey
               ? `Erreicht in ${formatMonthLabel(item.hitMonthKey)} mit ca. ${euro.format(item.hitWealthAmount)}.`
-              : "Innerhalb des aktuellen Langfrist-Forecasts noch nicht erreicht."
+              : `Bis ${formatMonthLabel(targetMonthKey)} innerhalb dieses Renten-Zielpfads noch nicht erreicht.`
           }</p>
         </article>
       `)
@@ -1808,6 +1828,10 @@ function renderGoals(importDraft, monthlyPlan) {
     signalItems.push({
       title: "Versicherungen und sonstige Kosten",
       body: "Diese laufen aktuell gemeinsam in einer konservativen Wachstumsannahme. Wenn du willst, splitte ich als Nächstes Versicherungen, Energie und Sonstiges separat.",
+    });
+    signalItems.push({
+      title: "Horizont endet beim Rentenziel",
+      body: `Alle Werte in diesem Reiter enden bei ${formatMonthLabel(targetMonthKey)}. Ab dann ist hier bewusst keine weitere Arbeitsphase mehr unterstellt.`,
     });
 
     retirementSignalsTarget.innerHTML = signalItems

@@ -11,6 +11,7 @@ const port = Number(process.env.PORT ?? 4310);
 const reconciliationStatePath = join(dataDir, "reconciliation-state.json");
 const importMappingsPath = join(dataDir, "import-mappings.json");
 const baselineOverridesPath = join(dataDir, "baseline-overrides.json");
+const monthlyExpenseOverridesPath = join(dataDir, "monthly-expense-overrides.json");
 
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -18,6 +19,15 @@ const mimeTypes: Record<string, string> = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
 };
+
+function noCacheHeaders(type: string): Record<string, string> {
+  return {
+    "Content-Type": type,
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
+}
 
 function safeJoin(base: string, candidate: string): string | null {
   const target = normalize(join(base, candidate));
@@ -27,12 +37,12 @@ function safeJoin(base: string, candidate: string): string | null {
 function sendFile(path: string, res: ServerResponse): void {
   const ext = extname(path);
   const type = mimeTypes[ext] ?? "text/plain; charset=utf-8";
-  res.writeHead(200, { "Content-Type": type });
+  res.writeHead(200, noCacheHeaders(type));
   res.end(readFileSync(path));
 }
 
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(statusCode, noCacheHeaders("application/json; charset=utf-8"));
   res.end(JSON.stringify(payload, null, 2));
 }
 
@@ -161,6 +171,19 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === "/api/monthly-expense-overrides") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(monthlyExpenseOverridesPath));
+    }
+
+    if (req.method === "POST") {
+      const payload = await readRequestJson(req);
+      writeJsonFile(monthlyExpenseOverridesPath, payload);
+      refreshReviewedArtifacts();
+      return sendJson(res, 200, { ok: true });
+    }
+  }
+
   if (url.pathname === "/" || url.pathname === "/index.html") {
     return sendFile(join(appDir, "index.html"), res);
   }
@@ -186,7 +209,7 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+  res.writeHead(404, noCacheHeaders("text/plain; charset=utf-8"));
   res.end("Not found");
 });
 

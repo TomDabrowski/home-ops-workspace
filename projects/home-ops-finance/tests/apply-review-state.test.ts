@@ -83,6 +83,18 @@ test("applies reviewed entry mappings and month reconciliation to the draft", ()
         updatedAt: "2026-03-20T10:00:00.000Z",
       },
     ],
+    [
+      {
+        id: "manual-expense-1",
+        monthKey: "2026-03",
+        entryDate: "2026-03-18",
+        description: "Train ticket",
+        amount: 35,
+        expenseCategoryId: "food",
+        accountId: "giro",
+        updatedAt: "2026-03-20T10:05:00.000Z",
+      },
+    ],
   );
 
   assert.equal(reviewed.incomeEntries[0]?.incomeStreamId, "misc-inflows");
@@ -97,4 +109,6 @@ test("applies reviewed entry mappings and month reconciliation to the draft", ()
   assert.equal(reviewed.baselineLineItems[0]?.label, "Gym");
   assert.equal(reviewed.baselineLineItems[0]?.effectiveFrom, "2026-05");
   assert.equal(reviewed.baselineLineItems[0]?.category, "fixed");
+  assert.equal(reviewed.expenseEntries[1]?.description, "Train ticket");
+  assert.equal(reviewed.expenseEntries[1]?.amount, 35);
 });

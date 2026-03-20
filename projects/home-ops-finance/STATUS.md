@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Foundation
+Interactive Planning App
 
 ## Status Summary
 
@@ -38,12 +38,23 @@ Foundation
 - Music income now keeps gross, reserve, and free-available amounts separately, and the monthly plan models the workbook threshold routing between safety and investment buckets for forecast months.
 - Manual workbook wealth anchors from `Übersicht Vermögen` are now imported and reapplied in the monthly engine, so explicit reset months such as `2026-02` use the Excel values directly before the forecast continues.
 - The local app now includes a first goals and retirement planner that projects 25k net-worth milestones and estimates the minimum average monthly music revenue needed to hit a retirement target by a chosen age.
+- The review app is now project-persistent for future planning edits: reconciliation, import mappings, future fixed-cost overrides, and manual monthly expense overrides are written to project JSON via the local app server.
+- `apply-review-state` now reapplies both future fixed-cost overrides and manual variable monthly expenses into the reviewed import draft, so reviewed artifacts include forward-only planning changes from the UI.
+- The baseline UI has been turned into a forward-only planning surface: new fixed costs can be created with `gueltig ab`, custom future fixed costs can be edited/deactivated, and existing workbook fixed costs can be changed or ended from a chosen future month without rewriting history.
+- The month review now supports manual variable month expenses in the app, including create/edit/deactivate flows that regenerate the reviewed draft/report/plan/dashboard automatically.
+- The month table is now directly actionable: clicking a month opens the review workspace, and the table now shows end-of-month total wealth alongside the existing planning columns.
+- The app shell has been restructured so the `Monate` tab opens as a focused month workspace with the selected month, summary, warnings, imported expenses, manual month expenses, and a sticky side column for income, active plan items, reconciliation, and mappings.
+- The month workspace now defaults to the current month when possible instead of jumping to the end of the forecast.
+- The retirement planner assumptions are now more explicit and conservative: inflation, salary growth, rent growth, other-cost growth, music-tax handling, and fixed monthly music needed are modeled together.
+- The retirement tab now only projects through the chosen retirement target month instead of continuing an implied work life far beyond the target age, and the target-age input is constrained so it cannot fall below current age.
+- The local app server now serves HTML/CSS/JS/JSON with no-cache headers to reduce stale-browser issues while iterating on the app locally.
 
 ## Immediate Next Step
 
-Validate a few more 2026 workbook anchor and post-anchor months in the app, then tune the retirement-planner assumptions so its target-music output matches the mental model from the spreadsheet.
+Use the improved month workspace to review and refine the first important `2026+` months, then tighten the retirement model further by separating the working phase from a later withdrawal phase after the target retirement month.
 
 ## Notes
 
 - Keep commits small and milestone-based.
+- Do not commit or push personal workbook-derived `data/*.json` artifacts.
 - Update this file whenever scope or progress changes.
