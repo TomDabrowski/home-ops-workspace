@@ -14,6 +14,8 @@ const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
 const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
+const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
+const salarySettingsPath = financeDataPath("salary-settings.json");
 const activityLogPath = financeDataPath("activity-log.log");
 
 const mimeTypes: Record<string, string> = {
@@ -256,6 +258,54 @@ const server = createServer(async (req, res) => {
           fehler: error instanceof Error ? error.message : String(error),
         });
         return sendJson(res, 500, { ok: false, error: "monthly_expense_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/music-tax-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(musicTaxSettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(musicTaxSettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("musik-steuer-plan gespeichert", {
+          datei: musicTaxSettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("musik-steuer-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "music_tax_settings_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/salary-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(salarySettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(salarySettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("gehalt-plan gespeichert", {
+          datei: salarySettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("gehalt-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "salary_settings_save_failed" });
       }
     }
   }

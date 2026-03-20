@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { ImportDraft } from "./types.js";
+import type { ImportDraft, MonthlyBaseline } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 interface EntryMappingState {
@@ -53,10 +53,28 @@ interface MonthlyExpenseOverrideState {
   updatedAt?: string;
 }
 
+interface MusicTaxSettingState {
+  quarterlyPrepaymentAmount: number;
+  effectiveFrom: string;
+  notes?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+}
+
+interface SalarySettingState {
+  netSalaryAmount: number;
+  effectiveFrom: string;
+  notes?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+}
+
 type MappingState = Record<string, EntryMappingState>;
 type ReconciliationState = Record<string, ReconciliationMonthState>;
 type BaselineOverrideCollection = BaselineOverrideState[];
 type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
+type MusicTaxSetting = MusicTaxSettingState | null;
+type SalarySettingCollection = SalarySettingState[];
 
 function readJsonFile<T>(path: string, fallback: T): T {
   try {
@@ -71,12 +89,107 @@ function mergeNotes(original: string | undefined, additions: string[]): string |
   return parts.length > 0 ? parts.join(" | ") : undefined;
 }
 
+function compareMonthKeys(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function baselineAvailableForSalary(baseline: MonthlyBaseline, netSalaryAmount: number): number {
+  return roundCurrency(
+    netSalaryAmount -
+      baseline.fixedExpensesAmount -
+      baseline.baselineVariableAmount -
+      baseline.plannedSavingsAmount,
+  );
+}
+
+function latestSalaryForMonth(settings: SalarySettingCollection, monthKey: string): SalarySettingState | null {
+  const active = settings
+    .filter((entry) => entry.isActive !== false)
+    .sort((left, right) => compareMonthKeys(left.effectiveFrom, right.effectiveFrom));
+  let selected: SalarySettingState | null = null;
+
+  for (const entry of active) {
+    if (compareMonthKeys(entry.effectiveFrom, monthKey) <= 0) {
+      selected = entry;
+    } else {
+      break;
+    }
+  }
+
+  return selected;
+}
+
+function baselineForMonth(baselines: MonthlyBaseline[], monthKey: string): MonthlyBaseline {
+  const sorted = [...baselines].sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
+  let selected = sorted[0];
+
+  for (const baseline of sorted) {
+    if (compareMonthKeys(baseline.monthKey, monthKey) <= 0) {
+      selected = baseline;
+    } else {
+      break;
+    }
+  }
+
+  return selected;
+}
+
+function applySalarySettingsToBaselines(
+  baselines: MonthlyBaseline[],
+  salarySettings: SalarySettingCollection = [],
+): MonthlyBaseline[] {
+  if (salarySettings.length === 0) {
+    return baselines;
+  }
+
+  const adjusted = baselines.map((baseline) => {
+    const salarySetting = latestSalaryForMonth(salarySettings, baseline.monthKey);
+    if (!salarySetting) {
+      return baseline;
+    }
+
+    return {
+      ...baseline,
+      netSalaryAmount: salarySetting.netSalaryAmount,
+      availableBeforeIrregulars: baselineAvailableForSalary(baseline, salarySetting.netSalaryAmount),
+      notes: mergeNotes(baseline.notes, [
+        salarySetting.updatedAt ? `salary setting ${salarySetting.updatedAt}` : "salary setting",
+      ]),
+    };
+  });
+
+  for (const setting of salarySettings.filter((entry) => entry.isActive !== false)) {
+    if (adjusted.some((baseline) => baseline.monthKey === setting.effectiveFrom)) {
+      continue;
+    }
+
+    const source = baselineForMonth(baselines, setting.effectiveFrom);
+    adjusted.push({
+      ...source,
+      monthKey: setting.effectiveFrom,
+      netSalaryAmount: setting.netSalaryAmount,
+      availableBeforeIrregulars: baselineAvailableForSalary(source, setting.netSalaryAmount),
+      notes: mergeNotes(source.notes, [
+        setting.updatedAt ? `salary setting ${setting.updatedAt}` : "salary setting",
+      ]),
+    });
+  }
+
+  return adjusted.sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
+}
+
 export function applyReviewState(
   draft: ImportDraft,
   mappings: MappingState,
   reconciliation: ReconciliationState,
   baselineOverrides: BaselineOverrideCollection = [],
   monthlyExpenseOverrides: MonthlyExpenseOverrideCollection = [],
+  musicTaxSetting: MusicTaxSetting = null,
+  salarySettings: SalarySettingCollection = [],
 ): ImportDraft {
   const expenseCategoryById = new Map(draft.expenseCategories.map((category) => [category.id, category]));
   const activeBaselineOverrides = baselineOverrides
@@ -108,9 +221,85 @@ export function applyReviewState(
         entry.updatedAt ? `manual monthly expense ${entry.updatedAt}` : "manual monthly expense",
       ]),
     }));
+  const nextForecastAssumptions = draft.forecastAssumptions.map((entry) =>
+    entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
+      ? {
+          ...entry,
+          value: musicTaxSetting?.quarterlyPrepaymentAmount ?? entry.value,
+          notes: mergeNotes(entry.notes, [
+            musicTaxSetting?.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",
+          ]),
+        }
+      : entry,
+  );
+  if (
+    musicTaxSetting?.isActive !== false &&
+    !nextForecastAssumptions.some((entry) => entry.key === "music_tax_prepayment_quarterly_amount")
+  ) {
+    nextForecastAssumptions.push({
+      key: "music_tax_prepayment_quarterly_amount",
+      value: musicTaxSetting?.quarterlyPrepaymentAmount ?? 501,
+      valueType: "number",
+      notes: mergeNotes(musicTaxSetting?.notes, [
+        musicTaxSetting?.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",
+      ]),
+    });
+  }
+  const quarterMonths = new Set(["03", "06", "09", "12"]);
+  const prepaymentAmount = musicTaxSetting?.isActive === false ? 0 : musicTaxSetting?.quarterlyPrepaymentAmount;
+  const prepaymentStartMonth = musicTaxSetting?.effectiveFrom ?? null;
+  const nextExpenseEntries = draft.expenseEntries.map((entry) => {
+    const isTaxPrepayment =
+      entry.expenseType === "annual_reserve" &&
+      /vorauszahlung steuer/i.test(entry.description) &&
+      entry.isPlanned;
+
+    if (!isTaxPrepayment || !prepaymentStartMonth || prepaymentAmount === undefined || entry.entryDate.slice(0, 7) < prepaymentStartMonth) {
+      return entry;
+    }
+
+    return {
+      ...entry,
+      amount: prepaymentAmount,
+      notes: mergeNotes(entry.notes, [
+        musicTaxSetting?.updatedAt ? `music tax prepayment ${musicTaxSetting.updatedAt}` : "music tax prepayment",
+      ]),
+    };
+  });
+  const futureMonths = new Set([
+    ...draft.incomeEntries.filter((entry) => entry.isPlanned).map((entry) => entry.entryDate.slice(0, 7)),
+    ...draft.expenseEntries.filter((entry) => entry.isPlanned).map((entry) => entry.entryDate.slice(0, 7)),
+  ]);
+  const existingPrepaymentMonths = new Set(
+    nextExpenseEntries
+      .filter((entry) => entry.isPlanned && entry.expenseType === "annual_reserve" && /vorauszahlung steuer/i.test(entry.description))
+      .map((entry) => entry.entryDate.slice(0, 7)),
+  );
+  const generatedPrepayments =
+    prepaymentAmount && prepaymentStartMonth
+      ? [...futureMonths]
+          .sort((left, right) => left.localeCompare(right))
+          .filter((monthKey) => monthKey >= prepaymentStartMonth && quarterMonths.has(monthKey.slice(5, 7)) && !existingPrepaymentMonths.has(monthKey))
+          .map((monthKey) => ({
+            id: `planned-tax-prepayment-${monthKey}`,
+            entryDate: `${monthKey}-01`,
+            description: "Vorauszahlung Steuer",
+            amount: prepaymentAmount,
+            expenseCategoryId: "tax",
+            accountId: "giro",
+            expenseType: "annual_reserve" as const,
+            isRecurring: false,
+            isPlanned: true,
+            notes: mergeNotes(musicTaxSetting?.notes, [
+              musicTaxSetting?.updatedAt ? `music tax prepayment ${musicTaxSetting.updatedAt}` : "music tax prepayment",
+            ]),
+          }))
+      : [];
 
   return {
     ...draft,
+    forecastAssumptions: nextForecastAssumptions,
+    monthlyBaselines: applySalarySettingsToBaselines(draft.monthlyBaselines, salarySettings),
     baselineLineItems: [...draft.baselineLineItems, ...activeBaselineOverrides],
     incomeEntries: draft.incomeEntries.map((entry) => {
       const mapping = mappings[entry.id];
@@ -128,7 +317,7 @@ export function applyReviewState(
       };
     }),
     expenseEntries: [
-      ...draft.expenseEntries.map((entry) => {
+      ...nextExpenseEntries.map((entry) => {
       const mapping = mappings[entry.id];
       const monthKey = entry.entryDate.slice(0, 7);
       const monthReview = reconciliation[monthKey];
@@ -148,6 +337,7 @@ export function applyReviewState(
         ]),
       };
       }),
+      ...generatedPrepayments,
       ...activeMonthlyExpenseOverrides,
     ],
   };
@@ -161,6 +351,8 @@ function main(): void {
   const baselineOverridesPath = resolve(process.argv[5] ?? financeDataPath("baseline-overrides.json"));
   const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? financeDataPath("monthly-expense-overrides.json"));
   const outputPath = resolve(process.argv[7] ?? financeDataPath("import-draft-reviewed.json"));
+  const musicTaxSettingsPath = resolve(process.argv[8] ?? financeDataPath("music-tax-settings.json"));
+  const salarySettingsPath = resolve(process.argv[9] ?? financeDataPath("salary-settings.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -172,6 +364,8 @@ function main(): void {
   const reconciliation = readJsonFile<ReconciliationState>(reconciliationPath, {});
   const baselineOverrides = readJsonFile<BaselineOverrideCollection>(baselineOverridesPath, []);
   const monthlyExpenseOverrides = readJsonFile<MonthlyExpenseOverrideCollection>(monthlyExpenseOverridesPath, []);
+  const musicTaxSetting = readJsonFile<MusicTaxSetting>(musicTaxSettingsPath, null);
+  const salarySettings = readJsonFile<SalarySettingCollection>(salarySettingsPath, []);
 
   const reviewedDraft = applyReviewState(
     draft,
@@ -179,6 +373,8 @@ function main(): void {
     reconciliation,
     baselineOverrides,
     monthlyExpenseOverrides,
+    musicTaxSetting,
+    salarySettings,
   );
   writeFileSync(outputPath, JSON.stringify(reviewedDraft, null, 2) + "\n", "utf8");
 
