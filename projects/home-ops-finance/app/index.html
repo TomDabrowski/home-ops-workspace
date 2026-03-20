@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home Ops Finance App</title>
+  <title>Home Ops Finance</title>
   <link rel="stylesheet" href="/app/styles.css">
 </head>
 <body>
@@ -11,8 +11,8 @@
     <section class="hero card">
       <div>
         <p class="eyebrow">Home Ops Finance</p>
-        <h1>Erste lokale App-Shell fuer deinen Finanz-Kern.</h1>
-        <p class="lede">Diese Ansicht liest die generierten JSON-Dateien direkt aus dem Projekt und gibt dir einen besseren ersten Testpunkt als nur statische Einzelberichte.</p>
+        <h1>Dein ruhiger Arbeitsbereich für Planung, Review und Vermögen.</h1>
+        <p class="lede">Die App liest die generierten Projektdateien direkt ein und bündelt Monatsreview, Grundplan und Rentenpfad in einer klareren Oberfläche.</p>
       </div>
       <div class="hero-meta">
         <div class="metric">
@@ -51,7 +51,7 @@
 
       <div class="grid two overview-grid">
         <article class="card">
-          <h2>Pruefhinweise</h2>
+          <h2>Prüfhinweise</h2>
           <ul class="signal-list" id="validationSignals"></ul>
         </article>
         <article class="card">
@@ -63,8 +63,8 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Review-Prioritaeten</h2>
-            <p class="section-copy">Die kritischsten Warnmonate zuerst, damit du mit moeglichst wenig Klicks bei den groessten Ausreissern landest.</p>
+            <h2>Review-Prioritäten</h2>
+            <p class="section-copy">Die kritischsten Warnmonate zuerst, damit du mit möglichst wenig Klicks bei den größten Ausreißern landest.</p>
           </div>
         </div>
         <div id="priorityMonths" class="priority-list"></div>
@@ -97,7 +97,7 @@
         <article class="card">
           <h2>Grundplan-Phasen</h2>
           <table>
-            <thead><tr><th>Ab</th><th>Verfuegbar</th><th>Basis-Investment</th></tr></thead>
+            <thead><tr><th>Ab</th><th>Verfügbar</th><th>Basis-Investment</th></tr></thead>
             <tbody id="baselineProfiles"></tbody>
           </table>
         </article>
@@ -112,8 +112,8 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Zukuenftige Fixkosten</h2>
-            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gueltig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
+            <h2>Zukünftige Fixkosten</h2>
+            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gültig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
           </div>
         </div>
         <div class="grid two">
@@ -129,7 +129,7 @@
                 <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
               <label class="select-wrap">
-                <span>Gueltig ab</span>
+                <span>Gültig ab</span>
                 <input id="fixedCostEffectiveFrom" type="month">
               </label>
               <label class="select-wrap">
@@ -138,7 +138,7 @@
               </label>
             </div>
             <div class="reconciliation-footer">
-              <p class="section-copy" id="fixedCostMeta">Noch keine zusaetzlichen Fixkosten gespeichert.</p>
+              <p class="section-copy" id="fixedCostMeta">Noch keine zusätzlichen Fixkosten gespeichert.</p>
               <button class="pill is-active" id="saveFixedCostButton" type="button">Fixkosten speichern</button>
             </div>
           </div>
@@ -154,8 +154,8 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Monats-Arbeitsflaeche</h2>
-            <p class="section-copy">Hier arbeitest du am aktuell geoeffneten Monat. Cash, Investment und Gesamtvermoegen meinen immer den Stand zum Monatsende, nachdem die Berechnung fuer diesen Monat bereits durchgelaufen ist.</p>
+            <h2>Monats-Arbeitsfläche</h2>
+            <p class="section-copy">Hier arbeitest du am aktuell geöffneten Monat. Cash, Investment und Gesamtvermögen meinen immer den Stand zum Monatsende, nachdem die Berechnung für diesen Monat bereits durchgelaufen ist.</p>
           </div>
           <label class="select-wrap month-picker">
             <span>Monat</span>
@@ -167,7 +167,7 @@
         <div class="month-main">
           <div class="grid two month-summary-grid">
             <article class="card">
-              <h2>Monats-Uebersicht</h2>
+              <h2>Monats-Übersicht</h2>
               <dl class="detail-list compact-details" id="monthReviewSummary"></dl>
             </article>
             <article class="card">
@@ -252,7 +252,7 @@
             <div class="section-head">
               <div>
                 <h2>Reconciliation</h2>
-                <p class="section-copy">Monatlich festhalten, was geprueft und geklaert ist.</p>
+                <p class="section-copy">Monatlich festhalten, was geprüft und geklärt ist.</p>
               </div>
             </div>
             <div class="reconciliation-grid">
@@ -266,9 +266,9 @@
               </label>
               <label class="select-wrap">
                 <span>Notiz</span>
-                <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was im Workbook oder in der Importlogik auffaellig war."></textarea>
+                <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was im Workbook oder in der Importlogik auffällig war."></textarea>
               </label>
-              <h3 class="subhead">Aktionen fuer diesen Monat</h3>
+              <h3 class="subhead">Aktionen für diesen Monat</h3>
               <div id="reconciliationActions" class="reconciliation-actions"></div>
             </div>
             <div class="reconciliation-footer">
@@ -280,7 +280,7 @@
             <div class="section-head">
               <div>
                 <h2>Import-Korrekturen</h2>
-                <p class="section-copy">Kategorien und Konten fuer den geoeffneten Monat pflegen.</p>
+                <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen.</p>
               </div>
             </div>
             <div class="grid two reconciliation-grid">
@@ -304,7 +304,7 @@
         <div class="section-head">
           <div>
             <h2>Alle Monatszeilen</h2>
-            <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick oeffnet den Monat direkt oben in der Arbeitsflaeche.</p>
+            <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick öffnet den Monat direkt oben in der Arbeitsfläche.</p>
           </div>
           <div class="filter-group" id="monthFilters">
             <button class="pill is-active" data-filter="focus">Ab 2026</button>
@@ -316,7 +316,7 @@
         </div>
         <div class="table-wrap table-wrap--months">
           <table>
-            <thead><tr><th>Monat</th><th>Profil</th><th>Grundplan frei</th><th>Musik brutto</th><th>Frei verf.</th><th>Ausgaben</th><th>Gesamtvermoegen</th><th>Ergebnis</th><th>Signale</th></tr></thead>
+            <thead><tr><th>Monat</th><th>Profil</th><th>Grundplan frei</th><th>Musik brutto</th><th>Frei verfügb.</th><th>Ausgaben</th><th>Gesamtvermögen</th><th>Ergebnis</th><th>Signale</th></tr></thead>
             <tbody id="monthlyRows" data-month-table="true"></tbody>
           </table>
         </div>
@@ -327,8 +327,8 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Goals & Rente</h2>
-            <p class="section-copy">Hier siehst du, wann du Vermoegens-Meilensteine erreichst und wie viel Musikumsatz du ab jetzt mindestens brauchst, um ein Rentenziel bis zu einem Wunschalter zu schaffen.</p>
+            <h2>Ziele & Rente</h2>
+            <p class="section-copy">Hier siehst du, wann du Vermögens-Meilensteine erreichst und wie viel Musikumsatz du ab jetzt mindestens brauchst, um ein Rentenziel bis zu einem Wunschalter zu schaffen.</p>
           </div>
         </div>
         <div class="grid two planner-grid">
@@ -336,17 +336,11 @@
             <div class="planner-inputs">
               <label class="select-wrap">
                 <span>Aktuelles Alter</span>
-                <div class="dual-input">
-                  <input id="plannerCurrentAgeSlider" type="range" min="18" max="80" step="0.5">
-                  <input id="plannerCurrentAge" type="number" min="18" max="80" step="0.5">
-                </div>
+                <input id="plannerCurrentAge" type="number" min="18" max="80" step="0.5">
               </label>
               <label class="select-wrap">
                 <span>Zielalter Rente</span>
-                <div class="dual-input">
-                  <input id="plannerTargetAgeSlider" type="range" min="25" max="90" step="0.5">
-                  <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
-                </div>
+                <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
               </label>
               <label class="select-wrap">
                 <span>Bedarf pro Monat in Rente</span>
@@ -361,11 +355,11 @@
                 <input id="plannerInflationRate" type="number" min="0" max="10" step="0.1">
               </label>
               <label class="select-wrap">
-                <span>Gehaltserhoehung p.a.</span>
+                <span>Gehaltserhöhung p.a.</span>
                 <input id="plannerSalaryGrowthRate" type="number" min="0" max="10" step="0.1">
               </label>
               <label class="select-wrap">
-                <span>Mieterhoehung p.a.</span>
+                <span>Mieterhöhung p.a.</span>
                 <input id="plannerRentGrowthRate" type="number" min="0" max="10" step="0.1">
               </label>
               <label class="select-wrap">
@@ -381,6 +375,11 @@
                 <input id="plannerMusicTaxRate" type="number" min="0" max="60" step="0.5">
               </label>
             </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy">Werte erst anpassen und dann bewusst übernehmen. So bleibt der Renten-Reiter stabil.</p>
+              <button class="pill is-active" id="applyRetirementPlannerButton" type="button">Werte übernehmen</button>
+            </div>
+            <div id="plannerErrorBox" class="planner-alert" hidden></div>
             <p class="section-copy" id="plannerAssumptions"></p>
           </div>
           <div>
@@ -417,7 +416,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>Jahr</th><th>Nettogehalt mtl.</th><th>Miete mtl.</th><th>Fix sonstig mtl.</th><th>Variable Kosten mtl.</th><th>Ruecklage mtl.</th><th>Basis-Investment mtl.</th><th>Aus Gehalt in Cash</th><th>Aus Gehalt ins Investment</th><th>Verfuegbar vor Musik</th></tr></thead>
+          <thead><tr><th>Jahr</th><th>Nettogehalt mtl.</th><th>Miete mtl.</th><th>Fix sonstig mtl.</th><th>Variable Kosten mtl.</th><th>Rücklage mtl.</th><th>Basis-Investment mtl.</th><th>Aus Gehalt in Cash</th><th>Aus Gehalt ins Investment</th><th>Verfügbar vor Musik</th></tr></thead>
           <tbody id="retirementYearRows"></tbody>
         </table>
       </article>
