@@ -77,16 +77,75 @@ function showStatus(title, detail = "", tone = "success") {
   if (!bar) return;
 
   bar.hidden = false;
-  bar.className = `app-status ${tone === "warn" ? "is-warn" : "is-success"}`;
+  const toneClass =
+    tone === "warn" ? "is-warn" : tone === "info" ? "is-info" : "is-success";
+  bar.className = `app-status ${toneClass}`;
   bar.innerHTML = `<strong>${title}</strong>${detail ? `<p>${detail}</p>` : ""}`;
 
   if (statusHideTimer) {
     window.clearTimeout(statusHideTimer);
   }
 
+  if (tone === "info") {
+    return;
+  }
+
   statusHideTimer = window.setTimeout(() => {
     bar.hidden = true;
   }, 4200);
+}
+
+async function shutdownApp() {
+  const button = document.getElementById("shutdownAppButton");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  if (!confirmAction("Home Ops Finance wirklich beenden?")) {
+    return;
+  }
+
+  button.disabled = true;
+  showStatus(
+    "Home Ops Finance wird beendet",
+    "Der lokale Server wird gestoppt. Das Browserfenster schließt sich danach, wenn dein Browser das erlaubt.",
+    "info",
+  );
+
+  try {
+    const response = await fetch("/api/shutdown", { method: "POST" });
+    if (!response.ok) {
+      throw new Error(`shutdown_failed_${response.status}`);
+    }
+
+    window.setTimeout(() => {
+      window.close();
+    }, 450);
+  } catch (error) {
+    console.error(error);
+    button.disabled = false;
+    showStatus(
+      "Beenden fehlgeschlagen",
+      "Der Server konnte nicht gestoppt werden. Bitte die App normal beenden oder das Log prüfen.",
+      "warn",
+    );
+  }
+}
+
+function bindAppControls() {
+  const shutdownButton = document.getElementById("shutdownAppButton");
+  if (shutdownButton instanceof HTMLButtonElement) {
+    shutdownButton.onclick = () => {
+      shutdownApp().catch((error) => {
+        console.error(error);
+        showStatus(
+          "Beenden fehlgeschlagen",
+          "Beim Schließen ist ein unerwarteter Fehler aufgetreten.",
+          "warn",
+        );
+      });
+    };
+  }
 }
 
 function activeTabId() {
@@ -2981,6 +3040,7 @@ async function load() {
   await initializeWorkflowState();
   const state = await fetchFinanceData();
   renderApp(state);
+  bindAppControls();
 }
 
 load().catch((error) => {
