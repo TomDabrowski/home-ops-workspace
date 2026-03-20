@@ -77,5 +77,5 @@ export function ensureFinanceDataDir(): string {
 }
 
 export function financeWorkbookPath(): string {
-  return configuredWorkbookPath() ?? resolve("/path/to/private/finance-workbook.xlsx");
+  return configuredWorkbookPath() ?? join(projectRoot, "data", "finance-workbook.xlsx");
 }

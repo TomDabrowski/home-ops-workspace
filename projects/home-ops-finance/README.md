@@ -1,6 +1,8 @@
 # Home Ops Finance
 
-Personal finance tracker to replace the current spreadsheet in small, safe steps.
+Local-first finance tracker for migrating spreadsheet-based planning into a more structured app in small, safe steps.
+
+This project is designed to keep private source data outside the repository while still allowing the app, importer, and review workflow to be developed in public.
 
 ## Current Direction
 
@@ -12,6 +14,20 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 - Separate fixed and variable monthly costs.
 - Show monthly cashflow, savings rate, and net worth.
 - Provide a simple 3 to 12 month forecast.
+
+## What Is In The Repo
+
+- TypeScript source for the importer, planning engine, local app server, and browser UI
+- sanitized example data for development
+- documentation for the workbook migration and target data model
+- local-only configuration examples for external private data
+
+## What Is Not In The Repo
+
+- real spreadsheets
+- real generated finance reports
+- real account data
+- local secrets or credentials
 
 ## Current Project Files
 
@@ -42,6 +58,8 @@ npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/da
 npm run serve:app
 ```
 
+Start with `npm install`, then `npm run typecheck` and `npm test`.
+
 ## External Private Data
 
 Private workbook and generated JSON data can live outside the repo checkout via a local-only `config.local.json` next to `package.json`.
@@ -56,6 +74,8 @@ Example:
 ```
 
 The file is gitignored. You can point it to iCloud, a NAS mount, or another private external path.
+
+All paths shown here are placeholders.
 
 The current importer draft already extracts:
 
@@ -100,7 +120,7 @@ The browser review currently supports:
 - a month-by-month review with active baseline items and imported flows
 - local reconciliation and import-correction persistence into project JSON files
 - a first reviewed-draft pipeline that can reapply saved corrections once `data/import-draft.json` exists
-- bootstrapped default category/account mappings for real imported entries
+- bootstrapped default category/account mappings for imported entries
 - automatic regeneration of reviewed report, reviewed month plan, and reviewed dashboard after saves in the local app
 - a first goals and retirement planner with editable age/spending assumptions, 25k wealth milestones, and an estimated minimum monthly music revenue target
 

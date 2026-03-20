@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 
-ROOT="/path/to/workspace/projects/home-ops-finance"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 URL="http://localhost:4310"
 PORT="4310"
 LOG_FILE="${TMPDIR:-/tmp}home-ops-finance-launch.log"
