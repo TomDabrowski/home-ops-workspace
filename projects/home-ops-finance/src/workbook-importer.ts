@@ -425,6 +425,12 @@ function buildAssumptions(): ForecastAssumption[] {
       valueType: "number",
       notes: "Übersicht Vermögen monthly formulas route 40% of music income to safety after threshold.",
     },
+    {
+      key: "music_tax_prepayment_quarterly_amount",
+      value: 501,
+      valueType: "number",
+      notes: "Current quarterly music tax prepayment. Keep editable in the app.",
+    },
   ];
 }
 

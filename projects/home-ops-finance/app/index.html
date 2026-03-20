@@ -12,8 +12,8 @@
     <section class="hero card">
       <div>
         <p class="eyebrow">Home Ops Finance</p>
-        <h1>Dein ruhiger Arbeitsbereich für Planung, Review und Vermögen.</h1>
-        <p class="lede">Die App liest die generierten Projektdateien direkt ein und bündelt Monatsreview, Grundplan und Rentenpfad in einer klareren Oberfläche.</p>
+        <h1>Monate prüfen, Entscheidungen festhalten und Planung sauber nachziehen.</h1>
+        <p class="lede">Die App bündelt Monatsprüfung, Grundplan und Rentenpfad. Der wichtigste Bereich ist der Monats-Workflow, damit du Auffälligkeiten schnell prüfen und direkt einordnen kannst.</p>
       </div>
       <div class="hero-meta">
         <div class="metric">
@@ -28,31 +28,31 @@
     </section>
 
     <nav class="tabs">
-      <button class="tab is-active" data-tab="overview">Overview</button>
+      <button class="tab is-active" data-tab="months">Monate</button>
+      <button class="tab" data-tab="overview">Einordnung</button>
       <button class="tab" data-tab="baseline">Grundplan</button>
-      <button class="tab" data-tab="months">Monate</button>
       <button class="tab" data-tab="retirement">Rente</button>
     </nav>
 
-    <section id="overview" class="tab-panel is-active">
+    <section id="overview" class="tab-panel">
       <div class="grid four">
         <article class="card stat">
-          <span>Importierter Nettofluss</span>
+          <span>Importe gesamt netto</span>
           <strong id="netFlow">-</strong>
         </article>
         <article class="card stat">
-          <span>Einnahmen</span>
+          <span>Importe gesamt Einnahmen</span>
           <strong id="incomeTotal">-</strong>
         </article>
         <article class="card stat">
-          <span>Ausgaben</span>
+          <span>Importe gesamt Ausgaben</span>
           <strong id="expenseTotal">-</strong>
         </article>
       </div>
 
       <div class="grid two overview-grid">
         <article class="card">
-          <h2>Prüfhinweise</h2>
+          <h2>Als Nächstes prüfen</h2>
           <ul class="signal-list" id="validationSignals"></ul>
         </article>
         <article class="card">
@@ -64,8 +64,8 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Review-Prioritäten</h2>
-            <p class="section-copy">Die kritischsten Warnmonate zuerst, damit du mit möglichst wenig Klicks bei den größten Ausreißern landest.</p>
+            <h2>Zuerst in Monate öffnen</h2>
+            <p class="section-copy">Die wichtigsten Monate zuerst, damit du direkt in den eigentlichen Arbeitsbereich springen kannst.</p>
           </div>
         </div>
         <div id="priorityMonths" class="priority-list"></div>
@@ -149,9 +149,79 @@
           </div>
         </div>
       </article>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Hauptgehalt</h2>
+            <p class="section-copy">Hier pflegst du Änderungen am Nettogehalt mit `gültig ab`. Jeder Eintrag wirkt nur ab diesem Monat nach vorne.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <div class="subcard">
+            <h3 class="subhead">Gehaltsstand anlegen</h3>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Nettogehalt pro Monat</span>
+                <input id="salaryAmount" type="number" min="0" step="0.01" placeholder="2706">
+              </label>
+              <label class="select-wrap">
+                <span>Gültig ab</span>
+                <input id="salaryEffectiveFrom" type="month">
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <input id="salaryNotes" type="text" placeholder="optional">
+              </label>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="salaryMeta">Noch keine Gehaltsänderung gespeichert.</p>
+              <button class="pill is-active" id="saveSalaryButton" type="button">Gehaltsstand speichern</button>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3 class="subhead">Gehaltsverlauf</h3>
+            <div id="salaryList" class="mapping-list"></div>
+          </div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Musik & Steuer</h2>
+            <p class="section-copy">Hier steuerst du die geplante quartalsweise Steuer-Vorauszahlung für Musik. Zusätzliche echte Nachzahlungen kannst du weiter als normale Monatsausgabe eintragen.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <div class="subcard">
+            <h3 class="subhead">Quartals-Vorauszahlung</h3>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Betrag pro Quartal</span>
+                <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
+              </label>
+              <label class="select-wrap">
+                <span>Gültig ab</span>
+                <input id="musicTaxEffectiveFrom" type="month">
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <input id="musicTaxNotes" type="text" placeholder="optional">
+              </label>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="musicTaxMeta">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
+              <button class="pill is-active" id="saveMusicTaxButton" type="button">Steuer-Plan speichern</button>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3 class="subhead">So wirkt es</h3>
+            <div id="musicTaxSummary" class="mapping-list"></div>
+          </div>
+        </div>
+      </article>
     </section>
 
-    <section id="months" class="tab-panel">
+    <section id="months" class="tab-panel is-active">
       <article class="card">
         <div class="section-head">
           <div>
@@ -168,7 +238,7 @@
         <div class="month-main">
           <div class="grid two month-summary-grid">
             <article class="card">
-              <h2>Monats-Übersicht</h2>
+              <h2>Monat auf einen Blick</h2>
               <dl class="detail-list compact-details" id="monthReviewSummary"></dl>
             </article>
             <article class="card">
@@ -317,7 +387,7 @@
         </div>
         <div class="table-wrap table-wrap--months">
           <table>
-            <thead><tr><th>Monat</th><th>Profil</th><th>Grundplan frei</th><th>Musik brutto</th><th>Frei verfügb.</th><th>Ausgaben</th><th>Gesamtvermögen</th><th>Ergebnis</th><th>Signale</th></tr></thead>
+            <thead><tr><th>Monat</th><th>Planmodus</th><th>Frei aus Gehalt</th><th>Musik brutto</th><th>Frei aus Importen</th><th>Ausgaben</th><th>Gesamtvermögen</th><th>Monatssaldo</th><th>Signale</th></tr></thead>
             <tbody id="monthlyRows" data-month-table="true"></tbody>
           </table>
         </div>
