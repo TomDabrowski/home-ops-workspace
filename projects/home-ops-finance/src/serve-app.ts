@@ -14,6 +14,7 @@ const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
 const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
+const monthlyMusicIncomeOverridesPath = financeDataPath("monthly-music-income-overrides.json");
 const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
 const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
@@ -259,6 +260,30 @@ const server = createServer(async (req, res) => {
           fehler: error instanceof Error ? error.message : String(error),
         });
         return sendJson(res, 500, { ok: false, error: "monthly_expense_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/monthly-music-income-overrides") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(monthlyMusicIncomeOverridesPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(monthlyMusicIncomeOverridesPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("musik-istwerte gespeichert", {
+          datei: monthlyMusicIncomeOverridesPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("musik-istwerte fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "monthly_music_income_save_failed" });
       }
     }
   }

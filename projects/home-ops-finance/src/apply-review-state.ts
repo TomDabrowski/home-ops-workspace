@@ -32,7 +32,7 @@ interface BaselineOverrideState {
   amount: number;
   effectiveFrom: string;
   sourceLineItemId?: string;
-  category?: "fixed";
+  category?: "fixed" | "variable" | "annual_reserve" | "savings";
   cadence?: "monthly";
   isActive?: boolean;
   notes?: string;
@@ -48,6 +48,19 @@ interface MonthlyExpenseOverrideState {
   expenseCategoryId?: string;
   accountId?: string;
   expenseType?: "variable" | "annual_reserve" | "debt_payment";
+  isActive?: boolean;
+  notes?: string;
+  updatedAt?: string;
+}
+
+interface MonthlyMusicIncomeOverrideState {
+  id: string;
+  monthKey: string;
+  entryDate: string;
+  amount: number;
+  reserveAmount?: number;
+  availableAmount?: number;
+  accountId?: string;
   isActive?: boolean;
   notes?: string;
   updatedAt?: string;
@@ -81,6 +94,7 @@ type MappingState = Record<string, EntryMappingState>;
 type ReconciliationState = Record<string, ReconciliationMonthState>;
 type BaselineOverrideCollection = BaselineOverrideState[];
 type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
+type MonthlyMusicIncomeOverrideCollection = MonthlyMusicIncomeOverrideState[];
 type MusicTaxSetting = MusicTaxSettingState | null;
 type ForecastSettings = ForecastSettingsState | null;
 type SalarySettingCollection = SalarySettingState[];
@@ -268,6 +282,7 @@ export function applyReviewState(
   reconciliation: ReconciliationState,
   baselineOverrides: BaselineOverrideCollection = [],
   monthlyExpenseOverrides: MonthlyExpenseOverrideCollection = [],
+  monthlyMusicIncomeOverrides: MonthlyMusicIncomeOverrideCollection = [],
   musicTaxSetting: MusicTaxSetting = null,
   forecastSettings: ForecastSettings = null,
   salarySettings: SalarySettingCollection = [],
@@ -302,6 +317,24 @@ export function applyReviewState(
         entry.updatedAt ? `manual monthly expense ${entry.updatedAt}` : "manual monthly expense",
       ]),
     }));
+  const activeMonthlyMusicIncomeOverrides = monthlyMusicIncomeOverrides
+    .filter((entry) => entry.isActive !== false)
+    .map((entry) => ({
+      id: entry.id,
+      incomeStreamId: "music-income",
+      accountId: entry.accountId ?? "giro",
+      entryDate: entry.entryDate,
+      amount: entry.amount,
+      reserveAmount: entry.reserveAmount ?? 0,
+      availableAmount: entry.availableAmount ?? roundCurrency(entry.amount - (entry.reserveAmount ?? 0)),
+      kind: "music" as const,
+      isRecurring: false,
+      isPlanned: entry.monthKey >= "2026-01",
+      notes: mergeNotes(entry.notes, [
+        entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
+      ]),
+    }));
+  const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.entryDate.slice(0, 7)));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
   const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
     entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
@@ -378,13 +411,18 @@ export function applyReviewState(
           }))
       : [];
 
+  const nextIncomeEntries = [
+    ...draft.incomeEntries.filter((entry) => !(entry.incomeStreamId === "music-income" && musicOverrideMonths.has(entry.entryDate.slice(0, 7)))),
+    ...activeMonthlyMusicIncomeOverrides,
+  ];
+
   return {
     ...draft,
     forecastAssumptions: nextForecastAssumptions,
     wealthBuckets: forecastSettingApplied.wealthBuckets,
     monthlyBaselines: applySalarySettingsToBaselines(draft.monthlyBaselines, salarySettings),
     baselineLineItems: [...draft.baselineLineItems, ...activeBaselineOverrides],
-    incomeEntries: draft.incomeEntries.map((entry) => {
+    incomeEntries: nextIncomeEntries.map((entry) => {
       const mapping = mappings[entry.id];
       if (!mapping?.reviewed) {
         return entry;
@@ -433,10 +471,11 @@ function main(): void {
   const reconciliationPath = resolve(process.argv[4] ?? financeDataPath("reconciliation-state.json"));
   const baselineOverridesPath = resolve(process.argv[5] ?? financeDataPath("baseline-overrides.json"));
   const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? financeDataPath("monthly-expense-overrides.json"));
-  const outputPath = resolve(process.argv[7] ?? financeDataPath("import-draft-reviewed.json"));
-  const musicTaxSettingsPath = resolve(process.argv[8] ?? financeDataPath("music-tax-settings.json"));
-  const forecastSettingsPath = resolve(process.argv[9] ?? financeDataPath("forecast-settings.json"));
-  const salarySettingsPath = resolve(process.argv[10] ?? financeDataPath("salary-settings.json"));
+  const monthlyMusicIncomeOverridesPath = resolve(process.argv[7] ?? financeDataPath("monthly-music-income-overrides.json"));
+  const outputPath = resolve(process.argv[8] ?? financeDataPath("import-draft-reviewed.json"));
+  const musicTaxSettingsPath = resolve(process.argv[9] ?? financeDataPath("music-tax-settings.json"));
+  const forecastSettingsPath = resolve(process.argv[10] ?? financeDataPath("forecast-settings.json"));
+  const salarySettingsPath = resolve(process.argv[11] ?? financeDataPath("salary-settings.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -448,6 +487,7 @@ function main(): void {
   const reconciliation = readJsonFile<ReconciliationState>(reconciliationPath, {});
   const baselineOverrides = readJsonFile<BaselineOverrideCollection>(baselineOverridesPath, []);
   const monthlyExpenseOverrides = readJsonFile<MonthlyExpenseOverrideCollection>(monthlyExpenseOverridesPath, []);
+  const monthlyMusicIncomeOverrides = readJsonFile<MonthlyMusicIncomeOverrideCollection>(monthlyMusicIncomeOverridesPath, []);
   const musicTaxSetting = readJsonFile<MusicTaxSetting>(musicTaxSettingsPath, null);
   const forecastSettings = readJsonFile<ForecastSettings>(forecastSettingsPath, null);
   const salarySettings = readJsonFile<SalarySettingCollection>(salarySettingsPath, []);
@@ -458,6 +498,7 @@ function main(): void {
     reconciliation,
     baselineOverrides,
     monthlyExpenseOverrides,
+    monthlyMusicIncomeOverrides,
     musicTaxSetting,
     forecastSettings,
     salarySettings,

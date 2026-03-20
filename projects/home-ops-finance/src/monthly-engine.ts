@@ -137,7 +137,13 @@ export function selectBaselineLineItemsForMonth(
       continue;
     }
 
-    currentByKey.set(`${item.category}:${item.label}`, item);
+    const key = `${item.category}:${item.label}`;
+    if (item.amount <= 0) {
+      currentByKey.delete(key);
+      continue;
+    }
+
+    currentByKey.set(key, item);
   }
 
   return [...currentByKey.values()];

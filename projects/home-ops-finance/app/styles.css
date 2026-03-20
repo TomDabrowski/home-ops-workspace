@@ -394,6 +394,31 @@ th {
 .month-picker {
   min-width: 220px;
 }
+.month-nav-bar {
+  position: sticky;
+  top: 74px;
+  z-index: 12;
+  padding: 18px 22px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.month-nav-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+}
+.month-nav-head h2 {
+  margin: 2px 0 0;
+  font-size: 1.8rem;
+}
+.month-nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
 .month-side {
   position: sticky;
   top: 88px;
@@ -582,6 +607,11 @@ th {
   .hero, .grid.two, .grid.four, .detail-list, .compact-details, .month-workbench { grid-template-columns: 1fr; }
   .section-head {
     flex-direction: column;
+  }
+  .month-nav-head,
+  .month-nav-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
   .planner-inputs,
   .mapping-fields,

@@ -123,17 +123,26 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Zukünftige Fixkosten</h2>
-            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gültig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
+            <h2>Grundplan-Posten anpassen</h2>
+            <p class="section-copy">Hier kannst du Grundplan-Posten ab einem Monat anpassen. Das gilt für Fixkosten, variable Basis, Jahreskostenblöcke und das monatliche Investment.</p>
           </div>
         </div>
         <div class="grid two">
           <div class="subcard">
-            <h3 class="subhead">Neue Fixkosten anlegen</h3>
+            <h3 class="subhead">Posten speichern</h3>
             <div class="planner-inputs">
               <label class="select-wrap">
                 <span>Name</span>
                 <input id="fixedCostLabel" type="text" placeholder="z. B. Fitnessstudio">
+              </label>
+              <label class="select-wrap">
+                <span>Typ</span>
+                <select id="fixedCostCategory">
+                  <option value="fixed">Fixkosten</option>
+                  <option value="variable">Variable Basis</option>
+                  <option value="annual_reserve">Jahreskostenblock</option>
+                  <option value="savings">Geplantes Investment</option>
+                </select>
               </label>
               <label class="select-wrap">
                 <span>Betrag pro Monat</span>
@@ -149,12 +158,12 @@
               </label>
             </div>
             <div class="reconciliation-footer">
-              <p class="section-copy" id="fixedCostMeta">Noch keine zusätzlichen Fixkosten gespeichert.</p>
-              <button class="pill is-active" id="saveFixedCostButton" type="button">Fixkosten speichern</button>
+              <p class="section-copy" id="fixedCostMeta">Noch keine zusätzlichen Grundplan-Posten gespeichert.</p>
+              <button class="pill is-active" id="saveFixedCostButton" type="button">Grundplan-Posten speichern</button>
             </div>
           </div>
           <div class="subcard">
-            <h3 class="subhead">Geplante Zukunfts-Fixkosten</h3>
+            <h3 class="subhead">Gespeicherte Änderungen</h3>
             <div id="fixedCostList" class="mapping-list"></div>
           </div>
         </div>
@@ -273,10 +282,22 @@
             <h2>Monats-Arbeitsfläche</h2>
             <p class="section-copy">Hier arbeitest du am aktuell geöffneten Monat. Cash, Investment und Gesamtvermögen meinen immer den Stand zum Monatsende, nachdem die Berechnung für diesen Monat bereits durchgelaufen ist.</p>
           </div>
-          <label class="select-wrap month-picker">
-            <span>Monat</span>
-            <select id="monthReviewSelect"></select>
-          </label>
+        </div>
+      </article>
+      <article class="card month-nav-bar">
+        <div class="month-nav-head">
+          <div>
+            <p class="eyebrow">Aktueller Monat</p>
+            <h2 id="monthReviewCurrentLabel">-</h2>
+          </div>
+          <div class="month-nav-actions">
+            <button class="pill" id="monthPrevButton" type="button">Vorheriger</button>
+            <label class="select-wrap month-picker">
+              <span>Direkt wählen</span>
+              <select id="monthReviewSelect"></select>
+            </label>
+            <button class="pill" id="monthNextButton" type="button">Nächster</button>
+          </div>
         </div>
       </article>
       <div class="month-workbench">
@@ -343,6 +364,45 @@
             <div class="reconciliation-footer">
               <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Monatsausgabe gespeichert.</p>
               <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Monatsausgabe speichern</button>
+            </div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Musik-Istwert pflegen</h2>
+                <p class="section-copy">Sobald die echte Musik-Einnahme da ist, kannst du hier den Forecast für genau diesen Monat ersetzen.</p>
+              </div>
+            </div>
+            <div class="grid two">
+              <div class="subcard">
+                <h3 class="subhead">Ist-Wert speichern</h3>
+                <div class="planner-inputs">
+                  <label class="select-wrap">
+                    <span>Musik brutto</span>
+                    <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
+                  </label>
+                  <label class="select-wrap">
+                    <span>Monat</span>
+                    <input id="musicIncomeActualDate" type="month">
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Notiz</span>
+                    <input id="musicIncomeActualNotes" type="text" placeholder="optional">
+                  </label>
+                </div>
+                <div class="reconciliation-footer">
+                  <p class="section-copy" id="musicIncomeActualMeta">Noch kein Musik-Istwert gespeichert.</p>
+                  <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
+                </div>
+              </div>
+              <div class="subcard">
+                <h3 class="subhead">Wirkung im Monat</h3>
+                <div id="musicIncomeActualSummary" class="mapping-list"></div>
+              </div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Gespeicherte Ist-Werte</h3>
+              <div id="musicIncomeActualList" class="mapping-list"></div>
             </div>
           </article>
         </div>
