@@ -28,10 +28,9 @@
 
     <nav class="tabs">
       <button class="tab is-active" data-tab="overview">Overview</button>
-      <button class="tab" data-tab="baseline">Baseline</button>
+      <button class="tab" data-tab="baseline">Grundplan</button>
       <button class="tab" data-tab="months">Monate</button>
       <button class="tab" data-tab="retirement">Rente</button>
-      <button class="tab" data-tab="debt">Schulden</button>
     </nav>
 
     <section id="overview" class="tab-panel is-active">
@@ -48,13 +47,9 @@
           <span>Ausgaben</span>
           <strong id="expenseTotal">-</strong>
         </article>
-        <article class="card stat">
-          <span>Snapshots Schulden</span>
-          <strong id="debtSnapshotCount">-</strong>
-        </article>
       </div>
 
-      <div class="grid two">
+      <div class="grid two overview-grid">
         <article class="card">
           <h2>Pruefhinweise</h2>
           <ul class="signal-list" id="validationSignals"></ul>
@@ -75,6 +70,260 @@
         <div id="priorityMonths" class="priority-list"></div>
       </article>
 
+      <div class="grid two">
+        <article class="card">
+          <h2>Top Ausgabenmonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topExpenseMonths"></tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Top Einnahmemonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topIncomeMonths"></tbody>
+          </table>
+        </article>
+      </div>
+    </section>
+
+    <section id="baseline" class="tab-panel">
+      <div class="grid two">
+        <article class="card">
+          <h2>Grundplan-Anker</h2>
+          <dl class="detail-list" id="baselineSummary"></dl>
+        </article>
+        <article class="card">
+          <h2>Grundplan-Phasen</h2>
+          <table>
+            <thead><tr><th>Ab</th><th>Verfuegbar</th><th>Basis-Investment</th></tr></thead>
+            <tbody id="baselineProfiles"></tbody>
+          </table>
+        </article>
+      </div>
+      <article class="card">
+        <h2>Grundplan-Posten</h2>
+        <table>
+          <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th><th>Aktion</th></tr></thead>
+          <tbody id="baselineLineItems" data-baseline-actions="true"></tbody>
+        </table>
+      </article>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Zukuenftige Fixkosten</h2>
+            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gueltig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <div class="subcard">
+            <h3 class="subhead">Neue Fixkosten anlegen</h3>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Name</span>
+                <input id="fixedCostLabel" type="text" placeholder="z. B. Fitnessstudio">
+              </label>
+              <label class="select-wrap">
+                <span>Betrag pro Monat</span>
+                <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap">
+                <span>Gueltig ab</span>
+                <input id="fixedCostEffectiveFrom" type="month">
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <input id="fixedCostNotes" type="text" placeholder="optional">
+              </label>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="fixedCostMeta">Noch keine zusaetzlichen Fixkosten gespeichert.</p>
+              <button class="pill is-active" id="saveFixedCostButton" type="button">Fixkosten speichern</button>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3 class="subhead">Geplante Zukunfts-Fixkosten</h3>
+            <div id="fixedCostList" class="mapping-list"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="months" class="tab-panel">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Monats-Arbeitsflaeche</h2>
+            <p class="section-copy">Hier arbeitest du am aktuell geoeffneten Monat. Cash, Investment und Gesamtvermoegen meinen immer den Stand zum Monatsende, nachdem die Berechnung fuer diesen Monat bereits durchgelaufen ist.</p>
+          </div>
+          <label class="select-wrap month-picker">
+            <span>Monat</span>
+            <select id="monthReviewSelect"></select>
+          </label>
+        </div>
+      </article>
+      <div class="month-workbench">
+        <div class="month-main">
+          <div class="grid two month-summary-grid">
+            <article class="card">
+              <h2>Monats-Uebersicht</h2>
+              <dl class="detail-list compact-details" id="monthReviewSummary"></dl>
+            </article>
+            <article class="card">
+              <h2>Monatshinweise</h2>
+              <ul class="signal-list" id="monthReviewSignals"></ul>
+            </article>
+          </div>
+          <div class="grid two">
+            <article class="card">
+              <h2>Importierte Ausgaben des Monats</h2>
+              <div class="table-wrap table-wrap--month">
+                <table>
+                  <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
+                  <tbody id="monthReviewExpenseRows"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="card">
+              <h2>Manuelle variable Ausgaben</h2>
+              <div id="monthlyExpenseList" class="mapping-list"></div>
+            </article>
+          </div>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Monatsausgabe anlegen</h2>
+                <p class="section-copy">Neue variable Ausgaben wirken direkt in die Monatslogik hinein.</p>
+              </div>
+            </div>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Beschreibung</span>
+                <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
+              </label>
+              <label class="select-wrap">
+                <span>Betrag</span>
+                <input id="monthlyExpenseAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap">
+                <span>Datum</span>
+                <input id="monthlyExpenseDate" type="date">
+              </label>
+              <label class="select-wrap">
+                <span>Kategorie</span>
+                <select id="monthlyExpenseCategory"></select>
+              </label>
+              <label class="select-wrap">
+                <span>Konto</span>
+                <select id="monthlyExpenseAccount"></select>
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <input id="monthlyExpenseNotes" type="text" placeholder="optional">
+              </label>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Monatsausgabe gespeichert.</p>
+              <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Monatsausgabe speichern</button>
+            </div>
+          </article>
+        </div>
+        <aside class="month-side">
+          <article class="card">
+            <h2>Importierte Einnahmen</h2>
+            <div class="table-wrap table-wrap--side">
+              <table>
+                <thead><tr><th>Datum</th><th>Quelle</th><th>Betrag</th></tr></thead>
+                <tbody id="monthReviewIncomeRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h2>Aktive Grundplan-Posten</h2>
+            <div class="table-wrap table-wrap--side">
+              <table>
+                <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
+                <tbody id="monthReviewBaselineItems"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Reconciliation</h2>
+                <p class="section-copy">Monatlich festhalten, was geprueft und geklaert ist.</p>
+              </div>
+            </div>
+            <div class="reconciliation-grid">
+              <label class="select-wrap">
+                <span>Status</span>
+                <select id="reconciliationStatus">
+                  <option value="open">Offen</option>
+                  <option value="in_progress">In Arbeit</option>
+                  <option value="resolved">Erledigt</option>
+                </select>
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was im Workbook oder in der Importlogik auffaellig war."></textarea>
+              </label>
+              <h3 class="subhead">Aktionen fuer diesen Monat</h3>
+              <div id="reconciliationActions" class="reconciliation-actions"></div>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
+              <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
+            </div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Import-Korrekturen</h2>
+                <p class="section-copy">Kategorien und Konten fuer den geoeffneten Monat pflegen.</p>
+              </div>
+            </div>
+            <div class="grid two reconciliation-grid">
+              <div>
+                <h3 class="subhead">Einnahmen-Mappings</h3>
+                <div id="incomeMappingRows" class="mapping-list"></div>
+              </div>
+              <div>
+                <h3 class="subhead">Ausgaben-Mappings</h3>
+                <div id="expenseMappingRows" class="mapping-list"></div>
+              </div>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
+              <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
+            </div>
+          </article>
+        </aside>
+      </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Alle Monatszeilen</h2>
+            <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick oeffnet den Monat direkt oben in der Arbeitsflaeche.</p>
+          </div>
+          <div class="filter-group" id="monthFilters">
+            <button class="pill is-active" data-filter="focus">Ab 2026</button>
+            <button class="pill" data-filter="all">Alle</button>
+            <button class="pill" data-filter="warning">Warnungen</button>
+            <button class="pill" data-filter="negative">Nur Defizite</button>
+            <button class="pill" data-filter="future">Nur Zukunft</button>
+          </div>
+        </div>
+        <div class="table-wrap table-wrap--months">
+          <table>
+            <thead><tr><th>Monat</th><th>Profil</th><th>Grundplan frei</th><th>Musik brutto</th><th>Frei verf.</th><th>Ausgaben</th><th>Gesamtvermoegen</th><th>Ergebnis</th><th>Signale</th></tr></thead>
+            <tbody id="monthlyRows" data-month-table="true"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="retirement" class="tab-panel">
       <article class="card">
         <div class="section-head">
           <div>
@@ -152,207 +401,6 @@
 
       <div class="grid two">
         <article class="card">
-          <h2>Top Ausgabenmonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topExpenseMonths"></tbody>
-          </table>
-        </article>
-        <article class="card">
-          <h2>Top Einnahmemonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topIncomeMonths"></tbody>
-          </table>
-        </article>
-      </div>
-    </section>
-
-    <section id="baseline" class="tab-panel">
-      <div class="grid two">
-        <article class="card">
-          <h2>Baseline-Anker</h2>
-          <dl class="detail-list" id="baselineSummary"></dl>
-        </article>
-        <article class="card">
-          <h2>Baseline-Phasen</h2>
-          <table>
-            <thead><tr><th>Ab</th><th>Verfuegbar</th><th>Sparen</th></tr></thead>
-            <tbody id="baselineProfiles"></tbody>
-          </table>
-        </article>
-      </div>
-      <article class="card">
-        <h2>Baseline-Posten</h2>
-        <table>
-          <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th><th>Aktion</th></tr></thead>
-          <tbody id="baselineLineItems" data-baseline-actions="true"></tbody>
-        </table>
-      </article>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Zukuenftige Fixkosten</h2>
-            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gueltig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
-          </div>
-        </div>
-        <div class="grid two">
-          <div class="subcard">
-            <h3 class="subhead">Neue Fixkosten anlegen</h3>
-            <div class="planner-inputs">
-              <label class="select-wrap">
-                <span>Name</span>
-                <input id="fixedCostLabel" type="text" placeholder="z. B. Fitnessstudio">
-              </label>
-              <label class="select-wrap">
-                <span>Betrag pro Monat</span>
-                <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap">
-                <span>Gueltig ab</span>
-                <input id="fixedCostEffectiveFrom" type="month">
-              </label>
-              <label class="select-wrap">
-                <span>Notiz</span>
-                <input id="fixedCostNotes" type="text" placeholder="optional">
-              </label>
-            </div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="fixedCostMeta">Noch keine zusaetzlichen Fixkosten gespeichert.</p>
-              <button class="pill is-active" id="saveFixedCostButton" type="button">Fixkosten speichern</button>
-            </div>
-          </div>
-          <div class="subcard">
-            <h3 class="subhead">Geplante Zukunfts-Fixkosten</h3>
-            <div id="fixedCostList" class="mapping-list"></div>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section id="months" class="tab-panel">
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Monatsplanung</h2>
-            <p class="section-copy">Filtere zuerst die kritischen Monate, bevor wir spaeter Bearbeitung und Imports direkt in die App ziehen.</p>
-          </div>
-          <div class="filter-group" id="monthFilters">
-            <button class="pill is-active" data-filter="focus">Ab 2026</button>
-            <button class="pill" data-filter="all">Alle</button>
-            <button class="pill" data-filter="warning">Warnungen</button>
-            <button class="pill" data-filter="negative">Nur Defizite</button>
-            <button class="pill" data-filter="future">Nur Zukunft</button>
-          </div>
-        </div>
-        <table>
-          <thead><tr><th>Monat</th><th>Profil</th><th>Baseline</th><th>Musik brutto</th><th>Frei verf.</th><th>Ausgaben</th><th>Ergebnis</th><th>Signale</th></tr></thead>
-          <tbody id="monthlyRows"></tbody>
-        </table>
-      </article>
-      <div class="grid two">
-        <article class="card">
-          <div class="section-head">
-            <div>
-              <h2>Monats-Review</h2>
-              <p class="section-copy">Waehle einen Monat und pruefe, welche Posten und Importe in die Rechnung eingehen.</p>
-            </div>
-            <label class="select-wrap">
-              <span>Monat</span>
-              <select id="monthReviewSelect"></select>
-            </label>
-          </div>
-          <dl class="detail-list" id="monthReviewSummary"></dl>
-        </article>
-        <article class="card">
-          <h2>Automatische Monatshinweise</h2>
-          <ul class="signal-list" id="monthReviewSignals"></ul>
-        </article>
-      </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Reconciliation</h2>
-            <p class="section-copy">Halte pro Monat fest, was schon geprueft wurde, welche Hinweise offen sind und was als naechstes im Workbook abgeglichen werden muss.</p>
-          </div>
-        </div>
-        <div class="grid two reconciliation-grid">
-          <div>
-            <label class="select-wrap">
-              <span>Status</span>
-              <select id="reconciliationStatus">
-                <option value="open">Offen</option>
-                <option value="in_progress">In Arbeit</option>
-                <option value="resolved">Erledigt</option>
-              </select>
-            </label>
-            <label class="select-wrap">
-              <span>Notiz</span>
-              <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was im Workbook oder in der Importlogik auffaellig war."></textarea>
-            </label>
-          </div>
-          <div>
-            <h3 class="subhead">Aktionen fuer diesen Monat</h3>
-            <div id="reconciliationActions" class="reconciliation-actions"></div>
-          </div>
-        </div>
-        <div class="reconciliation-footer">
-          <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
-          <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
-        </div>
-      </article>
-      <div class="grid two">
-        <article class="card">
-          <h2>Aktive Baseline-Posten</h2>
-          <table>
-            <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
-            <tbody id="monthReviewBaselineItems"></tbody>
-          </table>
-        </article>
-      </div>
-      <div class="grid two">
-        <article class="card">
-          <h2>Importierte Einnahmen des Monats</h2>
-          <table>
-            <thead><tr><th>Datum</th><th>Quelle</th><th>Betrag</th></tr></thead>
-            <tbody id="monthReviewIncomeRows"></tbody>
-          </table>
-        </article>
-        <article class="card">
-          <h2>Importierte Ausgaben des Monats</h2>
-          <table>
-            <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
-            <tbody id="monthReviewExpenseRows"></tbody>
-          </table>
-        </article>
-      </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Import-Korrekturen</h2>
-            <p class="section-copy">Pflege hier die ersten lokalen Korrekturen fuer Kategorien und Zielkonten, damit Reconciliation in echte Import-Entscheidungen uebergeht.</p>
-          </div>
-        </div>
-        <div class="grid two reconciliation-grid">
-          <div>
-            <h3 class="subhead">Einnahmen-Mappings</h3>
-            <div id="incomeMappingRows" class="mapping-list"></div>
-          </div>
-          <div>
-            <h3 class="subhead">Ausgaben-Mappings</h3>
-            <div id="expenseMappingRows" class="mapping-list"></div>
-          </div>
-        </div>
-        <div class="reconciliation-footer">
-          <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
-          <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
-        </div>
-      </article>
-    </section>
-
-    <section id="retirement" class="tab-panel">
-      <div class="grid two">
-        <article class="card">
           <h2>Zielbild</h2>
           <dl class="detail-list" id="retirementSummary"></dl>
         </article>
@@ -375,15 +423,6 @@
       </article>
     </section>
 
-    <section id="debt" class="tab-panel">
-      <article class="card">
-        <h2>Letzte Schuldenstaende</h2>
-        <table>
-          <thead><tr><th>Konto</th><th>Stand</th><th>Snapshot</th></tr></thead>
-          <tbody id="debtRows"></tbody>
-        </table>
-      </article>
-    </section>
   </main>
 
   <script type="module" src="/app/app.js"></script>
