@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.js";
 import type { ImportDraft, ExpenseEntry, IncomeEntry } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 interface MappingStateEntry {
   categoryId: string;
@@ -22,7 +23,10 @@ function defaultExpenseAccount(entry: ExpenseEntry): string {
     return "debt";
   }
   if (entry.expenseType === "annual_reserve") {
-    return "savings";
+    return "business";
+  }
+  if (entry.expenseCategoryId === "gear" || entry.expenseCategoryId === "tax") {
+    return "business";
   }
   return "giro";
 }

@@ -18,6 +18,7 @@ import type {
   WealthBucket,
   WorkbookSheetSummary,
 } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath, financeWorkbookPath } from "./local-config.ts";
 
 function unzipText(workbookPath: string, entry: string): string {
   return execFileSync("unzip", ["-p", workbookPath, entry], {
@@ -424,6 +425,12 @@ function buildAssumptions(): ForecastAssumption[] {
       value: 0.4,
       valueType: "number",
       notes: "Übersicht Vermögen monthly formulas route 40% of music income to safety after threshold.",
+    },
+    {
+      key: "music_tax_prepayment_quarterly_amount",
+      value: 501,
+      valueType: "number",
+      notes: "Current quarterly music tax prepayment. Keep editable in the app.",
     },
   ];
 }

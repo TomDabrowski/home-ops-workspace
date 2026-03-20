@@ -65,7 +65,7 @@ export function ensureFinanceDataDir(): string {
   if (isConfigured) {
     if (!existsSync(dataDir)) {
       throw new Error(
-        `Configured finance data directory is not available: ${dataDir}. Check config.local.json, HOME_OPS_FINANCE_DATA_DIR, or your NAS mount.`,
+        `Configured finance data directory is not available: ${dataDir}. Check config.local.json, HOME_OPS_FINANCE_DATA_DIR, or your NAS/iCloud path.`,
       );
     }
 

@@ -10,12 +10,19 @@ const reconciliationStorageKey = "home-ops-finance-reconciliation-v1";
 const mappingStorageKey = "home-ops-finance-entry-mapping-v1";
 const baselineOverridesStorageKey = "home-ops-finance-baseline-overrides-v1";
 const monthlyExpenseOverridesStorageKey = "home-ops-finance-monthly-expense-overrides-v1";
+const musicTaxSettingsStorageKey = "home-ops-finance-music-tax-settings-v1";
+const forecastSettingsStorageKey = "home-ops-finance-forecast-settings-v1";
+const salarySettingsStorageKey = "home-ops-finance-salary-settings-v1";
+const activeTabStorageKey = "home-ops-finance-active-tab-v1";
+const monthReviewStorageKey = "home-ops-finance-month-review-v1";
+const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
 const fallbackAccountOptions = [
-  { id: "giro", label: "Girokonto" },
-  { id: "cash", label: "Bargeld / Alltag" },
-  { id: "savings", label: "Rücklage / Tagesgeld" },
-  { id: "investment", label: "Investment" },
-  { id: "debt", label: "Schuldenkonto" },
+  { id: "giro", label: "CHECK24 Alltag" },
+  { id: "cash", label: "Trade Republic Cash" },
+  { id: "savings", label: "Scalable Tagesgeld" },
+  { id: "investment", label: "Trade Republic Investment" },
+  { id: "business", label: "Accountable Geschäftskonto" },
+  { id: "debt", label: "Alt: Schuldenkonto" },
   { id: "unknown", label: "Noch offen" },
 ];
 let reconciliationStateCache = {};
@@ -26,7 +33,134 @@ let reconciliationPersistence = "browser";
 let mappingPersistence = "browser";
 let baselinePersistence = "browser";
 let monthlyExpensePersistence = "browser";
+let musicTaxPersistence = "browser";
+let forecastPersistence = "browser";
+let salaryPersistence = "browser";
 let accountOptions = fallbackAccountOptions;
+let statusHideTimer = null;
+let musicTaxSettingsCache = null;
+let forecastSettingsCache = null;
+let salarySettingsCache = [];
+
+function financeState() {
+  return window.__financeState ?? null;
+}
+
+function currentImportDraft() {
+  return financeState()?.importDraft ?? window.__importDraft;
+}
+
+function currentMonthlyPlan() {
+  return financeState()?.monthlyPlan ?? null;
+}
+
+function statusDetailForMode(mode) {
+  return mode === "project"
+    ? "Die Änderung wurde in den Projektdateien gespeichert."
+    : "Der Server war nicht erreichbar. Die Änderung liegt vorerst nur im Browser-Fallback.";
+}
+
+function quarterLabel(monthKey) {
+  const month = Number(monthKey.slice(5, 7));
+  return `Q${Math.floor((month - 1) / 3) + 1} ${monthKey.slice(0, 4)}`;
+}
+
+function roundCurrency(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function showStatus(title, detail = "", tone = "success") {
+  const bar = document.getElementById("appStatusBar");
+  if (!bar) return;
+
+  bar.hidden = false;
+  bar.className = `app-status ${tone === "warn" ? "is-warn" : "is-success"}`;
+  bar.innerHTML = `<strong>${title}</strong>${detail ? `<p>${detail}</p>` : ""}`;
+
+  if (statusHideTimer) {
+    window.clearTimeout(statusHideTimer);
+  }
+
+  statusHideTimer = window.setTimeout(() => {
+    bar.hidden = true;
+  }, 4200);
+}
+
+function activeTabId() {
+  return document.querySelector(".tab.is-active")?.dataset.tab ?? "months";
+}
+
+function activeMonthFilter() {
+  return document.querySelector("#monthFilters .pill.is-active")?.dataset.filter ?? "focus";
+}
+
+function saveViewState(viewState = {}) {
+  window.localStorage.setItem(activeTabStorageKey, viewState.tabId ?? activeTabId());
+  if (viewState.monthKey) {
+    window.localStorage.setItem(monthReviewStorageKey, viewState.monthKey);
+  }
+  window.localStorage.setItem(monthFilterStorageKey, viewState.monthFilter ?? activeMonthFilter());
+}
+
+function currentViewState() {
+  const monthSelect = document.getElementById("monthReviewSelect");
+
+  return {
+    tabId: activeTabId(),
+    monthKey:
+      viewStateMonthValue(monthSelect) ??
+      window.localStorage.getItem(monthReviewStorageKey) ??
+      null,
+    monthFilter: window.localStorage.getItem(monthFilterStorageKey) ?? activeMonthFilter(),
+    scrollY: window.scrollY,
+  };
+}
+
+function viewStateMonthValue(monthSelect) {
+  return monthSelect instanceof HTMLSelectElement ? monthSelect.value : null;
+}
+
+function activateTab(tabId) {
+  const targetTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  targetTab?.click();
+}
+
+function confirmAction(message) {
+  return window.confirm(message);
+}
+
+async function fetchFinanceData() {
+  const importDraftPromise = fetch("/data/import-draft-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/import-draft.json").then((fallback) => fallback.json()),
+  );
+  const draftReportPromise = fetch("/data/draft-report-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/draft-report.json").then((fallback) => fallback.json()),
+  );
+  const monthlyPlanPromise = fetch("/data/monthly-plan-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/monthly-plan.json").then((fallback) => fallback.json()),
+  );
+
+  const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
+    draftReportPromise,
+    monthlyPlanPromise,
+    importDraftPromise,
+    fetch("/data/accounts.json").then((response) => response.ok ? response.json() : []),
+  ]);
+
+  return { draftReport, monthlyPlan, importDraft, accounts };
+}
+
+async function refreshFinanceView(status = null) {
+  const viewState = currentViewState();
+  await initializeWorkflowState();
+  const nextState = await fetchFinanceData();
+  renderApp(nextState, viewState);
+  window.scrollTo({ top: viewState.scrollY });
+
+  if (status) {
+    showStatus(status.title, status.detail, status.tone);
+  }
+}
 
 function defaultPlannerSettings(monthlyPlan) {
   const forecastRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
@@ -103,7 +237,7 @@ function makeMoneyCell(value) {
 }
 
 function planProfileLabel(value) {
-  return value === "forecast_investing" ? "Investment-Plan" : "Liquiditäts-Plan";
+  return value === "forecast_investing" ? "Zukunftsplanung" : "Vergangenheitsdaten";
 }
 
 function formatMonthLabel(monthKey) {
@@ -481,6 +615,33 @@ function writeMonthlyExpenseOverrides(state) {
   window.localStorage.setItem(monthlyExpenseOverridesStorageKey, JSON.stringify(state));
 }
 
+function readMusicTaxSettings() {
+  return musicTaxSettingsCache;
+}
+
+function writeMusicTaxSettings(state) {
+  musicTaxSettingsCache = state;
+  window.localStorage.setItem(musicTaxSettingsStorageKey, JSON.stringify(state ?? {}));
+}
+
+function readForecastSettings() {
+  return forecastSettingsCache;
+}
+
+function writeForecastSettings(state) {
+  forecastSettingsCache = state;
+  window.localStorage.setItem(forecastSettingsStorageKey, JSON.stringify(state ?? {}));
+}
+
+function readSalarySettings() {
+  return salarySettingsCache;
+}
+
+function writeSalarySettings(state) {
+  salarySettingsCache = state;
+  window.localStorage.setItem(salarySettingsStorageKey, JSON.stringify(state ?? []));
+}
+
 async function loadStateFromApi(path, storageKey) {
   const response = await fetch(path);
   if (!response.ok) {
@@ -536,6 +697,36 @@ async function initializeWorkflowState() {
     monthlyExpenseOverridesCache = Array.isArray(fallback) ? fallback : [];
     monthlyExpensePersistence = "browser";
   }
+
+  try {
+    const payload = await loadStateFromApi("/api/music-tax-settings", musicTaxSettingsStorageKey);
+    musicTaxSettingsCache = payload && typeof payload === "object" ? payload : null;
+    musicTaxPersistence = "project";
+  } catch {
+    const fallback = loadStateFromLocalStorage(musicTaxSettingsStorageKey);
+    musicTaxSettingsCache = fallback && typeof fallback === "object" ? fallback : null;
+    musicTaxPersistence = "browser";
+  }
+
+  try {
+    const payload = await loadStateFromApi("/api/forecast-settings", forecastSettingsStorageKey);
+    forecastSettingsCache = payload && typeof payload === "object" ? payload : null;
+    forecastPersistence = "project";
+  } catch {
+    const fallback = loadStateFromLocalStorage(forecastSettingsStorageKey);
+    forecastSettingsCache = fallback && typeof fallback === "object" ? fallback : null;
+    forecastPersistence = "browser";
+  }
+
+  try {
+    const payload = await loadStateFromApi("/api/salary-settings", salarySettingsStorageKey);
+    salarySettingsCache = Array.isArray(payload) ? payload : [];
+    salaryPersistence = "project";
+  } catch {
+    const fallback = loadStateFromLocalStorage(salarySettingsStorageKey);
+    salarySettingsCache = Array.isArray(fallback) ? fallback : [];
+    salaryPersistence = "browser";
+  }
 }
 
 async function persistState(path, storageKey, state, modeSetter) {
@@ -554,11 +745,11 @@ async function persistState(path, storageKey, state, modeSetter) {
 
     window.localStorage.setItem(storageKey, JSON.stringify(state));
     modeSetter("project");
-    return true;
+    return { ok: true, mode: "project" };
   } catch {
     window.localStorage.setItem(storageKey, JSON.stringify(state));
     modeSetter("browser");
-    return false;
+    return { ok: false, mode: "browser" };
   }
 }
 
@@ -625,7 +816,7 @@ async function saveReconciliationForMonth(monthKey, value) {
     updatedAt: new Date().toISOString(),
   };
   writeReconciliationState(state);
-  await persistState("/api/reconciliation-state", reconciliationStorageKey, state, (mode) => {
+  return persistState("/api/reconciliation-state", reconciliationStorageKey, state, (mode) => {
     reconciliationPersistence = mode;
   });
 }
@@ -635,7 +826,10 @@ function defaultExpenseAccount(entry) {
     return "debt";
   }
   if (entry.expenseType === "annual_reserve") {
-    return "savings";
+    return "business";
+  }
+  if (entry.expenseCategoryId === "gear" || entry.expenseCategoryId === "tax") {
+    return "business";
   }
   return "giro";
 }
@@ -686,6 +880,32 @@ function optionMarkup(options, selectedValue) {
     .join("");
 }
 
+function incomeStreamLabel(importDraft, streamId) {
+  return importDraft.incomeStreams.find((item) => item.id === streamId)?.name ?? streamId;
+}
+
+function expenseCategoryLabel(importDraft, categoryId) {
+  return importDraft.expenseCategories.find((item) => item.id === categoryId)?.name ?? categoryId;
+}
+
+function baselineCategoryLabel(category) {
+  const labels = {
+    fixed: "Fixkosten",
+    variable: "Variable Basis",
+    annual_reserve: "Planrücklage",
+    savings: "Geplantes Investment",
+  };
+  return labels[category] ?? category;
+}
+
+function sourcePreview(notes) {
+  if (!notes) {
+    return "Keine zusätzliche Herkunftsnotiz.";
+  }
+
+  return notes.length > 160 ? `${notes.slice(0, 157)}...` : notes;
+}
+
 function incomeMappingForEntry(entry) {
   const state = readMappingState();
   return state[entry.id] ?? defaultIncomeMapping(entry);
@@ -713,7 +933,7 @@ async function saveMappings(entries) {
   }
 
   writeMappingState(state);
-  await persistState("/api/import-mappings", mappingStorageKey, state, (mode) => {
+  return persistState("/api/import-mappings", mappingStorageKey, state, (mode) => {
     mappingPersistence = mode;
   });
 }
@@ -749,8 +969,8 @@ function renderValidationSignals(draftReport, monthlyPlan) {
   if (Math.abs(delta) > 0.01) {
     signals.push({
       level: "warn",
-      title: "Grundplan-Anker weicht vom Rechenweg ab",
-      body: `Im Workbook liegt aktuell eine Differenz von ${euro.format(delta)} zwischen Ankerwert und neu berechnetem Grundplan. Das ist genau die Art Stelle, die wir in der App sichtbar halten wollen.`,
+      title: "Grundplan und Workbook passen noch nicht sauber zusammen",
+      body: `Zwischen Workbook und aktueller Berechnung liegt noch eine Differenz von ${euro.format(delta)}. Das ist ein guter Kandidat für eine kurze Prüfung im Monatsbereich.`,
     });
   }
 
@@ -759,7 +979,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     signals.push({
       level: "warn",
       title: `${negativeMonths.length} Monate liegen nach Importen im Minus`,
-      body: `Schwächster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du beim ersten Test besonders kontrollieren.`,
+      body: `Schwächster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du zuerst kurz durchgehen.`,
     });
   }
 
@@ -771,7 +991,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     signals.push({
       level: "warn",
       title: `${suspiciousMonths.length} Monate haben automatische Warnsignale`,
-      body: `${worstMatch.monthKey} trägt aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Damit lässt sich die Monatsprüfung gezielter starten.`,
+      body: `${worstMatch.monthKey} hat aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Von dort lohnt sich der Einstieg in die Monatsprüfung.`,
     });
   }
 
@@ -779,8 +999,32 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     const positiveFuture = futureRows.filter((row) => row.netAfterImportedFlows >= 0).length;
     signals.push({
       level: "info",
-      title: "Forecast-Phase ist bereits modelliert",
-      body: `${positiveFuture} von ${futureRows.length} Zukunftsmonaten liegen in der aktuellen Rechnung nicht im Minus. Das hilft uns später beim Abgleich gegen deine Prognose-Logik.`,
+      title: "Zukunftsphase ist bereits vorgerechnet",
+      body: `${positiveFuture} von ${futureRows.length} Zukunftsmonaten liegen in der aktuellen Rechnung nicht im Minus. Das ist die Basis für deine weitere Planung.`,
+    });
+  }
+
+  const anchorChecks = (currentImportDraft()?.forecastWealthAnchors ?? [])
+    .map((anchor) => {
+      const row = monthlyPlan.rows.find((item) => item.monthKey === anchor.monthKey);
+      if (!row || row.projectedWealthEndAmount === undefined) {
+        return null;
+      }
+
+      return {
+        monthKey: anchor.monthKey,
+        delta: Math.round((row.projectedWealthEndAmount - anchor.totalWealthAmount) * 100) / 100,
+      };
+    })
+    .filter(Boolean);
+  const offAnchors = anchorChecks.filter((item) => Math.abs(item.delta) > 50);
+
+  if (offAnchors.length > 0) {
+    const worstAnchor = [...offAnchors].sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))[0];
+    signals.push({
+      level: "warn",
+      title: `${offAnchors.length} Workbook-Kontrollmonate weichen merklich ab`,
+      body: `${worstAnchor.monthKey} liegt aktuell um ${euro.format(worstAnchor.delta)} neben dem Excel-Anker. Das ist ein guter technischer Kontrollpunkt für die Migration.`,
     });
   }
 
@@ -794,6 +1038,44 @@ function renderValidationSignals(draftReport, monthlyPlan) {
         </li>
       `,
     )
+    .join("");
+}
+
+function renderWorkbookAnchorChecks(importDraft, monthlyPlan) {
+  const target = document.getElementById("workbookAnchorChecks");
+  if (!target) return;
+
+  const anchors = (importDraft.forecastWealthAnchors ?? []).slice().sort((left, right) => left.monthKey.localeCompare(right.monthKey));
+  if (anchors.length === 0) {
+    target.innerHTML = `<p class="empty-state">Noch keine expliziten Kontrollmonate aus dem Workbook gefunden.</p>`;
+    return;
+  }
+
+  target.innerHTML = anchors
+    .map((anchor) => {
+      const row = monthlyPlan.rows.find((item) => item.monthKey === anchor.monthKey);
+      const appTotal = row?.projectedWealthEndAmount;
+      const delta = typeof appTotal === "number" && typeof anchor.totalWealthAmount === "number"
+        ? Math.round((appTotal - anchor.totalWealthAmount) * 100) / 100
+        : null;
+      const tone = delta === null ? "info" : Math.abs(delta) > 50 ? "warn" : "info";
+      return `
+        <div class="mapping-card">
+          <div class="mapping-card-head">
+            <div>
+              <strong>${anchor.monthKey}</strong>
+              <p>Excel-Anker aus Zeile ${anchor.sourceRowNumber} · ${anchor.sourceSheet}</p>
+            </div>
+            <span class="signal-label ${tone}">${tone === "warn" ? "Prüfen" : "Passt"}</span>
+          </div>
+          <div class="detail-strip">
+            <div><span>Excel Gesamt</span><strong>${typeof anchor.totalWealthAmount === "number" ? euro.format(anchor.totalWealthAmount) : "-"}</strong></div>
+            <div><span>App Gesamt</span><strong>${typeof appTotal === "number" ? euro.format(appTotal) : "-"}</strong></div>
+            <div><span>Differenz</span><strong>${delta === null ? "-" : euro.format(delta)}</strong></div>
+          </div>
+        </div>
+      `;
+    })
     .join("");
 }
 
@@ -853,7 +1135,7 @@ function renderPriorityMonths(monthlyPlan) {
           <span class="priority-pill">${planProfileLabel(row.baselineProfile)}</span>
         </div>
         <h3>${row.monthKey}</h3>
-        <p>${row.warningCount} Warnhinweise · Ergebnis ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
+        <p>${row.warningCount} Warnhinweise · Monatssaldo ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
         <button class="pill" type="button" data-priority-month="${row.monthKey}">Im Review öffnen</button>
       </article>
     `)
@@ -864,7 +1146,8 @@ function renderPriorityMonths(monthlyPlan) {
       const monthKey = button.getAttribute("data-priority-month");
       if (!monthKey) return;
       monthSelect.value = monthKey;
-      renderMonthReview(window.__importDraft, monthlyPlan, monthKey);
+      renderMonthReview(currentImportDraft(), monthlyPlan, monthKey);
+      saveViewState({ monthKey });
       const monthsTab = document.querySelector('.tab[data-tab="months"]');
       monthsTab?.click();
     });
@@ -878,10 +1161,11 @@ function openMonthReview(monthlyPlan, monthKey) {
   }
 
   monthSelect.value = monthKey;
-  renderMonthReview(window.__importDraft, monthlyPlan, monthKey);
+  saveViewState({ monthKey });
+  renderMonthReview(currentImportDraft(), monthlyPlan, monthKey);
 }
 
-function bindMonthFilters(monthlyPlan) {
+function bindMonthFilters(monthlyPlan, initialFilter = "focus") {
   const buttons = [...document.querySelectorAll("#monthFilters .pill")];
   const allRows = monthlyPlan.rows;
   const tableTarget = document.getElementById("monthlyRows");
@@ -895,7 +1179,7 @@ function bindMonthFilters(monthlyPlan) {
       return true;
     });
 
-    renderRows("monthlyRows", rows, (row) => `
+  renderRows("monthlyRows", rows, (row) => `
       <tr data-month-open="${row.monthKey}">
         <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.monthKey}</button></td>
         <td>${planProfileLabel(row.baselineProfile)}</td>
@@ -911,14 +1195,17 @@ function bindMonthFilters(monthlyPlan) {
   }
 
   for (const button of buttons) {
-    button.addEventListener("click", () => {
+    button.onclick = () => {
       const filter = button.dataset.filter ?? "all";
       buttons.forEach((item) => item.classList.toggle("is-active", item === button));
+      saveViewState({ monthFilter: filter });
       render(filter);
-    });
+    };
   }
 
-  render("focus");
+  const selectedFilter = buttons.some((button) => button.dataset.filter === initialFilter) ? initialFilter : "focus";
+  buttons.forEach((item) => item.classList.toggle("is-active", item.dataset.filter === selectedFilter));
+  render(selectedFilter);
 
   if (tableTarget) {
     tableTarget.onclick = (event) => {
@@ -1039,6 +1326,13 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       return;
     }
 
+    const isEditing = Boolean(editingId);
+    if (!confirmAction(isEditing
+      ? `Monatsausgabe "${description}" für ${entryDate} wirklich aktualisieren?`
+      : `Monatsausgabe "${description}" für ${entryDate} wirklich speichern?`)) {
+      return;
+    }
+
     const nextEntry = {
       id: editingId || `manual-expense-${Date.now()}`,
       monthKey,
@@ -1057,8 +1351,12 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       ? readMonthlyExpenseOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
       : [...readMonthlyExpenseOverrides(), nextEntry];
 
-    await saveMonthlyExpenseOverrides(nextState);
-    window.location.reload();
+    const result = await saveMonthlyExpenseOverrides(nextState);
+    await refreshFinanceView({
+      title: isEditing ? "Monatsausgabe aktualisiert" : "Monatsausgabe gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 
   for (const button of listTarget.querySelectorAll("[data-monthly-expense-edit]")) {
@@ -1082,11 +1380,19 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
     button.addEventListener("click", async () => {
       const id = button.getAttribute("data-monthly-expense-delete");
       if (!id) return;
+      const entry = readMonthlyExpenseOverrides().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Monatsausgabe "${entry.description}" vom ${entry.entryDate} wirklich löschen?`)) {
+        return;
+      }
       const nextState = readMonthlyExpenseOverrides().map((entry) =>
         entry.id === id ? { ...entry, isActive: false, updatedAt: new Date().toISOString() } : entry,
       );
-      await saveMonthlyExpenseOverrides(nextState);
-      window.location.reload();
+      const result = await saveMonthlyExpenseOverrides(nextState);
+      await refreshFinanceView({
+        title: "Monatsausgabe gelöscht",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
     });
   }
 }
@@ -1097,25 +1403,16 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   const summary = document.getElementById("monthReviewSummary");
   if (summary) {
+    const variableExpensesTotal = roundCurrency(
+      (review.row.baselineVariableAmount ?? 0) + (review.row.importedExpenseAmount ?? 0),
+    );
     const entries = [
       ["Monat", `${review.row.monthKey} · Stand Monatsende`],
-      ["Profil", planProfileLabel(review.row.baselineProfile)],
-      ["Grundplan ab", review.row.baselineAnchorMonthKey],
-      ["Grundplan frei", euro.format(review.row.baselineAvailableAmount)],
-      ["Anchor frei", euro.format(review.row.baselineAnchorAvailableAmount)],
-      ["Anchor-Differenz", euro.format(review.row.baselineAnchorDeltaAmount)],
-      ["Musik brutto", euro.format(review.row.musicIncomeAmount)],
-      ["Musik Rücklage", euro.format(review.row.importedIncomeReserveAmount)],
-      ["Musik frei verfügbar", euro.format(review.row.importedIncomeAvailableAmount)],
-      ["Musik -> Safety", euro.format(review.row.musicAllocationToSafetyAmount)],
-      ["Musik -> Investment", euro.format(review.row.musicAllocationToInvestmentAmount)],
-      ["Safety Start", review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-"],
-      ["Safety Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
-      ["Investment Start", review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-"],
+      ["Fixe Ausgaben", euro.format(review.row.baselineFixedAmount)],
+      ["Variable Ausgaben", euro.format(variableExpensesTotal)],
+      ["Cash-Rücklage Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
       ["Investment Ende", review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-"],
       ["Gesamtvermögen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
-      ["Importierte Ausgaben", euro.format(review.row.importedExpenseAmount)],
-      ["Ergebnis", euro.format(review.row.netAfterImportedFlows)],
     ];
 
     summary.innerHTML = entries
@@ -1126,7 +1423,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   renderRows("monthReviewBaselineItems", review.baselineLineItems, (item) => `
     <tr>
       <td>${item.label}</td>
-      <td>${item.category}</td>
+      <td>${baselineCategoryLabel(item.category)}</td>
       <td>${euro.format(item.amount)}</td>
     </tr>
   `);
@@ -1135,7 +1432,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     renderRows("monthReviewIncomeRows", review.incomeEntries, (entry) => `
       <tr>
         <td>${entry.entryDate}</td>
-        <td>${entry.incomeStreamId}</td>
+        <td>${incomeStreamLabel(importDraft, entry.incomeStreamId)}</td>
         <td>${euro.format(entry.amount)}</td>
       </tr>
     `);
@@ -1207,6 +1504,10 @@ function renderReconciliation(row) {
     : `Noch nicht gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
+    if (!confirmAction(`Reconciliation für ${row.monthKey} wirklich speichern?`)) {
+      return;
+    }
+
     const nextValue = {
       status: statusSelect.value,
       note: noteField.value.trim(),
@@ -1224,8 +1525,12 @@ function renderReconciliation(row) {
       statusSelect.value = "resolved";
     }
 
-    await saveReconciliationForMonth(row.monthKey, nextValue);
-    renderReconciliation(row);
+    const result = await saveReconciliationForMonth(row.monthKey, nextValue);
+    await refreshFinanceView({
+      title: `Reconciliation für ${row.monthKey} gespeichert`,
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 }
 
@@ -1252,10 +1557,11 @@ function renderEntryMappings(importDraft, review) {
           <div class="mapping-card">
             <div class="mapping-card-head">
               <div>
-                <strong>${entry.incomeStreamId}</strong>
+                <strong>${incomeStreamLabel(importDraft, entry.incomeStreamId)}</strong>
                 <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
               </div>
             </div>
+            <p class="mapping-source">${sourcePreview(entry.notes)}</p>
             <div class="mapping-fields">
               <label class="select-wrap">
                 <span>Kategorie</span>
@@ -1294,6 +1600,7 @@ function renderEntryMappings(importDraft, review) {
                 <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
               </div>
             </div>
+            <p class="mapping-source">${sourcePreview(entry.notes)}</p>
             <div class="mapping-fields">
               <label class="select-wrap">
                 <span>Kategorie</span>
@@ -1334,12 +1641,20 @@ function renderEntryMappings(importDraft, review) {
     : `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · noch keine Mapping-Korrekturen gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
-    await saveMappings([...review.incomeEntries, ...review.expenseEntries]);
-    renderEntryMappings(importDraft, review);
+    if (!confirmAction(`Mappings für ${review.row.monthKey} wirklich speichern?`)) {
+      return;
+    }
+
+    const result = await saveMappings([...review.incomeEntries, ...review.expenseEntries]);
+    await refreshFinanceView({
+      title: `Mappings für ${review.row.monthKey} gespeichert`,
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 }
 
-function bindMonthReview(importDraft, monthlyPlan) {
+function bindMonthReview(importDraft, monthlyPlan, preferredMonthKey = null) {
   const select = document.getElementById("monthReviewSelect");
   if (!select) return;
 
@@ -1356,31 +1671,335 @@ function bindMonthReview(importDraft, monthlyPlan) {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   }).slice(0, 7);
   const initialMonth =
+    monthKeys.find((monthKey) => monthKey === preferredMonthKey) ??
     monthKeys.find((monthKey) => monthKey === currentMonthKey) ??
     monthKeys.find((monthKey) => monthKey >= reviewFocusMonthKey) ??
     monthKeys.at(-1);
   if (initialMonth) {
     select.value = initialMonth;
+    saveViewState({ monthKey: initialMonth });
     renderMonthReview(importDraft, monthlyPlan, initialMonth);
   }
 
-  select.addEventListener("change", () => {
+  select.onchange = () => {
+    saveViewState({ monthKey: select.value });
     openMonthReview(monthlyPlan, select.value);
-  });
+  };
 }
 
 async function saveBaselineOverrides(state) {
   writeBaselineOverrides(state);
-  await persistState("/api/baseline-overrides", baselineOverridesStorageKey, state, (mode) => {
+  return persistState("/api/baseline-overrides", baselineOverridesStorageKey, state, (mode) => {
     baselinePersistence = mode;
   });
 }
 
 async function saveMonthlyExpenseOverrides(state) {
   writeMonthlyExpenseOverrides(state);
-  await persistState("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey, state, (mode) => {
+  return persistState("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey, state, (mode) => {
     monthlyExpensePersistence = mode;
   });
+}
+
+async function saveMusicTaxSettings(state) {
+  writeMusicTaxSettings(state);
+  return persistState("/api/music-tax-settings", musicTaxSettingsStorageKey, state, (mode) => {
+    musicTaxPersistence = mode;
+  });
+}
+
+async function saveForecastSettings(state) {
+  writeForecastSettings(state);
+  return persistState("/api/forecast-settings", forecastSettingsStorageKey, state, (mode) => {
+    forecastPersistence = mode;
+  });
+}
+
+async function saveSalarySettings(state) {
+  writeSalarySettings(state);
+  return persistState("/api/salary-settings", salarySettingsStorageKey, state, (mode) => {
+    salaryPersistence = mode;
+  });
+}
+
+function renderForecastPlanner(importDraft) {
+  const safetyField = document.getElementById("forecastSafetyThreshold");
+  const musicField = document.getElementById("forecastMusicThreshold");
+  const notesField = document.getElementById("forecastNotes");
+  const metaTarget = document.getElementById("forecastMeta");
+  const summaryTarget = document.getElementById("forecastSummary");
+  const saveButton = document.getElementById("saveForecastButton");
+
+  if (!safetyField || !musicField || !notesField || !metaTarget || !summaryTarget || !saveButton) {
+    return;
+  }
+
+  const stored = readForecastSettings();
+  const safetyThreshold = Number(
+    stored?.safetyThreshold ??
+    assumptionNumber(importDraft, "safety_threshold", 10000),
+  );
+  const musicThreshold = Number(
+    stored?.musicThreshold ??
+    assumptionNumber(importDraft, "music_threshold", safetyThreshold),
+  );
+
+  safetyField.value = String(safetyThreshold);
+  musicField.value = String(musicThreshold);
+  notesField.value = stored?.notes ?? "";
+
+  const persistenceLabel = forecastPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
+  metaTarget.textContent = stored?.updatedAt
+    ? `Zuletzt gespeichert: ${new Date(stored.updatedAt).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    : `Noch keine eigene Schwelle gespeichert · Speicherort: ${persistenceLabel}`;
+
+  summaryTarget.innerHTML = [
+    `<div class="mapping-card"><strong>Cash-Ziel</strong><p>Bis ${euro.format(safetyThreshold)} bleibt freies Gehalt im Sicherheitskonto. Darüber wandert der Gehaltsüberschuss automatisch ins Investment.</p></div>`,
+    `<div class="mapping-card"><strong>Musik-Schwelle</strong><p>Ab ${euro.format(musicThreshold)} wird Musik nicht mehr komplett im Cash geparkt, sondern nach deiner Split-Logik verteilt.</p></div>`,
+    `<div class="mapping-card"><strong>Workbook-Herkunft</strong><p>Beide Werte stammen ursprünglich aus dem Vermögensblatt der Excel und sind jetzt hier zentral anpassbar.</p></div>`,
+  ].join("");
+
+  saveButton.onclick = async () => {
+    const nextSafetyThreshold = Number(safetyField.value);
+    const nextMusicThreshold = Number(musicField.value);
+    const notes = notesField.value.trim();
+
+    if (!Number.isFinite(nextSafetyThreshold) || nextSafetyThreshold < 0 || !Number.isFinite(nextMusicThreshold) || nextMusicThreshold < 0) {
+      metaTarget.textContent = "Bitte gültige Schwellen eintragen.";
+      return;
+    }
+
+    if (!confirmAction(`Cash-Ziel ${euro.format(nextSafetyThreshold)} und Musik-Schwelle ${euro.format(nextMusicThreshold)} wirklich speichern?`)) {
+      return;
+    }
+
+    const result = await saveForecastSettings({
+      safetyThreshold: nextSafetyThreshold,
+      musicThreshold: nextMusicThreshold,
+      notes,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+    });
+    await refreshFinanceView({
+      title: "Schwellen gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
+}
+
+function renderSalaryPlanner(importDraft) {
+  const amountField = document.getElementById("salaryAmount");
+  const effectiveFromField = document.getElementById("salaryEffectiveFrom");
+  const notesField = document.getElementById("salaryNotes");
+  const metaTarget = document.getElementById("salaryMeta");
+  const listTarget = document.getElementById("salaryList");
+  const saveButton = document.getElementById("saveSalaryButton");
+
+  if (!amountField || !effectiveFromField || !notesField || !metaTarget || !listTarget || !saveButton) {
+    return;
+  }
+
+  const settings = [...readSalarySettings()].sort((left, right) =>
+    (left.effectiveFrom ?? "").localeCompare(right.effectiveFrom ?? ""),
+  );
+  const suggestedMonth =
+    importDraft.monthlyBaselines.find((entry) => entry.monthKey >= "2026-01")?.monthKey ??
+    importDraft.monthlyBaselines.at(-1)?.monthKey ??
+    reviewFocusMonthKey;
+
+  function resetForm() {
+    amountField.value = "";
+    effectiveFromField.value = suggestedMonth;
+    notesField.value = "";
+    saveButton.dataset.editingId = "";
+    saveButton.textContent = "Gehaltsstand speichern";
+  }
+
+  if (!effectiveFromField.value) {
+    effectiveFromField.value = suggestedMonth;
+  }
+
+  if (settings.length === 0) {
+    listTarget.innerHTML = `<p class="empty-state">Noch keine eigenen Gehaltsstände gespeichert.</p>`;
+  } else {
+    listTarget.innerHTML = settings
+      .map((entry) => `
+        <div class="mapping-card">
+          <div class="mapping-card-head">
+            <div>
+              <strong>${euro.format(entry.netSalaryAmount)} netto</strong>
+              <p>Ab ${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
+            </div>
+            <div class="filter-group">
+              <button class="pill" type="button" data-salary-edit="${entry.id}">Bearbeiten</button>
+              <button class="pill" type="button" data-salary-toggle="${entry.id}">
+                ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
+              </button>
+            </div>
+          </div>
+          <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
+        </div>
+      `)
+      .join("");
+  }
+
+  const persistenceLabel = salaryPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
+  metaTarget.textContent = settings.length > 0
+    ? `${settings.length} Gehaltsstände gespeichert · Speicherort: ${persistenceLabel}`
+    : `Noch keine Gehaltsänderung gespeichert · Speicherort: ${persistenceLabel}`;
+
+  for (const button of listTarget.querySelectorAll("[data-salary-edit]")) {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-salary-edit");
+      const entry = readSalarySettings().find((item) => item.id === id);
+      if (!entry) return;
+
+      saveButton.dataset.editingId = entry.id;
+      amountField.value = String(entry.netSalaryAmount ?? "");
+      effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
+      notesField.value = entry.notes ?? "";
+      saveButton.textContent = "Gehaltsstand aktualisieren";
+      metaTarget.textContent = `Bearbeite gerade: ${euro.format(entry.netSalaryAmount)} ab ${entry.effectiveFrom}`;
+    });
+  }
+
+  for (const button of listTarget.querySelectorAll("[data-salary-toggle]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-salary-toggle");
+      if (!id) return;
+      const entry = readSalarySettings().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Gehaltsstand ${euro.format(entry.netSalaryAmount)} ab ${entry.effectiveFrom} wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
+        return;
+      }
+
+      const nextState = readSalarySettings().map((item) =>
+        item.id === id
+          ? { ...item, isActive: item.isActive === false, updatedAt: new Date().toISOString() }
+          : item,
+      );
+
+      const result = await saveSalarySettings(nextState);
+      await refreshFinanceView({
+        title: `Gehaltsstand ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  saveButton.onclick = async () => {
+    const editingId = saveButton.dataset.editingId ?? "";
+    const netSalaryAmount = Number(amountField.value);
+    const effectiveFrom = effectiveFromField.value;
+    const notes = notesField.value.trim();
+
+    if (!Number.isFinite(netSalaryAmount) || netSalaryAmount <= 0 || !effectiveFrom) {
+      metaTarget.textContent = "Bitte Nettogehalt und gültig-ab-Monat eintragen.";
+      return;
+    }
+
+    const isEditing = Boolean(editingId);
+    if (!confirmAction(isEditing
+      ? `Gehaltsstand ${euro.format(netSalaryAmount)} ab ${effectiveFrom} wirklich aktualisieren?`
+      : `Gehaltsstand ${euro.format(netSalaryAmount)} ab ${effectiveFrom} wirklich speichern?`)) {
+      return;
+    }
+
+    const nextEntry = {
+      id: editingId || `salary-${Date.now()}`,
+      netSalaryAmount,
+      effectiveFrom,
+      notes,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const nextState = editingId
+      ? readSalarySettings().map((item) => (item.id === editingId ? nextEntry : item))
+      : [...readSalarySettings(), nextEntry];
+
+    const result = await saveSalarySettings(nextState);
+    resetForm();
+    await refreshFinanceView({
+      title: isEditing ? "Gehaltsstand aktualisiert" : "Gehaltsstand gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
+}
+
+function renderMusicTaxPlanner(importDraft) {
+  const amountField = document.getElementById("musicTaxQuarterlyAmount");
+  const effectiveFromField = document.getElementById("musicTaxEffectiveFrom");
+  const notesField = document.getElementById("musicTaxNotes");
+  const metaTarget = document.getElementById("musicTaxMeta");
+  const summaryTarget = document.getElementById("musicTaxSummary");
+  const saveButton = document.getElementById("saveMusicTaxButton");
+
+  if (!amountField || !effectiveFromField || !notesField || !metaTarget || !summaryTarget || !saveButton) {
+    return;
+  }
+
+  const stored = readMusicTaxSettings();
+  const workbookDefault = assumptionNumber(importDraft, "music_tax_prepayment_quarterly_amount", 501);
+  const currentAmount = Number(stored?.quarterlyPrepaymentAmount ?? workbookDefault);
+  const currentEffectiveFrom =
+    stored?.effectiveFrom ??
+    importDraft.monthlyBaselines.find((entry) => entry.monthKey >= "2026-01")?.monthKey ??
+    "2026-03";
+
+  amountField.value = Number.isFinite(currentAmount) ? String(currentAmount) : String(workbookDefault);
+  effectiveFromField.value = currentEffectiveFrom;
+  notesField.value = stored?.notes ?? "";
+
+  const persistenceLabel = musicTaxPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
+  metaTarget.textContent = stored?.updatedAt
+    ? `Zuletzt gespeichert: ${new Date(stored.updatedAt).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    : `Noch keine eigene Steuer-Vorauszahlung gespeichert · Speicherort: ${persistenceLabel}`;
+
+  const quarterMonths = currentMonthlyPlan()?.rows
+    .map((row) => row.monthKey)
+    .filter((monthKey, index, all) =>
+      monthKey >= currentEffectiveFrom &&
+      ["03", "06", "09", "12"].includes(monthKey.slice(5, 7)) &&
+      all.indexOf(monthKey) === index,
+    )
+    .slice(0, 4) ?? [];
+
+  summaryTarget.innerHTML = [
+    `<div class="mapping-card"><strong>Aktuell geplant</strong><p>${euro.format(currentAmount)} pro Quartal ab ${currentEffectiveFrom}.</p></div>`,
+    `<div class="mapping-card"><strong>Betroffene Quartale zuerst</strong><p>${quarterMonths.length > 0 ? quarterMonths.map(quarterLabel).join(" · ") : "Noch keine künftigen Quartalsmonate im Plan."}</p></div>`,
+    `<div class="mapping-card"><strong>Wichtig</strong><p>Zusätzliche echte Nachzahlungen oder Erstattungen kannst du weiterhin als normale Monatsausgabe bzw. Einnahme pflegen.</p></div>`,
+  ].join("");
+
+  saveButton.onclick = async () => {
+    const quarterlyPrepaymentAmount = Number(amountField.value);
+    const effectiveFrom = effectiveFromField.value;
+    const notes = notesField.value.trim();
+
+    if (!Number.isFinite(quarterlyPrepaymentAmount) || quarterlyPrepaymentAmount < 0 || !effectiveFrom) {
+      metaTarget.textContent = "Bitte gültigen Quartalsbetrag und gültig-ab-Monat eintragen.";
+      return;
+    }
+
+    if (!confirmAction(`Quartals-Steuer-Vorauszahlung von ${euro.format(quarterlyPrepaymentAmount)} ab ${effectiveFrom} wirklich speichern?`)) {
+      return;
+    }
+
+    const result = await saveMusicTaxSettings({
+      quarterlyPrepaymentAmount,
+      effectiveFrom,
+      notes,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+    });
+    await refreshFinanceView({
+      title: "Steuer-Plan gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
 }
 
 function renderFixedCostPlanner(importDraft) {
@@ -1471,6 +2090,10 @@ function renderFixedCostPlanner(importDraft) {
     button.addEventListener("click", async () => {
       const id = button.getAttribute("data-fixed-cost-toggle");
       if (!id) return;
+      const entry = readBaselineOverrides().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Fixkosten "${entry.label}" wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
+        return;
+      }
 
       const nextOverrides = readBaselineOverrides().map((entry) =>
         entry.id === id
@@ -1478,8 +2101,12 @@ function renderFixedCostPlanner(importDraft) {
           : entry,
       );
 
-      await saveBaselineOverrides(nextOverrides);
-      renderFixedCostPlanner(importDraft);
+      const result = await saveBaselineOverrides(nextOverrides);
+      await refreshFinanceView({
+        title: `Fixkosten ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
     });
   }
 
@@ -1491,6 +2118,13 @@ function renderFixedCostPlanner(importDraft) {
 
     if (!label || !effectiveFrom || !Number.isFinite(amount) || amount <= 0) {
       metaTarget.textContent = "Bitte Name, positiven Monatsbetrag und gültig-ab-Monat eintragen.";
+      return;
+    }
+
+    const isEditing = Boolean(editingId || sourceLineItemId);
+    if (!confirmAction(isEditing
+      ? `Fixkosten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
+      : `Neue Fixkosten "${label}" ab ${effectiveFrom} wirklich speichern?`)) {
       return;
     }
 
@@ -1525,9 +2159,13 @@ function renderFixedCostPlanner(importDraft) {
           },
         ];
 
-    await saveBaselineOverrides(nextOverrides);
+    const result = await saveBaselineOverrides(nextOverrides);
     resetForm();
-    renderFixedCostPlanner(importDraft);
+    await refreshFinanceView({
+      title: isEditing ? "Fixkosten aktualisiert" : "Fixkosten gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 
   const baselineTarget = document.getElementById("baselineLineItems");
@@ -1563,6 +2201,9 @@ function renderFixedCostPlanner(importDraft) {
         const id = stopButton.getAttribute("data-baseline-stop");
         const source = importDraft.baselineLineItems.find((item) => item.id === id);
         if (!source) return;
+        if (!confirmAction(`Posten "${source.label}" ab ${suggestedMonth} wirklich beenden?`)) {
+          return;
+        }
 
         const nextOverrides = [
           ...readBaselineOverrides(),
@@ -1580,9 +2221,13 @@ function renderFixedCostPlanner(importDraft) {
           },
         ];
 
-        await saveBaselineOverrides(nextOverrides);
+        const result = await saveBaselineOverrides(nextOverrides);
         resetForm();
-        renderFixedCostPlanner(importDraft);
+        await refreshFinanceView({
+          title: "Fixkosten-Ende gespeichert",
+          detail: statusDetailForMode(result.mode),
+          tone: result.mode === "project" ? "success" : "warn",
+        });
       }
     };
   }
@@ -1937,38 +2582,23 @@ function bindTabs(tabHooks = {}) {
   const panels = [...document.querySelectorAll(".tab-panel")];
 
   for (const tab of tabs) {
-    tab.addEventListener("click", () => {
+    tab.onclick = () => {
       const target = tab.dataset.tab;
       tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
       panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === target));
+      saveViewState({ tabId: target ?? "overview" });
       const hook = target ? tabHooks[target] : undefined;
       if (typeof hook === "function") {
         hook();
       }
-    });
+    };
   }
 }
 
-async function load() {
-  await initializeWorkflowState();
-
-  const importDraftPromise = fetch("/data/import-draft-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/import-draft.json").then((fallback) => fallback.json()),
-  );
-  const draftReportPromise = fetch("/data/draft-report-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/draft-report.json").then((fallback) => fallback.json()),
-  );
-  const monthlyPlanPromise = fetch("/data/monthly-plan-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/monthly-plan.json").then((fallback) => fallback.json()),
-  );
-  const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
-    draftReportPromise,
-    monthlyPlanPromise,
-    importDraftPromise,
-    fetch("/data/accounts.json").then((response) => response.ok ? response.json() : []),
-  ]);
+function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewState = {}) {
   accountOptions = buildAccountOptions(accounts);
   window.__importDraft = importDraft;
+  window.__financeState = { draftReport, monthlyPlan, importDraft, accounts };
 
   setText("workbookPath", draftReport.workbookPath);
   setText("generatedAt", draftReport.generatedAt);
@@ -1984,7 +2614,7 @@ async function load() {
       ["Nettogehalt", euro.format(baseline.netSalaryAmount)],
       ["Fixkosten", euro.format(baseline.fixedExpensesAmount)],
       ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
-      ["Jährliche Rücklage", euro.format(baseline.annualReserveAmount)],
+      ["Planrücklage aus Workbook", euro.format(baseline.annualReserveAmount)],
       ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
       ["Verfügbar laut Workbook", euro.format(baseline.availableBeforeIrregulars)],
       ["Neu berechnet", euro.format(baseline.computedAvailableFromParts)],
@@ -2024,7 +2654,7 @@ async function load() {
   renderRows("baselineLineItems", draftReport.baselineLineItems, (row) => `
     <tr>
       <td>${row.label}</td>
-      <td>${row.category}</td>
+      <td>${baselineCategoryLabel(row.category)}</td>
       <td>${euro.format(row.amount)}</td>
       <td>${
         row.category === "fixed"
@@ -2037,6 +2667,9 @@ async function load() {
     </tr>
   `);
   renderFixedCostPlanner(importDraft);
+  renderForecastPlanner(importDraft);
+  renderSalaryPlanner(importDraft);
+  renderMusicTaxPlanner(importDraft);
 
   let retirementInitialized = false;
   const initRetirement = () => {
@@ -2046,11 +2679,24 @@ async function load() {
   };
 
   renderValidationSignals(draftReport, monthlyPlan);
+  renderWorkbookAnchorChecks(importDraft, monthlyPlan);
   renderMonthHealth(monthlyPlan);
   renderPriorityMonths(monthlyPlan);
-  bindMonthFilters(monthlyPlan);
-  bindMonthReview(importDraft, monthlyPlan);
+  bindMonthFilters(monthlyPlan, viewState.monthFilter ?? window.localStorage.getItem(monthFilterStorageKey) ?? "focus");
+  bindMonthReview(
+    importDraft,
+    monthlyPlan,
+    viewState.monthKey ?? window.localStorage.getItem(monthReviewStorageKey) ?? null,
+  );
   bindTabs({ retirement: initRetirement });
+
+  activateTab(viewState.tabId ?? window.localStorage.getItem(activeTabStorageKey) ?? "months");
+}
+
+async function load() {
+  await initializeWorkflowState();
+  const state = await fetchFinanceData();
+  renderApp(state);
 }
 
 load().catch((error) => {

@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { ensureFinanceDataDir, financeDataPath } from "./local-config.js";
 import type {
   BaselineLineItem,
   ExpenseEntry,
@@ -12,6 +11,7 @@ import type {
   MonthlyBaseline,
   WealthBucket,
 } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 export interface MonthlyPlanRow {
   monthKey: string;
@@ -23,6 +23,7 @@ export interface MonthlyPlanRow {
   annualReserveAmount: number;
   plannedSavingsAmount: number;
   baselineAvailableAmount: number;
+  monthAvailableBeforeExpensesAmount: number;
   baselineAnchorAvailableAmount: number;
   baselineAnchorDeltaAmount: number;
   baselineFixedDeltaAmount: number;
@@ -73,6 +74,26 @@ export interface MonthlyPlanReport {
   anchorMonthKey: string;
   baselineMode: "exclude_annual_reserve_from_available";
   rows: MonthlyPlanRow[];
+}
+
+function resolvePaths(): {
+  inputPath: string;
+  outputJsonPath: string;
+  outputMarkdownPath: string;
+} {
+  if (process.argv[2] === "--reviewed") {
+    return {
+      inputPath: resolve(financeDataPath("import-draft-reviewed.json")),
+      outputJsonPath: resolve(financeDataPath("monthly-plan-reviewed.json")),
+      outputMarkdownPath: resolve(financeDataPath("monthly-plan-reviewed.md")),
+    };
+  }
+
+  return {
+    inputPath: resolve(process.argv[2] ?? financeDataPath("import-draft.json")),
+    outputJsonPath: resolve(process.argv[3] ?? financeDataPath("monthly-plan.json")),
+    outputMarkdownPath: resolve(process.argv[4] ?? financeDataPath("monthly-plan.md")),
+  };
 }
 
 function readDraft(inputPath: string): ImportDraft {
@@ -248,6 +269,8 @@ function buildConsistencySignals(input: {
   plannedSavingsDeltaAmount: number;
   importedExpenseAmount: number;
   importedVariableThresholdAmount: number;
+  importedIncomeAvailableAmount: number;
+  monthAvailableBeforeExpensesAmount: number;
   netAfterImportedFlows: number;
 }): MonthlyConsistencySignal[] {
   const signals: MonthlyConsistencySignal[] = [];
@@ -298,12 +321,14 @@ function buildConsistencySignals(input: {
     });
   }
 
-  if (input.importedExpenseAmount > input.baselineAvailableAmount && input.importedExpenseAmount > 0) {
+  if (input.importedExpenseAmount > input.monthAvailableBeforeExpensesAmount && input.importedExpenseAmount > 0) {
     signals.push({
       code: "expense_over_baseline_available",
       severity: "warn",
-      title: "Importierte Ausgaben uebersteigen freie Baseline",
-      detail: `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen verfuegbar ${formatCurrency(input.baselineAvailableAmount)}.`,
+      title: "Importierte Ausgaben uebersteigen freie Mittel des Monats",
+      detail:
+        `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen frei ${formatCurrency(input.monthAvailableBeforeExpensesAmount)} ` +
+        `(Baseline ${formatCurrency(input.baselineAvailableAmount)} + freie Import-Einnahmen ${formatCurrency(input.importedIncomeAvailableAmount)}).`,
     });
   }
 
@@ -379,6 +404,9 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
         importedIncomeAvailableAmount -
         importedExpenseAmount,
     );
+    const monthAvailableBeforeExpensesAmount = roundCurrency(
+      baselineAvailableAmount + importedIncomeAvailableAmount,
+    );
     const baselineAnchorAvailableAmount = roundCurrency(selectedBaseline.availableBeforeIrregulars);
     const baselineAnchorDeltaAmount = roundCurrency(baselineAvailableAmount - baselineAnchorAvailableAmount);
     const baselineFixedDeltaAmount = roundCurrency(fixedAmount - selectedBaseline.fixedExpensesAmount);
@@ -386,7 +414,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const annualReserveDeltaAmount = roundCurrency(annualReserveAmount - (selectedBaseline.annualReserveAmount ?? 0));
     const plannedSavingsDeltaAmount = roundCurrency(plannedSavingsAmount - selectedBaseline.plannedSavingsAmount);
     const importedVariableThresholdAmount = roundCurrency(
-      Math.max(baselineAvailableAmount, variableAmount + annualReserveAmount),
+      Math.max(baselineAvailableAmount, variableAmount),
     );
     const salaryAllocationToSafetyAmount = roundCurrency(
       Math.max(0, baselineAvailableAmount - importedExpenseAmount),
@@ -453,6 +481,8 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       plannedSavingsDeltaAmount,
       importedExpenseAmount,
       importedVariableThresholdAmount,
+      importedIncomeAvailableAmount,
+      monthAvailableBeforeExpensesAmount,
       netAfterImportedFlows,
     });
 
@@ -466,6 +496,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       annualReserveAmount,
       plannedSavingsAmount,
       baselineAvailableAmount,
+      monthAvailableBeforeExpensesAmount,
       baselineAnchorAvailableAmount,
       baselineAnchorDeltaAmount,
       baselineFixedDeltaAmount,
@@ -534,9 +565,7 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 
 function main(): void {
   ensureFinanceDataDir();
-  const inputPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
-  const outputJsonPath = resolve(process.argv[3] ?? financeDataPath("monthly-plan.json"));
-  const outputMarkdownPath = resolve(process.argv[4] ?? financeDataPath("monthly-plan.md"));
+  const { inputPath, outputJsonPath, outputMarkdownPath } = resolvePaths();
 
   const draft = readDraft(inputPath);
   const anchor = draft.monthlyBaselines[0];

@@ -7,6 +7,7 @@
   --muted: #6e6e73;
   --line: rgba(17, 17, 19, 0.08);
   --accent: #0071e3;
+  --success: #177245;
   --danger: #c9342f;
   --shadow: 0 18px 48px rgba(17, 17, 19, 0.08);
   --shadow-soft: 0 8px 20px rgba(17, 17, 19, 0.05);
@@ -20,6 +21,38 @@ body {
   background:
     radial-gradient(circle at top center, rgba(0, 113, 227, 0.1), transparent 28rem),
     linear-gradient(180deg, #ffffff 0%, var(--bg) 34%, var(--bg-soft) 100%);
+}
+.app-status {
+  position: sticky;
+  top: 14px;
+  z-index: 30;
+  width: min(32rem, calc(100vw - 28px));
+  margin: 14px auto 0;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.app-status.is-success {
+  border-color: rgba(23, 114, 69, 0.2);
+  background: rgba(235, 249, 241, 0.94);
+}
+.app-status.is-warn {
+  border-color: rgba(201, 52, 47, 0.18);
+  background: rgba(253, 231, 228, 0.94);
+}
+.app-status strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.app-status p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 .shell {
   max-width: 1520px;
@@ -341,6 +374,9 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.planner-span-two {
+  grid-column: 1 / -1;
+}
 .month-workbench {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
@@ -458,9 +494,15 @@ th {
   margin: 4px 0 0;
   color: var(--muted);
 }
+.mapping-source {
+  margin: -2px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.94rem;
+}
 .mapping-fields {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .mapping-check {
@@ -468,6 +510,30 @@ th {
   gap: 10px;
   align-items: center;
   color: var(--ink);
+  grid-column: 1 / -1;
+  padding-top: 4px;
+}
+.detail-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.detail-strip div {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 12px;
+}
+.detail-strip span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.detail-strip strong {
+  display: block;
 }
 .reconciliation-action {
   display: grid;
@@ -518,7 +584,8 @@ th {
     flex-direction: column;
   }
   .planner-inputs,
-  .mapping-fields {
+  .mapping-fields,
+  .detail-strip {
     grid-template-columns: 1fr;
   }
   .priority-list {

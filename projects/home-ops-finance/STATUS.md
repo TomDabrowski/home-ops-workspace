@@ -54,11 +54,11 @@ Interactive Planning App
 - The retirement planner no longer recalculates live on every keystroke. Users now adjust values and explicitly apply them with a `Werte übernehmen` button.
 - The retirement planner now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target retirement age` show an in-app error box instead of breaking the page.
 - The heavy retirement calculations are now lazy-initialized only when the `Rente` tab is opened, which improves the perceived performance of the main app shell and month workflow.
-- Home Ops Finance can now resolve its private workbook and generated JSON data from a local-only external path via `config.local.json` or env vars, so sensitive finance artifacts can live on a NAS instead of inside the repo checkout.
+- Home Ops Finance can now resolve its private workbook and generated JSON data from a local-only external path via `config.local.json` or env vars, so sensitive finance artifacts can live on iCloud or a NAS instead of inside the repo checkout.
 
 ## Immediate Next Step
 
-Mount the NAS path, add the real local-only `config.local.json`, and test the finance app end-to-end against external private data instead of repo-local `data/`.
+Use the improved month workspace to review and refine the first important `2026+` months, then tighten the retirement model further by separating the working phase from a later withdrawal phase after the target retirement month.
 
 ## Notes
 

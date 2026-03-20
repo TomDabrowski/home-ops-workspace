@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { ensureFinanceDataDir, financeDataPath } from "./local-config.js";
 import type { DebtSnapshot, ExpenseEntry, ImportDraft, IncomeEntry } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 interface MonthlySummary {
   monthKey: string;
@@ -60,6 +60,26 @@ interface DraftReport {
   topIncomeMonths: MonthlySummary[];
   recentMonths: MonthlySummary[];
   latestDebtBalances: DebtLatest[];
+}
+
+function resolvePaths(): {
+  inputPath: string;
+  outputJsonPath: string;
+  outputMarkdownPath: string;
+} {
+  if (process.argv[2] === "--reviewed") {
+    return {
+      inputPath: resolve(financeDataPath("import-draft-reviewed.json")),
+      outputJsonPath: resolve(financeDataPath("draft-report-reviewed.json")),
+      outputMarkdownPath: resolve(financeDataPath("draft-report-reviewed.md")),
+    };
+  }
+
+  return {
+    inputPath: resolve(process.argv[2] ?? financeDataPath("import-draft.json")),
+    outputJsonPath: resolve(process.argv[3] ?? financeDataPath("draft-report.json")),
+    outputMarkdownPath: resolve(process.argv[4] ?? financeDataPath("draft-report.md")),
+  };
 }
 
 function readDraft(inputPath: string): ImportDraft {
@@ -218,9 +238,7 @@ function buildMarkdown(report: DraftReport): string {
 
 function main(): void {
   ensureFinanceDataDir();
-  const inputPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
-  const outputJsonPath = resolve(process.argv[3] ?? financeDataPath("draft-report.json"));
-  const outputMarkdownPath = resolve(process.argv[4] ?? financeDataPath("draft-report.md"));
+  const { inputPath, outputJsonPath, outputMarkdownPath } = resolvePaths();
 
   const draft = readDraft(inputPath);
   const monthSummaries = summarizeMonths(draft.incomeEntries, draft.expenseEntries);

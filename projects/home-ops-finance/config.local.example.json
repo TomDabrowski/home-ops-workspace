@@ -1,4 +1,4 @@
 {
-  "dataDir": "/Volumes/FinanceData/home-ops-finance",
-  "workbookPath": "/Volumes/FinanceData/finance-workbook.xlsx"
+  "dataDir": "/path/to/private/home-ops-finance/data",
+  "workbookPath": "/path/to/private/finance-workbook.xlsx"
 }
