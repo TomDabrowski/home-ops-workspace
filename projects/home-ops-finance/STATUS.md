@@ -37,7 +37,7 @@ Interactive Planning App
 - The overview now surfaces a priority-ranked shortlist of the worst warning months so manual review can start with the highest-impact outliers immediately.
 - Music income now keeps gross, reserve, and free-available amounts separately, and the monthly plan models the workbook threshold routing between safety and investment buckets for forecast months.
 - Manual workbook wealth anchors from `Übersicht Vermögen` are now imported and reapplied in the monthly engine, so explicit reset months such as `2026-02` use the Excel values directly before the forecast continues.
-- The local app now includes a first goals and retirement planner that projects 25k net-worth milestones and estimates the minimum average monthly music revenue needed to hit a retirement target by a chosen age.
+- The local app now includes a first goals view that projects 25k net-worth milestones and supports longer-range planning assumptions.
 - The review app is now project-persistent for future planning edits: reconciliation, import mappings, future fixed-cost overrides, and manual monthly expense overrides are written to project JSON via the local app server.
 - `apply-review-state` now reapplies both future fixed-cost overrides and manual variable monthly expenses into the reviewed import draft, so reviewed artifacts include forward-only planning changes from the UI.
 - The baseline UI has been turned into a forward-only planning surface: new fixed costs can be created with `gueltig ab`, custom future fixed costs can be edited/deactivated, and existing workbook fixed costs can be changed or ended from a chosen future month without rewriting history.
@@ -45,20 +45,20 @@ Interactive Planning App
 - The month table is now directly actionable: clicking a month opens the review workspace, and the table now shows end-of-month total wealth alongside the existing planning columns.
 - The app shell has been restructured so the `Monate` tab opens as a focused month workspace with the selected month, summary, warnings, imported expenses, manual month expenses, and a sticky side column for income, active plan items, reconciliation, and mappings.
 - The month workspace now defaults to the current month when possible instead of jumping to the end of the forecast.
-- The retirement planner assumptions are now more explicit and conservative: inflation, salary growth, rent growth, other-cost growth, music-tax handling, and fixed monthly music needed are modeled together.
-- The retirement tab now only projects through the chosen retirement target month instead of continuing an implied work life far beyond the target age, and the target-age input is constrained so it cannot fall below current age.
+- The longer-range planning assumptions are now more explicit and conservative: inflation, salary growth, rent growth, other-cost growth, music-tax handling, and fixed monthly music needed are modeled together.
+- The long-range planning view now only projects through its chosen target month instead of continuing an implied work life far beyond the target age, and the target-age input is constrained so it cannot fall below current age.
 - The local app server now serves HTML/CSS/JS/JSON with no-cache headers to reduce stale-browser issues while iterating on the app locally.
 - The app copy is being cleaned up toward production-quality German text, including real umlauts in the visible UI instead of `ae/oe/ue` placeholders.
 - The app surface has started moving toward a cleaner Apple-like UI direction: brighter palette, lighter cards, calmer typography, and a less tool-heavy overall layout.
-- The retirement UI no longer uses sliders; it now relies on plain numeric inputs because the slider-based interactions were unstable in real use.
-- The retirement planner no longer recalculates live on every keystroke. Users now adjust values and explicitly apply them with a `Werte übernehmen` button.
-- The retirement planner now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target retirement age` show an in-app error box instead of breaking the page.
-- The heavy retirement calculations are now lazy-initialized only when the `Rente` tab is opened, which improves the perceived performance of the main app shell and month workflow.
+- The long-range planning UI no longer uses sliders; it now relies on plain numeric inputs because the slider-based interactions were unstable in real use.
+- The long-range planning view no longer recalculates live on every keystroke. Users now adjust values and explicitly apply them with a `Werte übernehmen` button.
+- The long-range planning view now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target age` show an in-app error box instead of breaking the page.
+- The heavier long-range calculations are now lazy-initialized only when the planning tab is opened, which improves the perceived performance of the main app shell and month workflow.
 - Home Ops Finance can now resolve its private workbook and generated JSON data from a local-only external path via `config.local.json` or env vars, so sensitive finance artifacts can live on iCloud or a NAS instead of inside the repo checkout.
 
 ## Immediate Next Step
 
-Use the improved month workspace to review and refine the first important `2026+` months, then tighten the retirement model further by separating the working phase from a later withdrawal phase after the target retirement month.
+Use the improved month workspace to review and refine the first important `2026+` months, then tighten the longer-range planning model further by separating the working phase from later drawdown behavior after the target month.
 
 ## Notes
 

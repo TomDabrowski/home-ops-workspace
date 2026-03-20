@@ -6,33 +6,33 @@
   <text x="96" y="154" fill="#B6C4C0" font-family="Arial, sans-serif" font-size="18">Lokale Demoansicht</text>
   <rect x="88" y="196" width="192" height="52" rx="16" fill="#D68544"/>
   <text x="112" y="229" fill="#FFF8F1" font-family="Arial, sans-serif" font-size="20" font-weight="700">Monate</text>
-  <text x="112" y="291" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Uebersicht</text>
+  <text x="112" y="291" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Übersicht</text>
   <text x="112" y="337" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Import Review</text>
   <text x="112" y="383" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Baseline</text>
-  <text x="112" y="429" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Rente</text>
+  <text x="112" y="429" fill="#D8E2DF" font-family="Arial, sans-serif" font-size="20">Auswertung</text>
 
   <text x="352" y="112" fill="#7C5E43" font-family="Arial, sans-serif" font-size="18" font-weight="700">Beispielvorschau</text>
-  <text x="352" y="158" fill="#182325" font-family="Arial, sans-serif" font-size="38" font-weight="700">Monatsuebersicht mit Beispielwerten</text>
-  <text x="352" y="194" fill="#6B665F" font-family="Arial, sans-serif" font-size="20">Zeigt Cashflow, Ruecklagen und Warnhinweise fuer einen typischen Review-Workflow.</text>
+  <text x="352" y="158" fill="#182325" font-family="Arial, sans-serif" font-size="36" font-weight="700">Monatsübersicht mit Beispielwerten</text>
+  <text x="352" y="194" fill="#6B665F" font-family="Arial, sans-serif" font-size="20">Zeigt Cashflow, Rücklagen und Warnhinweise für einen typischen Review-Workflow.</text>
 
   <rect x="352" y="236" width="240" height="128" rx="24" fill="#F7E6D4"/>
   <text x="380" y="280" fill="#8A5B2E" font-family="Arial, sans-serif" font-size="18" font-weight="700">Freier Betrag</text>
   <text x="380" y="327" fill="#24180D" font-family="Arial, sans-serif" font-size="40" font-weight="700">482 EUR</text>
-  <text x="380" y="351" fill="#7C5E43" font-family="Arial, sans-serif" font-size="18">nach Fixkosten und Ruecklagen</text>
+  <text x="380" y="351" fill="#7C5E43" font-family="Arial, sans-serif" font-size="18">nach Fixkosten und Rücklagen</text>
 
   <rect x="614" y="236" width="240" height="128" rx="24" fill="#DCEFE5"/>
-  <text x="642" y="280" fill="#2E6A52" font-family="Arial, sans-serif" font-size="18" font-weight="700">Gesamtvermoegen</text>
+  <text x="642" y="280" fill="#2E6A52" font-family="Arial, sans-serif" font-size="18" font-weight="700">Gesamtvermögen</text>
   <text x="642" y="327" fill="#17362B" font-family="Arial, sans-serif" font-size="40" font-weight="700">24.850 EUR</text>
   <text x="642" y="351" fill="#46695C" font-family="Arial, sans-serif" font-size="18">Sicherheit plus Investment</text>
 
   <rect x="876" y="236" width="240" height="128" rx="24" fill="#E6E3F6"/>
   <text x="904" y="280" fill="#5C4A98" font-family="Arial, sans-serif" font-size="18" font-weight="700">Sparquote</text>
   <text x="904" y="327" fill="#211B3F" font-family="Arial, sans-serif" font-size="40" font-weight="700">27 %</text>
-  <text x="904" y="351" fill="#655A87" font-family="Arial, sans-serif" font-size="18">basierend auf Demoimport</text>
+  <text x="904" y="351" fill="#655A87" font-family="Arial, sans-serif" font-size="18">basierend auf Demo-Import</text>
 
   <rect x="352" y="392" width="764" height="268" rx="28" fill="#FCFAF5" stroke="#DDD2C0"/>
   <text x="384" y="438" fill="#182325" font-family="Arial, sans-serif" font-size="26" font-weight="700">Monatsliste</text>
-  <text x="384" y="470" fill="#6B665F" font-family="Arial, sans-serif" font-size="18">Warnungen und Ausreisser werden direkt in der Tabelle sichtbar.</text>
+  <text x="384" y="470" fill="#6B665F" font-family="Arial, sans-serif" font-size="18">Warnungen und Ausreißer werden direkt in der Tabelle sichtbar.</text>
 
   <rect x="384" y="502" width="700" height="54" rx="18" fill="#F1ECE2"/>
   <text x="410" y="536" fill="#3B352E" font-family="Arial, sans-serif" font-size="18" font-weight="700">2026-03</text>
@@ -46,7 +46,7 @@
   <text x="560" y="604" fill="#3B352E" font-family="Arial, sans-serif" font-size="18">Einnahmen 3.180 EUR</text>
   <text x="760" y="604" fill="#3B352E" font-family="Arial, sans-serif" font-size="18">Ausgaben 3.146 EUR</text>
   <rect x="966" y="582" width="98" height="30" rx="15" fill="#E8B073"/>
-  <text x="987" y="603" fill="#FFF8F0" font-family="Arial, sans-serif" font-size="16" font-weight="700">Pruefen</text>
+  <text x="987" y="603" fill="#FFF8F0" font-family="Arial, sans-serif" font-size="16" font-weight="700">Prüfen</text>
 
   <rect x="384" y="638" width="700" height="54" rx="18" fill="#F7E4E1"/>
   <text x="410" y="672" fill="#3B352E" font-family="Arial, sans-serif" font-size="18" font-weight="700">2026-05</text>
