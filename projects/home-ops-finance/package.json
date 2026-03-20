@@ -8,8 +8,12 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "import:workbook": "node --experimental-strip-types src/workbook-importer.ts",
+    "bootstrap:mappings": "node --experimental-strip-types src/bootstrap-import-mappings.ts",
+    "apply:review-state": "node --experimental-strip-types src/apply-review-state.ts",
     "report:draft": "node --experimental-strip-types src/draft-report.ts",
+    "report:reviewed": "node --experimental-strip-types src/draft-report.ts data/import-draft-reviewed.json data/draft-report-reviewed.json data/draft-report-reviewed.md",
     "plan:months": "node --experimental-strip-types src/monthly-engine.ts",
+    "plan:reviewed": "node --experimental-strip-types src/monthly-engine.ts data/import-draft-reviewed.json data/monthly-plan-reviewed.json data/monthly-plan-reviewed.md",
     "build:dashboard": "node --experimental-strip-types src/build-dashboard.ts",
     "serve:app": "node --experimental-strip-types src/serve-app.ts"
   },

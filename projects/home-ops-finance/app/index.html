@@ -30,6 +30,7 @@
       <button class="tab is-active" data-tab="overview">Overview</button>
       <button class="tab" data-tab="baseline">Baseline</button>
       <button class="tab" data-tab="months">Monate</button>
+      <button class="tab" data-tab="retirement">Rente</button>
       <button class="tab" data-tab="debt">Schulden</button>
     </nav>
 
@@ -63,6 +64,91 @@
           <dl class="detail-list" id="monthHealth"></dl>
         </article>
       </div>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Review-Prioritaeten</h2>
+            <p class="section-copy">Die kritischsten Warnmonate zuerst, damit du mit moeglichst wenig Klicks bei den groessten Ausreissern landest.</p>
+          </div>
+        </div>
+        <div id="priorityMonths" class="priority-list"></div>
+      </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Goals & Rente</h2>
+            <p class="section-copy">Hier siehst du, wann du Vermoegens-Meilensteine erreichst und wie viel Musikumsatz du ab jetzt mindestens brauchst, um ein Rentenziel bis zu einem Wunschalter zu schaffen.</p>
+          </div>
+        </div>
+        <div class="grid two planner-grid">
+          <div>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Aktuelles Alter</span>
+                <div class="dual-input">
+                  <input id="plannerCurrentAgeSlider" type="range" min="18" max="80" step="0.5">
+                  <input id="plannerCurrentAge" type="number" min="18" max="80" step="0.5">
+                </div>
+              </label>
+              <label class="select-wrap">
+                <span>Zielalter Rente</span>
+                <div class="dual-input">
+                  <input id="plannerTargetAgeSlider" type="range" min="25" max="90" step="0.5">
+                  <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
+                </div>
+              </label>
+              <label class="select-wrap">
+                <span>Bedarf pro Monat in Rente</span>
+                <input id="plannerRetirementSpend" type="number" min="0" step="50">
+              </label>
+              <label class="select-wrap">
+                <span>Entnahmerate</span>
+                <input id="plannerWithdrawalRate" type="number" min="1" max="10" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Inflation p.a.</span>
+                <input id="plannerInflationRate" type="number" min="0" max="10" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Gehaltserhoehung p.a.</span>
+                <input id="plannerSalaryGrowthRate" type="number" min="0" max="10" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Mieterhoehung p.a.</span>
+                <input id="plannerRentGrowthRate" type="number" min="0" max="10" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Vers. & sonstige Kosten p.a.</span>
+                <input id="plannerExpenseGrowthRate" type="number" min="0" max="10" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Musikwachstum p.a.</span>
+                <input id="plannerMusicGrowthRate" type="number" min="0" max="15" step="0.1">
+              </label>
+              <label class="select-wrap">
+                <span>Steuersatz Musik</span>
+                <input id="plannerMusicTaxRate" type="number" min="0" max="60" step="0.5">
+              </label>
+            </div>
+            <p class="section-copy" id="plannerAssumptions"></p>
+          </div>
+          <div>
+            <dl class="detail-list" id="goalSummary"></dl>
+          </div>
+        </div>
+        <div class="grid two">
+          <article class="subcard">
+            <h3 class="subhead">Meilensteine</h3>
+            <div id="goalMilestones" class="milestone-list"></div>
+          </article>
+          <article class="subcard">
+            <h3 class="subhead">Rentenziel</h3>
+            <div id="retirementPlan" class="retirement-summary"></div>
+          </article>
+        </div>
+      </article>
 
       <div class="grid two">
         <article class="card">
@@ -99,9 +185,48 @@
       <article class="card">
         <h2>Baseline-Posten</h2>
         <table>
-          <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
-          <tbody id="baselineLineItems"></tbody>
+          <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th><th>Aktion</th></tr></thead>
+          <tbody id="baselineLineItems" data-baseline-actions="true"></tbody>
         </table>
+      </article>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Zukuenftige Fixkosten</h2>
+            <p class="section-copy">Neue feste Monatskosten wirken nur ab `gueltig ab` nach vorne und werden danach automatisch in allen Folgemonaten mitgerechnet.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <div class="subcard">
+            <h3 class="subhead">Neue Fixkosten anlegen</h3>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Name</span>
+                <input id="fixedCostLabel" type="text" placeholder="z. B. Fitnessstudio">
+              </label>
+              <label class="select-wrap">
+                <span>Betrag pro Monat</span>
+                <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap">
+                <span>Gueltig ab</span>
+                <input id="fixedCostEffectiveFrom" type="month">
+              </label>
+              <label class="select-wrap">
+                <span>Notiz</span>
+                <input id="fixedCostNotes" type="text" placeholder="optional">
+              </label>
+            </div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="fixedCostMeta">Noch keine zusaetzlichen Fixkosten gespeichert.</p>
+              <button class="pill is-active" id="saveFixedCostButton" type="button">Fixkosten speichern</button>
+            </div>
+          </div>
+          <div class="subcard">
+            <h3 class="subhead">Geplante Zukunfts-Fixkosten</h3>
+            <div id="fixedCostList" class="mapping-list"></div>
+          </div>
+        </div>
       </article>
     </section>
 
@@ -113,13 +238,15 @@
             <p class="section-copy">Filtere zuerst die kritischen Monate, bevor wir spaeter Bearbeitung und Imports direkt in die App ziehen.</p>
           </div>
           <div class="filter-group" id="monthFilters">
-            <button class="pill is-active" data-filter="all">Alle</button>
+            <button class="pill is-active" data-filter="focus">Ab 2026</button>
+            <button class="pill" data-filter="all">Alle</button>
+            <button class="pill" data-filter="warning">Warnungen</button>
             <button class="pill" data-filter="negative">Nur Defizite</button>
             <button class="pill" data-filter="future">Nur Zukunft</button>
           </div>
         </div>
         <table>
-          <thead><tr><th>Monat</th><th>Profil</th><th>Baseline</th><th>Zufluesse</th><th>Ausgaben</th><th>Ergebnis</th></tr></thead>
+          <thead><tr><th>Monat</th><th>Profil</th><th>Baseline</th><th>Musik brutto</th><th>Frei verf.</th><th>Ausgaben</th><th>Ergebnis</th><th>Signale</th></tr></thead>
           <tbody id="monthlyRows"></tbody>
         </table>
       </article>
@@ -137,6 +264,44 @@
           </div>
           <dl class="detail-list" id="monthReviewSummary"></dl>
         </article>
+        <article class="card">
+          <h2>Automatische Monatshinweise</h2>
+          <ul class="signal-list" id="monthReviewSignals"></ul>
+        </article>
+      </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Reconciliation</h2>
+            <p class="section-copy">Halte pro Monat fest, was schon geprueft wurde, welche Hinweise offen sind und was als naechstes im Workbook abgeglichen werden muss.</p>
+          </div>
+        </div>
+        <div class="grid two reconciliation-grid">
+          <div>
+            <label class="select-wrap">
+              <span>Status</span>
+              <select id="reconciliationStatus">
+                <option value="open">Offen</option>
+                <option value="in_progress">In Arbeit</option>
+                <option value="resolved">Erledigt</option>
+              </select>
+            </label>
+            <label class="select-wrap">
+              <span>Notiz</span>
+              <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was im Workbook oder in der Importlogik auffaellig war."></textarea>
+            </label>
+          </div>
+          <div>
+            <h3 class="subhead">Aktionen fuer diesen Monat</h3>
+            <div id="reconciliationActions" class="reconciliation-actions"></div>
+          </div>
+        </div>
+        <div class="reconciliation-footer">
+          <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
+          <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
+        </div>
+      </article>
+      <div class="grid two">
         <article class="card">
           <h2>Aktive Baseline-Posten</h2>
           <table>
@@ -161,6 +326,53 @@
           </table>
         </article>
       </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Import-Korrekturen</h2>
+            <p class="section-copy">Pflege hier die ersten lokalen Korrekturen fuer Kategorien und Zielkonten, damit Reconciliation in echte Import-Entscheidungen uebergeht.</p>
+          </div>
+        </div>
+        <div class="grid two reconciliation-grid">
+          <div>
+            <h3 class="subhead">Einnahmen-Mappings</h3>
+            <div id="incomeMappingRows" class="mapping-list"></div>
+          </div>
+          <div>
+            <h3 class="subhead">Ausgaben-Mappings</h3>
+            <div id="expenseMappingRows" class="mapping-list"></div>
+          </div>
+        </div>
+        <div class="reconciliation-footer">
+          <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
+          <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="retirement" class="tab-panel">
+      <div class="grid two">
+        <article class="card">
+          <h2>Zielbild</h2>
+          <dl class="detail-list" id="retirementSummary"></dl>
+        </article>
+        <article class="card">
+          <h2>Einordnung</h2>
+          <ul class="signal-list" id="retirementSignals"></ul>
+        </article>
+      </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Jahresverlauf ohne Musik</h2>
+            <p class="section-copy">Hier siehst du pro Jahr, wie sich Gehalt, Miete, sonstige laufende Kosten und deine verfügbare Basis entwickeln. Musik ist bewusst ausgeblendet, damit der Sockel klar wird.</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Jahr</th><th>Nettogehalt mtl.</th><th>Miete mtl.</th><th>Fix sonstig mtl.</th><th>Variable Kosten mtl.</th><th>Ruecklage mtl.</th><th>Basis-Investment mtl.</th><th>Aus Gehalt in Cash</th><th>Aus Gehalt ins Investment</th><th>Verfuegbar vor Musik</th></tr></thead>
+          <tbody id="retirementYearRows"></tbody>
+        </table>
+      </article>
     </section>
 
     <section id="debt" class="tab-panel">

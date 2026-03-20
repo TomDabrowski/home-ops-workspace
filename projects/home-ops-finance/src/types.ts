@@ -49,8 +49,11 @@ export interface IncomeStream {
 export interface IncomeEntry {
   id: string;
   incomeStreamId: string;
+  accountId?: string;
   entryDate: string;
   amount: number;
+  reserveAmount?: number;
+  availableAmount?: number;
   kind: "salary" | "music" | "refund" | "sale" | "gift" | "other";
   isRecurring: boolean;
   isPlanned: boolean;
@@ -83,6 +86,7 @@ export interface ExpenseEntry {
   description: string;
   amount: number;
   expenseCategoryId: string;
+  accountId?: string;
   expenseType: "fixed" | "variable" | "debt_payment" | "annual_reserve";
   isRecurring: boolean;
   isPlanned: boolean;
@@ -98,6 +102,16 @@ export interface WealthBucket {
   expectedAnnualReturn?: number;
   isThresholdBucket: boolean;
   notes?: string;
+}
+
+export interface ForecastWealthAnchor {
+  monthKey: string;
+  safetyBucketAmount: number;
+  investmentBucketAmount: number;
+  totalWealthAmount?: number;
+  sourceSheet: string;
+  sourceRowNumber: number;
+  isManualAnchor: boolean;
 }
 
 export interface DebtAccount {
@@ -132,6 +146,7 @@ export interface ImportDraft {
   expenseCategories: ExpenseCategory[];
   expenseEntries: ExpenseEntry[];
   wealthBuckets: WealthBucket[];
+  forecastWealthAnchors: ForecastWealthAnchor[];
   debtAccounts: DebtAccount[];
   debtSnapshots: DebtSnapshot[];
 }

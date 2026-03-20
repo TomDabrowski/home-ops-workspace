@@ -31,8 +31,12 @@ npm install
 npm run typecheck
 npm test
 npm run import:workbook -- "/path/to/private/finance-workbook.xlsx"
+npm run bootstrap:mappings
+npm run apply:review-state
 npm run report:draft -- data/import-draft.json
+npm run report:reviewed
 npm run plan:months -- data/import-draft.json
+npm run plan:reviewed
 npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/dashboard.html
 npm run serve:app
 ```
@@ -42,6 +46,7 @@ The current importer draft already extracts:
 - workbook sheet metadata
 - forecast assumptions
 - baseline planning anchors
+- explicit workbook wealth anchors from `Übersicht Vermögen`
 - music income rows
 - irregular expense rows
 - debt accounts and debt snapshots
@@ -55,6 +60,12 @@ The current monthly engine uses two explicit baseline profiles:
 
 - `historical_liquidity`: before the current investment baseline is active
 - `forecast_investing`: from the current investment-oriented planning phase onward
+
+The current monthly engine also:
+
+- keeps music `gross`, `reserve`, and `free` amounts separate
+- routes forecast music income between safety and investment buckets after the workbook threshold
+- reapplies explicit manual wealth anchors from `Übersicht Vermögen` before continuing the forecast
 
 ## Local App
 
@@ -71,6 +82,11 @@ The browser review currently supports:
 - validation signals for likely mismatches or risky months
 - month filters for deficits and future forecast rows
 - a month-by-month review with active baseline items and imported flows
+- local reconciliation and import-correction persistence into project JSON files
+- a first reviewed-draft pipeline that can reapply saved corrections once `data/import-draft.json` exists
+- bootstrapped default category/account mappings for real imported entries
+- automatic regeneration of reviewed report, reviewed month plan, and reviewed dashboard after saves in the local app
+- a first goals and retirement planner with editable age/spending assumptions, 25k wealth milestones, and an estimated minimum monthly music revenue target
 
 ## Next Steps
 
