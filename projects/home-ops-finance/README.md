@@ -130,7 +130,7 @@ The browser review currently supports:
 - a first reviewed-draft pipeline that can reapply saved corrections once `data/import-draft.json` exists
 - bootstrapped default category/account mappings for imported entries
 - automatic regeneration of reviewed report, reviewed month plan, and reviewed dashboard after saves in the local app
-- a first goals and retirement planner with editable age/spending assumptions, 25k wealth milestones, and an estimated minimum monthly music revenue target
+- a first goals view for milestone tracking and longer-range planning assumptions
 
 ## Next Steps
 
