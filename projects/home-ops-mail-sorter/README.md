@@ -2,6 +2,8 @@
 
 Conservative multi-account IMAP spam cleaner for a home NAS or always-on server.
 
+The project is built around safe defaults: read-only IMAP access first, dry-run reporting first, and operational guardrails before any live mailbox actions.
+
 ## Current Direction
 
 - Read messages from one or more IMAP inboxes in read-only mode.
@@ -30,6 +32,13 @@ Conservative multi-account IMAP spam cleaner for a home NAS or always-on server.
 - `tests/account-runner.test.ts`: coverage for account-run helper logic
 - `tests/account-state.test.ts`: coverage for processed-message state helpers
 - `tests/ops-runner.test.ts`: coverage for snapshot and retention helpers
+
+## Safety Model
+
+- IMAP access starts in read-only mode
+- scheduled runs keep logs, locks, and history snapshots
+- reports can be reviewed before any future automation is enabled
+- live message moves are intentionally deferred until the dry-run path is proven
 
 ## Local Commands
 

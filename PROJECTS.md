@@ -1,6 +1,6 @@
 # Home Ops Projects Overview
 
-This file tracks the personal software project set that lives in the repo `projects/` directory.
+This file tracks the current project set that lives in the repo `projects/` directory.
 
 ## Active Priority Order
 
@@ -18,4 +18,4 @@ This file tracks the personal software project set that lives in the repo `proje
 - Store current state inside each project in STATUS.md.
 - Use README.md for scope, MVP, and setup notes.
 - Push to Git after meaningful milestones, not after every tiny edit.
-- Keep raw personal finance exports and generated analysis files untracked by default.
+- Keep raw finance exports and generated analysis files untracked by default.

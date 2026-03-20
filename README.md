@@ -1,6 +1,8 @@
 # Finance
 
-Private umbrella repository for personal finance and home-ops projects.
+Workspace for finance and home-ops tools, with a focus on local-first workflows, private data handling, and conservative automation.
+
+The repository contains code, example data, and project notes only. Real spreadsheets, generated reports, and account credentials are intentionally kept out of version control.
 
 ## Layout
 
@@ -12,11 +14,11 @@ Private umbrella repository for personal finance and home-ops projects.
 - `projects/home-ops-media-organizer`: media and file organization tooling
 - `projects/home-ops-mail-sorter`: mail classification and sorting
 
-## Privacy
+## Repository Notes
 
-This repo is private, but generated finance data and raw spreadsheet exports should still stay untracked unless explicitly needed.
-
-See `.gitignore` for the default local-only files.
+- Example paths in this repo are placeholders.
+- Example JSON and mail samples are sanitized for development and testing.
+- See `.gitignore` for the default local-only files that should stay untracked.
 
 ## Local Finance Data
 
