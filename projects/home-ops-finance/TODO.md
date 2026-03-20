@@ -2,15 +2,16 @@
 
 ## Now
 
-- Turn the workbook sheets into importable normalized tables.
-- Define the first real category list and account list from the workbook.
-- Start a small TypeScript project that reads and validates imported finance data.
+- Work through the highest-impact `2026+` warning months in the review UI using the bootstrapped default mappings.
+- Validate the next few workbook wealth checkpoints after the explicit `2026-02` anchor.
+- Tune the new goals and retirement planner assumptions against the workbook so the required-music target is trustworthy.
+- Convert the default category/account guesses into reviewed decisions for the largest outlier months first.
+- Use reviewed account mappings to seed the first real account model from workbook usage.
 
 ## Next
 
-- Add an `.xlsx` importer for workbook-based migration.
-- Recreate the baseline monthly model from `Bilanz`.
 - Recreate the forecast engine from assumptions plus monthly inputs.
+- Add stronger workbook-vs-app comparison checks for wealth buckets and monthly handoff points.
 
 ## Later
 

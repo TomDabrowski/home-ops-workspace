@@ -138,6 +138,58 @@ h2 {
   font: inherit;
   padding: 10px 12px;
 }
+.select-wrap input {
+  min-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  padding: 10px 12px;
+}
+.dual-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 10px;
+  align-items: center;
+}
+.dual-input input[type="range"] {
+  appearance: none;
+  height: 6px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(15, 118, 110, 0.25), rgba(15, 118, 110, 0.75));
+  padding: 0;
+}
+.dual-input input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  cursor: pointer;
+}
+.dual-input input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  cursor: pointer;
+}
+.select-wrap textarea {
+  min-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  padding: 12px;
+  resize: vertical;
+}
 .pill {
   border: 1px solid var(--line);
   background: #fff;
@@ -155,6 +207,9 @@ h2 {
 table {
   width: 100%;
   border-collapse: collapse;
+}
+table tbody tr:hover {
+  background: rgba(15, 118, 110, 0.04);
 }
 th, td {
   text-align: left;
@@ -229,6 +284,158 @@ th {
   color: var(--muted);
   line-height: 1.45;
 }
+.signal-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+.subhead {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+.reconciliation-grid {
+  margin-bottom: 0;
+}
+.reconciliation-actions {
+  display: grid;
+  gap: 10px;
+}
+.mapping-list {
+  display: grid;
+  gap: 10px;
+}
+.planner-grid {
+  align-items: start;
+}
+.planner-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.subcard {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  padding: 16px;
+}
+.milestone-list,
+.retirement-summary {
+  display: grid;
+  gap: 10px;
+}
+.milestone-item,
+.retirement-summary .signal-list li {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fffaf4;
+  padding: 12px;
+}
+.milestone-item strong,
+.retirement-summary strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.milestone-item p,
+.retirement-summary p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.priority-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.priority-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+.priority-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.priority-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.priority-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.priority-pill {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.78rem;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--accent);
+}
+.priority-pill.warn {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--danger);
+}
+.mapping-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+.mapping-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+.mapping-card-head strong {
+  display: block;
+}
+.mapping-card-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+.mapping-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.mapping-check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--ink);
+}
+.reconciliation-action {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+.reconciliation-action label {
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  color: var(--ink);
+}
+.reconciliation-action p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.reconciliation-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
 .empty-state {
   color: var(--muted);
   font-style: italic;
@@ -239,5 +446,19 @@ th {
   .hero, .grid.two, .grid.four, .detail-list { grid-template-columns: 1fr; }
   .section-head {
     flex-direction: column;
+  }
+  .planner-inputs,
+  .mapping-fields {
+    grid-template-columns: 1fr;
+  }
+  .dual-input {
+    grid-template-columns: 1fr;
+  }
+  .priority-list {
+    grid-template-columns: 1fr;
+  }
+  .reconciliation-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
