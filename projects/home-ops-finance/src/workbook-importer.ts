@@ -17,6 +17,7 @@ import type {
   WealthBucket,
   WorkbookSheetSummary,
 } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath, financeWorkbookPath } from "./local-config.ts";
 
 function unzipText(workbookPath: string, entry: string): string {
   return execFileSync("unzip", ["-p", workbookPath, entry], {
@@ -987,8 +988,9 @@ function createImportDraft(workbookPath: string): ImportDraft {
 }
 
 function main(): void {
-  const workbookPath = resolve(process.argv[2] ?? "/Users/tom/Downloads/Bilanz Tom.xlsx");
-  const outputPath = resolve(process.argv[3] ?? "data/import-draft.json");
+  ensureFinanceDataDir();
+  const workbookPath = resolve(process.argv[2] ?? financeWorkbookPath());
+  const outputPath = resolve(process.argv[3] ?? financeDataPath("import-draft.json"));
 
   const draft = createImportDraft(workbookPath);
   writeFileSync(outputPath, JSON.stringify(draft, null, 2) + "\n", "utf8");
