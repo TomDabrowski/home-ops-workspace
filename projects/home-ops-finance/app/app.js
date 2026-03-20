@@ -13,7 +13,7 @@ const monthlyExpenseOverridesStorageKey = "home-ops-finance-monthly-expense-over
 const fallbackAccountOptions = [
   { id: "giro", label: "Girokonto" },
   { id: "cash", label: "Bargeld / Alltag" },
-  { id: "savings", label: "Ruecklage / Tagesgeld" },
+  { id: "savings", label: "Rücklage / Tagesgeld" },
   { id: "investment", label: "Investment" },
   { id: "debt", label: "Schuldenkonto" },
   { id: "unknown", label: "Noch offen" },
@@ -103,7 +103,7 @@ function makeMoneyCell(value) {
 }
 
 function planProfileLabel(value) {
-  return value === "forecast_investing" ? "Investment-Plan" : "Liquiditaets-Plan";
+  return value === "forecast_investing" ? "Investment-Plan" : "Liquiditäts-Plan";
 }
 
 function formatMonthLabel(monthKey) {
@@ -727,7 +727,7 @@ function renderSignalItems(signals, emptyMessage) {
     .map(
       (signal) => `
         <li>
-          <span class="signal-label ${signal.severity}">${signal.severity === "warn" ? "Pruefen" : "Info"}</span>
+          <span class="signal-label ${signal.severity}">${signal.severity === "warn" ? "Prüfen" : "Info"}</span>
           <strong>${signal.title}</strong>
           <p>${signal.detail}</p>
         </li>
@@ -759,7 +759,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     signals.push({
       level: "warn",
       title: `${negativeMonths.length} Monate liegen nach Importen im Minus`,
-      body: `Schwaechster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du beim ersten Test besonders kontrollieren.`,
+      body: `Schwächster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du beim ersten Test besonders kontrollieren.`,
     });
   }
 
@@ -771,7 +771,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     signals.push({
       level: "warn",
       title: `${suspiciousMonths.length} Monate haben automatische Warnsignale`,
-      body: `${worstMatch.monthKey} traegt aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Damit laesst sich die Monatspruefung gezielter starten.`,
+      body: `${worstMatch.monthKey} trägt aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Damit lässt sich die Monatsprüfung gezielter starten.`,
     });
   }
 
@@ -780,7 +780,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     signals.push({
       level: "info",
       title: "Forecast-Phase ist bereits modelliert",
-      body: `${positiveFuture} von ${futureRows.length} Zukunftsmonaten liegen in der aktuellen Rechnung nicht im Minus. Das hilft uns spaeter beim Abgleich gegen deine Prognose-Logik.`,
+      body: `${positiveFuture} von ${futureRows.length} Zukunftsmonaten liegen in der aktuellen Rechnung nicht im Minus. Das hilft uns später beim Abgleich gegen deine Prognose-Logik.`,
     });
   }
 
@@ -788,7 +788,7 @@ function renderValidationSignals(draftReport, monthlyPlan) {
     .map(
       (signal) => `
         <li>
-          <span class="signal-label ${signal.level}">${signal.level === "warn" ? "Pruefen" : "Info"}</span>
+          <span class="signal-label ${signal.level}">${signal.level === "warn" ? "Prüfen" : "Info"}</span>
           <strong>${signal.title}</strong>
           <p>${signal.body}</p>
         </li>
@@ -812,7 +812,7 @@ function renderMonthHealth(monthlyPlan) {
     ["Defizit-Monate", String(negativeMonths.length)],
     ["Warn-Monate", String(warningMonths.length)],
     ["Bester Monat", bestMonth ? `${bestMonth.monthKey} · ${euro.format(bestMonth.netAfterImportedFlows)}` : "-"],
-    ["Schwaechster Monat", worstMonth ? `${worstMonth.monthKey} · ${euro.format(worstMonth.netAfterImportedFlows)}` : "-"],
+    ["Schwächster Monat", worstMonth ? `${worstMonth.monthKey} · ${euro.format(worstMonth.netAfterImportedFlows)}` : "-"],
     ["Letzter Monat", lastMonth ? `${lastMonth.monthKey} · ${euro.format(lastMonth.netAfterImportedFlows)}` : "-"],
   ];
 
@@ -849,12 +849,12 @@ function renderPriorityMonths(monthlyPlan) {
     .map((row, index) => `
       <article class="priority-card">
         <div class="priority-meta">
-          <span class="priority-pill warn">Prioritaet ${index + 1}</span>
+          <span class="priority-pill warn">Priorität ${index + 1}</span>
           <span class="priority-pill">${planProfileLabel(row.baselineProfile)}</span>
         </div>
         <h3>${row.monthKey}</h3>
         <p>${row.warningCount} Warnhinweise · Ergebnis ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
-        <button class="pill" type="button" data-priority-month="${row.monthKey}">Im Review oeffnen</button>
+        <button class="pill" type="button" data-priority-month="${row.monthKey}">Im Review öffnen</button>
       </article>
     `)
     .join("");
@@ -905,7 +905,7 @@ function bindMonthFilters(monthlyPlan) {
         <td>${euro.format(row.importedExpenseAmount)}</td>
         <td>${row.projectedWealthEndAmount !== undefined ? euro.format(row.projectedWealthEndAmount) : "-"}</td>
         <td>${makeMoneyCell(row.netAfterImportedFlows)}</td>
-        <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.consistencySignals.length} oeffnen</button></td>
+        <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.consistencySignals.length} öffnen</button></td>
       </tr>
     `);
   }
@@ -1001,7 +1001,7 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
   }
 
   if (items.length === 0) {
-    listTarget.innerHTML = `<p class="empty-state">Noch keine manuellen Ausgaben fuer diesen Monat.</p>`;
+    listTarget.innerHTML = `<p class="empty-state">Noch keine manuellen Ausgaben für diesen Monat.</p>`;
   } else {
     listTarget.innerHTML = items
       .map((entry) => `
@@ -1013,7 +1013,7 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-monthly-expense-edit="${entry.id}">Bearbeiten</button>
-              <button class="pill" type="button" data-monthly-expense-delete="${entry.id}">Loeschen</button>
+              <button class="pill" type="button" data-monthly-expense-delete="${entry.id}">Löschen</button>
             </div>
           </div>
           <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
@@ -1074,7 +1074,7 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       categoryField.value = entry.expenseCategoryId || "other";
       accountField.value = entry.accountId || "giro";
       notesField.value = entry.notes || "";
-      metaTarget.textContent = `Bearbeitungsmodus aktiv fuer ${entry.description}`;
+      metaTarget.textContent = `Bearbeitungsmodus aktiv für ${entry.description}`;
     });
   }
 
@@ -1105,15 +1105,15 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       ["Anchor frei", euro.format(review.row.baselineAnchorAvailableAmount)],
       ["Anchor-Differenz", euro.format(review.row.baselineAnchorDeltaAmount)],
       ["Musik brutto", euro.format(review.row.musicIncomeAmount)],
-      ["Musik Ruecklage", euro.format(review.row.importedIncomeReserveAmount)],
-      ["Musik frei verfuegbar", euro.format(review.row.importedIncomeAvailableAmount)],
+      ["Musik Rücklage", euro.format(review.row.importedIncomeReserveAmount)],
+      ["Musik frei verfügbar", euro.format(review.row.importedIncomeAvailableAmount)],
       ["Musik -> Safety", euro.format(review.row.musicAllocationToSafetyAmount)],
       ["Musik -> Investment", euro.format(review.row.musicAllocationToInvestmentAmount)],
       ["Safety Start", review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-"],
       ["Safety Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
       ["Investment Start", review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-"],
       ["Investment Ende", review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-"],
-      ["Gesamtvermoegen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
+      ["Gesamtvermögen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
       ["Importierte Ausgaben", euro.format(review.row.importedExpenseAmount)],
       ["Ergebnis", euro.format(review.row.netAfterImportedFlows)],
     ];
@@ -1140,7 +1140,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       </tr>
     `);
   } else {
-    renderEmptyRow("monthReviewIncomeRows", 3, "Keine importierten Einnahmen fuer diesen Monat.");
+    renderEmptyRow("monthReviewIncomeRows", 3, "Keine importierten Einnahmen für diesen Monat.");
   }
 
   if (review.expenseEntries.length > 0) {
@@ -1152,14 +1152,14 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       </tr>
     `);
   } else {
-    renderEmptyRow("monthReviewExpenseRows", 3, "Keine importierten Ausgaben fuer diesen Monat.");
+    renderEmptyRow("monthReviewExpenseRows", 3, "Keine importierten Ausgaben für diesen Monat.");
   }
 
   const signalsTarget = document.getElementById("monthReviewSignals");
   if (signalsTarget) {
     signalsTarget.innerHTML = renderSignalItems(
       review.row.consistencySignals,
-      "Fuer diesen Monat wurden aktuell keine automatischen Hinweise gefunden.",
+      "Für diesen Monat wurden aktuell keine automatischen Hinweise gefunden.",
     );
   }
 
@@ -1271,7 +1271,7 @@ function renderEntryMappings(importDraft, review) {
               </label>
               <label class="mapping-check">
                 <input type="checkbox" data-mapping-reviewed="${entry.id}" ${mapping.reviewed ? "checked" : ""}>
-                <span>Geprueft</span>
+                <span>Geprüft</span>
               </label>
             </div>
           </div>
@@ -1309,7 +1309,7 @@ function renderEntryMappings(importDraft, review) {
               </label>
               <label class="mapping-check">
                 <input type="checkbox" data-mapping-reviewed="${entry.id}" ${mapping.reviewed ? "checked" : ""}>
-                <span>Geprueft</span>
+                <span>Geprüft</span>
               </label>
             </div>
           </div>
@@ -1330,8 +1330,8 @@ function renderEntryMappings(importDraft, review) {
 
   const persistenceLabel = mappingPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = latestUpdate
-    ? `${reviewedCount}/${monthEntryIds.length} Zeilen geprueft · zuletzt gespeichert: ${new Date(latestUpdate).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
-    : `${reviewedCount}/${monthEntryIds.length} Zeilen geprueft · noch keine Mapping-Korrekturen gespeichert · Speicherort: ${persistenceLabel}`;
+    ? `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · zuletzt gespeichert: ${new Date(latestUpdate).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    : `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · noch keine Mapping-Korrekturen gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
     await saveMappings([...review.incomeEntries, ...review.expenseEntries]);
@@ -1414,7 +1414,7 @@ function renderFixedCostPlanner(importDraft) {
   }
 
   if (overrides.length === 0) {
-    listTarget.innerHTML = `<p class="empty-state">Noch keine zusaetzlichen Zukunfts-Fixkosten angelegt.</p>`;
+    listTarget.innerHTML = `<p class="empty-state">Noch keine zusätzlichen Zukunfts-Fixkosten angelegt.</p>`;
   } else {
     listTarget.innerHTML = overrides
       .map((entry) => `
@@ -1440,7 +1440,7 @@ function renderFixedCostPlanner(importDraft) {
   const persistenceLabel = baselinePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = overrides.length > 0
     ? `${overrides.length} Zukunfts-Fixkosten gespeichert · Speicherort: ${persistenceLabel}`
-    : `Noch keine zusaetzlichen Fixkosten gespeichert · Speicherort: ${persistenceLabel}`;
+    : `Noch keine zusätzlichen Fixkosten gespeichert · Speicherort: ${persistenceLabel}`;
 
   const suggestedMonth =
     importDraft.monthlyBaselines[importDraft.monthlyBaselines.length - 1]?.monthKey ?? reviewFocusMonthKey;
@@ -1490,7 +1490,7 @@ function renderFixedCostPlanner(importDraft) {
     const notes = notesField.value.trim();
 
     if (!label || !effectiveFrom || !Number.isFinite(amount) || amount <= 0) {
-      metaTarget.textContent = "Bitte Name, positiven Monatsbetrag und gueltig-ab-Monat eintragen.";
+      metaTarget.textContent = "Bitte Name, positiven Monatsbetrag und gültig-ab-Monat eintragen.";
       return;
     }
 
@@ -1549,10 +1549,10 @@ function renderFixedCostPlanner(importDraft) {
         labelField.value = source.label ?? "";
         amountField.value = String(source.amount ?? "");
         effectiveFromField.value = suggestedMonth;
-        notesField.value = `Aendert bestehenden Posten ab ${suggestedMonth}.`;
+        notesField.value = `Ändert bestehenden Posten ab ${suggestedMonth}.`;
         labelField.readOnly = true;
         saveButton.textContent = "Fixkosten-Override speichern";
-        metaTarget.textContent = `Bearbeitungsmodus aktiv fuer bestehenden Posten: ${source.label}`;
+        metaTarget.textContent = `Bearbeitungsmodus aktiv für bestehenden Posten: ${source.label}`;
         labelField.scrollIntoView({ behavior: "smooth", block: "center" });
         amountField.focus();
         return;
@@ -1590,9 +1590,7 @@ function renderFixedCostPlanner(importDraft) {
 
 function renderGoals(importDraft, monthlyPlan) {
   const currentAgeInput = document.getElementById("plannerCurrentAge");
-  const currentAgeSlider = document.getElementById("plannerCurrentAgeSlider");
   const targetAgeInput = document.getElementById("plannerTargetAge");
-  const targetAgeSlider = document.getElementById("plannerTargetAgeSlider");
   const retirementSpendInput = document.getElementById("plannerRetirementSpend");
   const withdrawalRateInput = document.getElementById("plannerWithdrawalRate");
   const inflationRateInput = document.getElementById("plannerInflationRate");
@@ -1601,6 +1599,8 @@ function renderGoals(importDraft, monthlyPlan) {
   const expenseGrowthRateInput = document.getElementById("plannerExpenseGrowthRate");
   const musicGrowthRateInput = document.getElementById("plannerMusicGrowthRate");
   const musicTaxRateInput = document.getElementById("plannerMusicTaxRate");
+  const applyButton = document.getElementById("applyRetirementPlannerButton");
+  const errorBox = document.getElementById("plannerErrorBox");
   const assumptionsTarget = document.getElementById("plannerAssumptions");
   const summaryTarget = document.getElementById("goalSummary");
   const milestonesTarget = document.getElementById("goalMilestones");
@@ -1611,9 +1611,7 @@ function renderGoals(importDraft, monthlyPlan) {
 
   if (
     !currentAgeInput ||
-    !currentAgeSlider ||
     !targetAgeInput ||
-    !targetAgeSlider ||
     !retirementSpendInput ||
     !withdrawalRateInput ||
     !inflationRateInput ||
@@ -1622,6 +1620,8 @@ function renderGoals(importDraft, monthlyPlan) {
     !expenseGrowthRateInput ||
     !musicGrowthRateInput ||
     !musicTaxRateInput ||
+    !applyButton ||
+    !errorBox ||
     !assumptionsTarget ||
     !summaryTarget ||
     !milestonesTarget ||
@@ -1635,9 +1635,7 @@ function renderGoals(importDraft, monthlyPlan) {
 
   const plannerSettings = readPlannerSettings(monthlyPlan);
   currentAgeInput.value = plannerSettings.currentAge;
-  currentAgeSlider.value = plannerSettings.currentAge;
   targetAgeInput.value = plannerSettings.targetAge;
-  targetAgeSlider.value = plannerSettings.targetAge;
   retirementSpendInput.value = plannerSettings.retirementSpend;
   withdrawalRateInput.value = plannerSettings.withdrawalRate;
   inflationRateInput.value = plannerSettings.inflationRate;
@@ -1647,39 +1645,95 @@ function renderGoals(importDraft, monthlyPlan) {
   musicGrowthRateInput.value = plannerSettings.musicGrowthRate;
   musicTaxRateInput.value = plannerSettings.musicTaxRate;
 
-  function syncAgeBounds(currentAge, targetAge) {
-    const normalizedCurrentAge = Math.max(18, currentAge);
-    const normalizedTargetAge = Math.max(normalizedCurrentAge, targetAge);
-    targetAgeInput.min = String(normalizedCurrentAge);
-    targetAgeSlider.min = String(normalizedCurrentAge);
+  function setPlannerError(messages = []) {
+    if (messages.length === 0) {
+      errorBox.hidden = true;
+      errorBox.innerHTML = "";
+      return;
+    }
+
+    errorBox.hidden = false;
+    errorBox.innerHTML = `<strong>Bitte prüfen:</strong><br>${messages.join("<br>")}`;
+  }
+
+  function readPlannerFormValues() {
     return {
-      currentAge: normalizedCurrentAge,
-      targetAge: normalizedTargetAge,
+      currentAge: Number(currentAgeInput.value),
+      targetAge: Number(targetAgeInput.value),
+      retirementSpend: Number(retirementSpendInput.value),
+      withdrawalRate: Number(withdrawalRateInput.value),
+      inflationRate: Number(inflationRateInput.value),
+      salaryGrowthRate: Number(salaryGrowthRateInput.value),
+      rentGrowthRate: Number(rentGrowthRateInput.value),
+      expenseGrowthRate: Number(expenseGrowthRateInput.value),
+      musicGrowthRate: Number(musicGrowthRateInput.value),
+      musicTaxRate: Number(musicTaxRateInput.value),
     };
   }
 
+  function validatePlannerValues(raw) {
+    const messages = [];
+    if (!Number.isFinite(raw.currentAge) || raw.currentAge < 18 || raw.currentAge > 80) {
+      messages.push("`Aktuelles Alter` muss zwischen 18 und 80 liegen.");
+    }
+    if (!Number.isFinite(raw.targetAge) || raw.targetAge < 18 || raw.targetAge > 90) {
+      messages.push("`Zielalter Rente` muss zwischen 18 und 90 liegen.");
+    }
+    if (Number.isFinite(raw.currentAge) && Number.isFinite(raw.targetAge) && raw.targetAge < raw.currentAge) {
+      messages.push("`Zielalter Rente` darf nicht kleiner sein als `Aktuelles Alter`.");
+    }
+    if (!Number.isFinite(raw.retirementSpend) || raw.retirementSpend < 0) {
+      messages.push("`Bedarf pro Monat in Rente` muss 0 oder größer sein.");
+    }
+    if (!Number.isFinite(raw.withdrawalRate) || raw.withdrawalRate <= 0 || raw.withdrawalRate > 10) {
+      messages.push("`Entnahmerate` muss größer als 0 und höchstens 10 sein.");
+    }
+    if (!Number.isFinite(raw.inflationRate) || raw.inflationRate < 0) {
+      messages.push("`Inflation p.a.` darf nicht negativ sein.");
+    }
+    if (!Number.isFinite(raw.salaryGrowthRate) || raw.salaryGrowthRate < 0) {
+      messages.push("`Gehaltserhöhung p.a.` darf nicht negativ sein.");
+    }
+    if (!Number.isFinite(raw.rentGrowthRate) || raw.rentGrowthRate < 0) {
+      messages.push("`Mieterhöhung p.a.` darf nicht negativ sein.");
+    }
+    if (!Number.isFinite(raw.expenseGrowthRate) || raw.expenseGrowthRate < 0) {
+      messages.push("`Vers. & sonstige Kosten p.a.` darf nicht negativ sein.");
+    }
+    if (!Number.isFinite(raw.musicGrowthRate) || raw.musicGrowthRate < 0) {
+      messages.push("`Musikwachstum p.a.` darf nicht negativ sein.");
+    }
+    if (!Number.isFinite(raw.musicTaxRate) || raw.musicTaxRate < 0 || raw.musicTaxRate > 60) {
+      messages.push("`Steuersatz Musik` muss zwischen 0 und 60 liegen.");
+    }
+    return messages;
+  }
+
   function update() {
-    const requestedCurrentAge = Number(currentAgeInput.value) || Number(currentAgeSlider.value) || plannerSettings.currentAge;
-    const requestedTargetAge = Number(targetAgeInput.value) || Number(targetAgeSlider.value) || plannerSettings.targetAge;
-    const ageBounds = syncAgeBounds(requestedCurrentAge, requestedTargetAge);
+    const raw = readPlannerFormValues();
+    const validationErrors = validatePlannerValues(raw);
+    if (validationErrors.length > 0) {
+      setPlannerError(validationErrors);
+      return;
+    }
+
+    setPlannerError([]);
 
     const settings = {
-      currentAge: ageBounds.currentAge,
-      targetAge: ageBounds.targetAge,
-      retirementSpend: Math.max(0, Number(retirementSpendInput.value) || plannerSettings.retirementSpend),
-      withdrawalRate: Math.max(1, Number(withdrawalRateInput.value) || plannerSettings.withdrawalRate),
-      inflationRate: Math.max(0, Number(inflationRateInput.value) || plannerSettings.inflationRate),
-      salaryGrowthRate: Math.max(0, Number(salaryGrowthRateInput.value) || plannerSettings.salaryGrowthRate),
-      rentGrowthRate: Math.max(0, Number(rentGrowthRateInput.value) || plannerSettings.rentGrowthRate),
-      expenseGrowthRate: Math.max(0, Number(expenseGrowthRateInput.value) || plannerSettings.expenseGrowthRate),
-      musicGrowthRate: Math.max(0, Number(musicGrowthRateInput.value) || plannerSettings.musicGrowthRate),
-      musicTaxRate: Math.max(0, Number(musicTaxRateInput.value) || plannerSettings.musicTaxRate),
+      currentAge: raw.currentAge,
+      targetAge: raw.targetAge,
+      retirementSpend: raw.retirementSpend,
+      withdrawalRate: raw.withdrawalRate,
+      inflationRate: raw.inflationRate,
+      salaryGrowthRate: raw.salaryGrowthRate,
+      rentGrowthRate: raw.rentGrowthRate,
+      expenseGrowthRate: raw.expenseGrowthRate,
+      musicGrowthRate: raw.musicGrowthRate,
+      musicTaxRate: raw.musicTaxRate,
     };
     writePlannerSettings(settings);
     currentAgeInput.value = settings.currentAge;
-    currentAgeSlider.value = settings.currentAge;
     targetAgeInput.value = settings.targetAge;
-    targetAgeSlider.value = settings.targetAge;
 
     const plannerAssumptions = {
       inflationRate: settings.inflationRate,
@@ -1731,12 +1785,12 @@ function renderGoals(importDraft, monthlyPlan) {
       `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
 
     summaryTarget.innerHTML = [
-      ["Startvermoegen", euro.format(currentWealth)],
+      ["Startvermögen", euro.format(currentWealth)],
       ["Zielmonat Rente", formatMonthLabel(targetMonthKey)],
       ["Bedarf in Zieljahren", euro.format(retirementSpendAtTarget)],
       ["Nest Egg noetig", euro.format(requiredNestEgg)],
-      ["Vermoegen im Zielmonat", euro.format(latestProjectedWealth)],
-      ["Musik konstant noetig", euro.format(constantMusicNeeded)],
+      ["Vermögen im Zielmonat", euro.format(latestProjectedWealth)],
+      ["Musik konstant nötig", euro.format(constantMusicNeeded)],
       ["Musik brutto im Zielpfad", euro.format(targetPathAverageGross)],
       ["Musik netto im Zielpfad", euro.format(targetPathAverageNet)],
     ]
@@ -1760,7 +1814,7 @@ function renderGoals(importDraft, monthlyPlan) {
     retirementItems.push(`
       <li>
         <strong>Rentenziel: ${formatMonthLabel(targetMonthKey)}</strong>
-        <p>Fuer inflationsbereinigt ca. ${euro.format(retirementSpendAtTarget)} pro Monat bei ${settings.withdrawalRate.toFixed(1)} % Entnahmerate brauchst du dann rund ${euro.format(requiredNestEgg)} Gesamtvermoegen.</p>
+        <p>Für inflationsbereinigt ca. ${euro.format(retirementSpendAtTarget)} pro Monat bei ${settings.withdrawalRate.toFixed(1)} % Entnahmerate brauchst du dann rund ${euro.format(requiredNestEgg)} Gesamtvermögen.</p>
       </li>
     `);
 
@@ -1768,7 +1822,7 @@ function renderGoals(importDraft, monthlyPlan) {
       retirementItems.push(`
         <li>
           <strong>Mit aktuellem Plan erreichbar</strong>
-          <p>Ohne zusaetzliche Musikannahme wird das Ziel voraussichtlich in ${formatMonthLabel(baselineAtTarget.monthKey)} erreicht.</p>
+          <p>Ohne zusätzliche Musikannahme wird das Ziel voraussichtlich in ${formatMonthLabel(baselineAtTarget.monthKey)} erreicht.</p>
         </li>
       `);
     } else {
@@ -1784,7 +1838,7 @@ function renderGoals(importDraft, monthlyPlan) {
       retirementItems.push(`
         <li>
           <strong>Konstanter Musikbetrag</strong>
-          <p>Damit das Ziel klappt, rechnet das Modell jetzt mit einem festen Musikumsatz von ${euro.format(constantMusicNeeded)} brutto pro Monat von heute bis zum Zielmonat. Davon werden hier konservativ ${settings.musicTaxRate.toFixed(1)} % Steuer abgezogen, ohne Gegenrechnung ueber Ausgaben.</p>
+          <p>Damit das Ziel klappt, rechnet das Modell jetzt mit einem festen Musikumsatz von ${euro.format(constantMusicNeeded)} brutto pro Monat von heute bis zum Zielmonat. Davon werden hier konservativ ${settings.musicTaxRate.toFixed(1)} % Steuer abgezogen, ohne Gegenrechnung über Ausgaben.</p>
         </li>
       `);
     }
@@ -1793,7 +1847,7 @@ function renderGoals(importDraft, monthlyPlan) {
       retirementItems.push(`
         <li>
           <strong>Projektion im Zielmonat</strong>
-          <p>Mit dieser Annahme liegst du in ${formatMonthLabel(targetMonthKey)} bei etwa ${euro.format(targetResult.wealthEndAmount)} Gesamtvermoegen.</p>
+          <p>Mit dieser Annahme liegst du in ${formatMonthLabel(targetMonthKey)} bei etwa ${euro.format(targetResult.wealthEndAmount)} Gesamtvermögen.</p>
         </li>
       `);
     }
@@ -1804,10 +1858,10 @@ function renderGoals(importDraft, monthlyPlan) {
       ["Heute", `${settings.currentAge.toFixed(0)} Jahre`],
       ["Zielalter", `${settings.targetAge.toFixed(0)} Jahre`],
       ["Zielmonat", formatMonthLabel(targetMonthKey)],
-      ["Konstante Musik noetig", euro.format(constantMusicNeeded)],
+      ["Konstante Musik nötig", euro.format(constantMusicNeeded)],
       ["Steuer auf Musik", `${settings.musicTaxRate.toFixed(1)} %`],
       ["Basis-Investment heute", euro.format(yearBreakdown[0]?.plannedSavingsAmount ?? 0)],
-      ["Verfuegbar ohne Musik heute", euro.format(yearBreakdown[0]?.availableBeforeMusic ?? 0)],
+      ["Verfügbar ohne Musik heute", euro.format(yearBreakdown[0]?.availableBeforeMusic ?? 0)],
     ]
       .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
       .join("");
@@ -1821,8 +1875,8 @@ function renderGoals(importDraft, monthlyPlan) {
       const first = yearBreakdown[0];
       const last = yearBreakdown.at(-1);
       signalItems.push({
-        title: "Verfuegbare Basis veraendert sich jedes Jahr",
-        body: `Von ${euro.format(first?.availableBeforeMusic ?? 0)} auf ${euro.format(last?.availableBeforeMusic ?? 0)} pro Monat bis ${last?.year}. Das hilft beim Einschaetzen, wie viel Druck wirklich auf Musik liegt.`,
+        title: "Verfügbare Basis verändert sich jedes Jahr",
+        body: `Von ${euro.format(first?.availableBeforeMusic ?? 0)} auf ${euro.format(last?.availableBeforeMusic ?? 0)} pro Monat bis ${last?.year}. Das hilft beim Einschätzen, wie viel Druck wirklich auf Musik liegt.`,
       });
     }
     signalItems.push({
@@ -1861,40 +1915,24 @@ function renderGoals(importDraft, monthlyPlan) {
       .join("");
   }
 
-  currentAgeSlider.addEventListener("input", () => {
-    currentAgeInput.value = currentAgeSlider.value;
-    update();
-  });
-  currentAgeInput.addEventListener("input", () => {
-    currentAgeSlider.value = currentAgeInput.value || currentAgeSlider.value;
-    update();
-  });
-  targetAgeSlider.addEventListener("input", () => {
-    targetAgeInput.value = targetAgeSlider.value;
-    update();
-  });
-  targetAgeInput.addEventListener("input", () => {
-    targetAgeSlider.value = targetAgeInput.value || targetAgeSlider.value;
-    update();
+  applyButton.addEventListener("click", () => {
+    try {
+      update();
+    } catch (error) {
+      console.error(error);
+      setPlannerError(["Die Rentenberechnung konnte gerade nicht aktualisiert werden. Bitte Eingaben prüfen und erneut versuchen."]);
+    }
   });
 
-  [
-    retirementSpendInput,
-    withdrawalRateInput,
-    inflationRateInput,
-    salaryGrowthRateInput,
-    rentGrowthRateInput,
-    expenseGrowthRateInput,
-    musicGrowthRateInput,
-    musicTaxRateInput,
-  ].forEach((input) => {
-    input.addEventListener("input", update);
-  });
-
-  update();
+  try {
+    update();
+  } catch (error) {
+    console.error(error);
+    setPlannerError(["Die gespeicherten Rentenwerte konnten nicht geladen werden. Bitte Eingaben prüfen und mit `Werte übernehmen` neu rechnen."]);
+  }
 }
 
-function bindTabs() {
+function bindTabs(tabHooks = {}) {
   const tabs = [...document.querySelectorAll(".tab")];
   const panels = [...document.querySelectorAll(".tab-panel")];
 
@@ -1903,6 +1941,10 @@ function bindTabs() {
       const target = tab.dataset.tab;
       tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
       panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === target));
+      const hook = target ? tabHooks[target] : undefined;
+      if (typeof hook === "function") {
+        hook();
+      }
     });
   }
 }
@@ -1942,9 +1984,9 @@ async function load() {
       ["Nettogehalt", euro.format(baseline.netSalaryAmount)],
       ["Fixkosten", euro.format(baseline.fixedExpensesAmount)],
       ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
-      ["Jaehrliche Ruecklage", euro.format(baseline.annualReserveAmount)],
+      ["Jährliche Rücklage", euro.format(baseline.annualReserveAmount)],
       ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
-      ["Verfuegbar laut Workbook", euro.format(baseline.availableBeforeIrregulars)],
+      ["Verfügbar laut Workbook", euro.format(baseline.availableBeforeIrregulars)],
       ["Neu berechnet", euro.format(baseline.computedAvailableFromParts)],
       ["Differenz", euro.format(baseline.deltaToAnchor)],
     ];
@@ -1987,7 +2029,7 @@ async function load() {
       <td>${
         row.category === "fixed"
           ? `<div class="filter-group">
-              <button class="pill" type="button" data-baseline-edit="${row.id}">Ab Datum aendern</button>
+              <button class="pill" type="button" data-baseline-edit="${row.id}">Ab Datum ändern</button>
               <button class="pill" type="button" data-baseline-stop="${row.id}">Ab Datum beenden</button>
             </div>`
           : "-"
@@ -1996,15 +2038,21 @@ async function load() {
   `);
   renderFixedCostPlanner(importDraft);
 
+  let retirementInitialized = false;
+  const initRetirement = () => {
+    if (retirementInitialized) return;
+    renderGoals(importDraft, monthlyPlan);
+    retirementInitialized = true;
+  };
+
   renderValidationSignals(draftReport, monthlyPlan);
   renderMonthHealth(monthlyPlan);
   renderPriorityMonths(monthlyPlan);
-  renderGoals(importDraft, monthlyPlan);
   bindMonthFilters(monthlyPlan);
   bindMonthReview(importDraft, monthlyPlan);
+  bindTabs({ retirement: initRetirement });
 }
 
-bindTabs();
 load().catch((error) => {
   console.error(error);
   document.body.insertAdjacentHTML(

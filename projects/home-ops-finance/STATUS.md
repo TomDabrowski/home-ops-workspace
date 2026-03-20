@@ -48,6 +48,12 @@ Interactive Planning App
 - The retirement planner assumptions are now more explicit and conservative: inflation, salary growth, rent growth, other-cost growth, music-tax handling, and fixed monthly music needed are modeled together.
 - The retirement tab now only projects through the chosen retirement target month instead of continuing an implied work life far beyond the target age, and the target-age input is constrained so it cannot fall below current age.
 - The local app server now serves HTML/CSS/JS/JSON with no-cache headers to reduce stale-browser issues while iterating on the app locally.
+- The app copy is being cleaned up toward production-quality German text, including real umlauts in the visible UI instead of `ae/oe/ue` placeholders.
+- The app surface has started moving toward a cleaner Apple-like UI direction: brighter palette, lighter cards, calmer typography, and a less tool-heavy overall layout.
+- The retirement UI no longer uses sliders; it now relies on plain numeric inputs because the slider-based interactions were unstable in real use.
+- The retirement planner no longer recalculates live on every keystroke. Users now adjust values and explicitly apply them with a `Werte übernehmen` button.
+- The retirement planner now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target retirement age` show an in-app error box instead of breaking the page.
+- The heavy retirement calculations are now lazy-initialized only when the `Rente` tab is opened, which improves the perceived performance of the main app shell and month workflow.
 
 ## Immediate Next Step
 
