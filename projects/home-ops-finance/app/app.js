@@ -65,6 +65,10 @@ function quarterLabel(monthKey) {
   return `Q${Math.floor((month - 1) / 3) + 1} ${monthKey.slice(0, 4)}`;
 }
 
+function roundCurrency(value) {
+  return Math.round(value * 100) / 100;
+}
+
 function showStatus(title, detail = "", tone = "success") {
   const bar = document.getElementById("appStatusBar");
   if (!bar) return;
@@ -1399,26 +1403,16 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   const summary = document.getElementById("monthReviewSummary");
   if (summary) {
+    const variableExpensesTotal = roundCurrency(
+      (review.row.baselineVariableAmount ?? 0) + (review.row.importedExpenseAmount ?? 0),
+    );
     const entries = [
       ["Monat", `${review.row.monthKey} · Stand Monatsende`],
-      ["Planmodus", planProfileLabel(review.row.baselineProfile)],
-      ["Workbook-Anker ab", review.row.baselineAnchorMonthKey],
-      ["Frei aus Gehalt", euro.format(review.row.baselineAvailableAmount)],
-      ["Frei vor Ausgaben", euro.format(review.row.monthAvailableBeforeExpensesAmount)],
-      ["Frei laut Workbook", euro.format(review.row.baselineAnchorAvailableAmount)],
-      ["Abweichung zum Workbook", euro.format(review.row.baselineAnchorDeltaAmount)],
-      ["Musik brutto", euro.format(review.row.musicIncomeAmount)],
-      ["Musik für Steuer/Rücklage", euro.format(review.row.importedIncomeReserveAmount)],
-      ["Musik frei verfügbar", euro.format(review.row.importedIncomeAvailableAmount)],
-      ["Musik in Cash-Rücklage", euro.format(review.row.musicAllocationToSafetyAmount)],
-      ["Musik ins Investment", euro.format(review.row.musicAllocationToInvestmentAmount)],
-      ["Cash-Rücklage Start", review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-"],
+      ["Fixe Ausgaben", euro.format(review.row.baselineFixedAmount)],
+      ["Variable Ausgaben", euro.format(variableExpensesTotal)],
       ["Cash-Rücklage Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
-      ["Investment Start", review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-"],
       ["Investment Ende", review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-"],
       ["Gesamtvermögen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
-      ["Importierte Ausgaben", euro.format(review.row.importedExpenseAmount)],
-      ["Monatssaldo", euro.format(review.row.netAfterImportedFlows)],
     ];
 
     summary.innerHTML = entries
