@@ -61,6 +61,14 @@ interface MusicTaxSettingState {
   isActive?: boolean;
 }
 
+interface ForecastSettingsState {
+  safetyThreshold?: number;
+  musicThreshold?: number;
+  notes?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+}
+
 interface SalarySettingState {
   netSalaryAmount: number;
   effectiveFrom: string;
@@ -74,6 +82,7 @@ type ReconciliationState = Record<string, ReconciliationMonthState>;
 type BaselineOverrideCollection = BaselineOverrideState[];
 type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
 type MusicTaxSetting = MusicTaxSettingState | null;
+type ForecastSettings = ForecastSettingsState | null;
 type SalarySettingCollection = SalarySettingState[];
 
 function readJsonFile<T>(path: string, fallback: T): T {
@@ -182,6 +191,77 @@ function applySalarySettingsToBaselines(
   return adjusted.sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
 }
 
+function applyForecastSettings(
+  draft: ImportDraft,
+  forecastSettings: ForecastSettings = null,
+): Pick<ImportDraft, "forecastAssumptions" | "wealthBuckets"> {
+  if (!forecastSettings || forecastSettings.isActive === false) {
+    return {
+      forecastAssumptions: draft.forecastAssumptions,
+      wealthBuckets: draft.wealthBuckets,
+    };
+  }
+
+  const overrides = new Map<string, number>();
+  if (typeof forecastSettings.safetyThreshold === "number" && Number.isFinite(forecastSettings.safetyThreshold)) {
+    overrides.set("safety_threshold", forecastSettings.safetyThreshold);
+  }
+  if (typeof forecastSettings.musicThreshold === "number" && Number.isFinite(forecastSettings.musicThreshold)) {
+    overrides.set("music_threshold", forecastSettings.musicThreshold);
+  }
+
+  if (overrides.size === 0) {
+    return {
+      forecastAssumptions: draft.forecastAssumptions,
+      wealthBuckets: draft.wealthBuckets,
+    };
+  }
+
+  const forecastAssumptions = draft.forecastAssumptions.map((entry) =>
+    overrides.has(entry.key)
+      ? {
+          ...entry,
+          value: overrides.get(entry.key) ?? entry.value,
+          notes: mergeNotes(entry.notes, [
+            forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
+          ]),
+        }
+      : entry,
+  );
+
+  for (const [key, value] of overrides.entries()) {
+    if (forecastAssumptions.some((entry) => entry.key === key)) {
+      continue;
+    }
+
+    forecastAssumptions.push({
+      key,
+      value,
+      valueType: "number",
+      notes: mergeNotes(forecastSettings.notes, [
+        forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
+      ]),
+    });
+  }
+
+  const wealthBuckets = draft.wealthBuckets.map((bucket) =>
+    bucket.kind === "safety" && overrides.has("safety_threshold")
+      ? {
+          ...bucket,
+          targetAmount: overrides.get("safety_threshold"),
+          notes: mergeNotes(bucket.notes, [
+            forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
+          ]),
+        }
+      : bucket,
+  );
+
+  return {
+    forecastAssumptions,
+    wealthBuckets,
+  };
+}
+
 export function applyReviewState(
   draft: ImportDraft,
   mappings: MappingState,
@@ -189,6 +269,7 @@ export function applyReviewState(
   baselineOverrides: BaselineOverrideCollection = [],
   monthlyExpenseOverrides: MonthlyExpenseOverrideCollection = [],
   musicTaxSetting: MusicTaxSetting = null,
+  forecastSettings: ForecastSettings = null,
   salarySettings: SalarySettingCollection = [],
 ): ImportDraft {
   const expenseCategoryById = new Map(draft.expenseCategories.map((category) => [category.id, category]));
@@ -221,7 +302,8 @@ export function applyReviewState(
         entry.updatedAt ? `manual monthly expense ${entry.updatedAt}` : "manual monthly expense",
       ]),
     }));
-  const nextForecastAssumptions = draft.forecastAssumptions.map((entry) =>
+  const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
+  const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
     entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
       ? {
           ...entry,
@@ -299,6 +381,7 @@ export function applyReviewState(
   return {
     ...draft,
     forecastAssumptions: nextForecastAssumptions,
+    wealthBuckets: forecastSettingApplied.wealthBuckets,
     monthlyBaselines: applySalarySettingsToBaselines(draft.monthlyBaselines, salarySettings),
     baselineLineItems: [...draft.baselineLineItems, ...activeBaselineOverrides],
     incomeEntries: draft.incomeEntries.map((entry) => {
@@ -352,7 +435,8 @@ function main(): void {
   const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? financeDataPath("monthly-expense-overrides.json"));
   const outputPath = resolve(process.argv[7] ?? financeDataPath("import-draft-reviewed.json"));
   const musicTaxSettingsPath = resolve(process.argv[8] ?? financeDataPath("music-tax-settings.json"));
-  const salarySettingsPath = resolve(process.argv[9] ?? financeDataPath("salary-settings.json"));
+  const forecastSettingsPath = resolve(process.argv[9] ?? financeDataPath("forecast-settings.json"));
+  const salarySettingsPath = resolve(process.argv[10] ?? financeDataPath("salary-settings.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -365,6 +449,7 @@ function main(): void {
   const baselineOverrides = readJsonFile<BaselineOverrideCollection>(baselineOverridesPath, []);
   const monthlyExpenseOverrides = readJsonFile<MonthlyExpenseOverrideCollection>(monthlyExpenseOverridesPath, []);
   const musicTaxSetting = readJsonFile<MusicTaxSetting>(musicTaxSettingsPath, null);
+  const forecastSettings = readJsonFile<ForecastSettings>(forecastSettingsPath, null);
   const salarySettings = readJsonFile<SalarySettingCollection>(salarySettingsPath, []);
 
   const reviewedDraft = applyReviewState(
@@ -374,6 +459,7 @@ function main(): void {
     baselineOverrides,
     monthlyExpenseOverrides,
     musicTaxSetting,
+    forecastSettings,
     salarySettings,
   );
   writeFileSync(outputPath, JSON.stringify(reviewedDraft, null, 2) + "\n", "utf8");

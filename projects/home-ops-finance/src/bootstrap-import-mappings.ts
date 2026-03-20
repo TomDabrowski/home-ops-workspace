@@ -22,7 +22,10 @@ function defaultExpenseAccount(entry: ExpenseEntry): string {
     return "debt";
   }
   if (entry.expenseType === "annual_reserve") {
-    return "savings";
+    return "business";
+  }
+  if (entry.expenseCategoryId === "gear" || entry.expenseCategoryId === "tax") {
+    return "business";
   }
   return "giro";
 }
