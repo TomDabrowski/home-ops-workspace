@@ -2,16 +2,18 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
+import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
 
 const root = resolve(".");
 const appDir = join(root, "app");
-const dataDir = join(root, "data");
+ensureFinanceDataDir();
+const dataDir = financeDataDir();
 const distDir = join(root, "dist");
 const port = Number(process.env.PORT ?? 4310);
-const reconciliationStatePath = join(dataDir, "reconciliation-state.json");
-const importMappingsPath = join(dataDir, "import-mappings.json");
-const baselineOverridesPath = join(dataDir, "baseline-overrides.json");
-const monthlyExpenseOverridesPath = join(dataDir, "monthly-expense-overrides.json");
+const reconciliationStatePath = financeDataPath("reconciliation-state.json");
+const importMappingsPath = financeDataPath("import-mappings.json");
+const baselineOverridesPath = financeDataPath("baseline-overrides.json");
+const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
 
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -64,7 +66,7 @@ function refreshReviewedArtifacts(): void {
     stdio: "pipe",
   });
 
-  if (!existsSync(join(dataDir, "import-draft-reviewed.json"))) {
+  if (!existsSync(financeDataPath("import-draft-reviewed.json"))) {
     return;
   }
 
@@ -73,9 +75,9 @@ function refreshReviewedArtifacts(): void {
     [
       "--experimental-strip-types",
       "src/draft-report.ts",
-      "data/import-draft-reviewed.json",
-      "data/draft-report-reviewed.json",
-      "data/draft-report-reviewed.md",
+      financeDataPath("import-draft-reviewed.json"),
+      financeDataPath("draft-report-reviewed.json"),
+      financeDataPath("draft-report-reviewed.md"),
     ],
     {
       cwd: root,
@@ -88,9 +90,9 @@ function refreshReviewedArtifacts(): void {
     [
       "--experimental-strip-types",
       "src/monthly-engine.ts",
-      "data/import-draft-reviewed.json",
-      "data/monthly-plan-reviewed.json",
-      "data/monthly-plan-reviewed.md",
+      financeDataPath("import-draft-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.md"),
     ],
     {
       cwd: root,
@@ -103,8 +105,8 @@ function refreshReviewedArtifacts(): void {
     [
       "--experimental-strip-types",
       "src/build-dashboard.ts",
-      "data/draft-report-reviewed.json",
-      "data/monthly-plan-reviewed.json",
+      financeDataPath("draft-report-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.json"),
       "dist/dashboard-reviewed.html",
     ],
     {

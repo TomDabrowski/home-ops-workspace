@@ -11,6 +11,7 @@ import type {
   MonthlyBaseline,
   WealthBucket,
 } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 export interface MonthlyPlanRow {
   monthKey: string;
@@ -532,9 +533,10 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 }
 
 function main(): void {
-  const inputPath = resolve(process.argv[2] ?? "data/import-draft.json");
-  const outputJsonPath = resolve(process.argv[3] ?? "data/monthly-plan.json");
-  const outputMarkdownPath = resolve(process.argv[4] ?? "data/monthly-plan.md");
+  ensureFinanceDataDir();
+  const inputPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
+  const outputJsonPath = resolve(process.argv[3] ?? financeDataPath("monthly-plan.json"));
+  const outputMarkdownPath = resolve(process.argv[4] ?? financeDataPath("monthly-plan.md"));
 
   const draft = readDraft(inputPath);
   const anchor = draft.monthlyBaselines[0];

@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 interface DraftReport {
   workbookPath: string;
@@ -382,8 +383,9 @@ function buildHtml(draftReport: DraftReport, monthlyPlan: MonthlyPlanReport): st
 }
 
 function main(): void {
-  const draftReportPath = resolve(process.argv[2] ?? "data/draft-report.json");
-  const monthlyPlanPath = resolve(process.argv[3] ?? "data/monthly-plan.json");
+  ensureFinanceDataDir();
+  const draftReportPath = resolve(process.argv[2] ?? financeDataPath("draft-report.json"));
+  const monthlyPlanPath = resolve(process.argv[3] ?? financeDataPath("monthly-plan.json"));
   const outputPath = resolve(process.argv[4] ?? "dist/dashboard.html");
 
   const draftReport = readJson<DraftReport>(draftReportPath);

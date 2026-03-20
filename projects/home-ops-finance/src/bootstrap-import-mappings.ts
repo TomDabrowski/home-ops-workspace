@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { ImportDraft, ExpenseEntry, IncomeEntry } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 interface MappingStateEntry {
   categoryId: string;
@@ -62,8 +63,9 @@ function buildDefaultMappings(draft: ImportDraft, existing: MappingState): Mappi
 }
 
 function main(): void {
-  const draftPath = resolve(process.argv[2] ?? "data/import-draft.json");
-  const mappingPath = resolve(process.argv[3] ?? "data/import-mappings.json");
+  ensureFinanceDataDir();
+  const draftPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
+  const mappingPath = resolve(process.argv[3] ?? financeDataPath("import-mappings.json"));
 
   const draft = readJson<ImportDraft>(draftPath);
   const existing = readJson<MappingState>(mappingPath);

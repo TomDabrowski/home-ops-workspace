@@ -19,6 +19,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
 - `docs/import-mapping.md`: sheet-to-table migration plan
 - `data/sample-finance.json`: starter shape for real data later
+- `config.local.example.json`: local-only example for private workbook/data paths outside the repo
 - `src/workbook-importer.ts`: first workbook-to-draft importer scaffold
 - `src/types.ts`: target import and domain types
 - `TODO.md`: short-term build sequence
@@ -40,6 +41,21 @@ npm run plan:reviewed
 npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/dashboard.html
 npm run serve:app
 ```
+
+## External Private Data
+
+Private workbook and generated JSON data can live outside the repo checkout via a local-only `config.local.json` next to `package.json`.
+
+Example:
+
+```json
+{
+  "dataDir": "/path/to/private/home-ops-finance/data",
+  "workbookPath": "/path/to/private/finance-workbook.xlsx"
+}
+```
+
+The file is gitignored. You can point it to iCloud, a NAS mount, or another private external path.
 
 The current importer draft already extracts:
 
@@ -74,7 +90,7 @@ Run `npm run serve:app` and open `http://localhost:4310`.
 The local app shell currently serves:
 
 - `/`: browser entry point
-- `/data/*`: generated draft and monthly plan JSON
+- `/data/*`: generated draft and monthly plan JSON from the active private data directory
 - `/dist/*`: generated static dashboard output
 
 The browser review currently supports:
