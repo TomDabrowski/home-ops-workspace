@@ -914,7 +914,7 @@ function baselineCategoryLabel(category) {
   const labels = {
     fixed: "Fixkosten",
     variable: "Variable Basis",
-    annual_reserve: "Planrücklage",
+    annual_reserve: "Jahreskostenblock",
     savings: "Geplantes Investment",
   };
   return labels[category] ?? category;
@@ -2248,6 +2248,7 @@ function renderMusicTaxPlanner(importDraft) {
 
 function renderFixedCostPlanner(importDraft) {
   const labelField = document.getElementById("fixedCostLabel");
+  const categoryField = document.getElementById("fixedCostCategory");
   const amountField = document.getElementById("fixedCostAmount");
   const effectiveFromField = document.getElementById("fixedCostEffectiveFrom");
   const notesField = document.getElementById("fixedCostNotes");
@@ -2255,7 +2256,7 @@ function renderFixedCostPlanner(importDraft) {
   const listTarget = document.getElementById("fixedCostList");
   const metaTarget = document.getElementById("fixedCostMeta");
 
-  if (!labelField || !amountField || !effectiveFromField || !notesField || !saveButton || !listTarget || !metaTarget) {
+  if (!labelField || !categoryField || !amountField || !effectiveFromField || !notesField || !saveButton || !listTarget || !metaTarget) {
     return;
   }
 
@@ -2267,6 +2268,8 @@ function renderFixedCostPlanner(importDraft) {
 
   function resetForm() {
     labelField.value = "";
+    categoryField.value = "fixed";
+    categoryField.disabled = false;
     amountField.value = "";
     effectiveFromField.value = suggestedMonth;
     notesField.value = "";
@@ -2285,7 +2288,7 @@ function renderFixedCostPlanner(importDraft) {
           <div class="mapping-card-head">
             <div>
               <strong>${entry.label}</strong>
-              <p>Ab ${entry.effectiveFrom} · ${euro.format(entry.amount)} pro Monat · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
+              <p>${baselineCategoryLabel(entry.category ?? "fixed")} · ab ${entry.effectiveFrom} · ${euro.format(entry.amount)} pro Monat · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-fixed-cost-edit="${entry.id}">Bearbeiten</button>
@@ -2302,8 +2305,8 @@ function renderFixedCostPlanner(importDraft) {
 
   const persistenceLabel = baselinePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = overrides.length > 0
-    ? `${overrides.length} Zukunfts-Fixkosten gespeichert · Speicherort: ${persistenceLabel}`
-    : `Noch keine zusätzlichen Fixkosten gespeichert · Speicherort: ${persistenceLabel}`;
+    ? `${overrides.length} Grundplan-Änderungen gespeichert · Speicherort: ${persistenceLabel}`
+    : `Noch keine zusätzlichen Grundplan-Änderungen gespeichert · Speicherort: ${persistenceLabel}`;
 
   const suggestedMonth =
     importDraft.monthlyBaselines[importDraft.monthlyBaselines.length - 1]?.monthKey ?? reviewFocusMonthKey;
@@ -2321,6 +2324,7 @@ function renderFixedCostPlanner(importDraft) {
       saveButton.dataset.editingId = entry.id;
       saveButton.dataset.sourceLineItemId = entry.sourceLineItemId ?? "";
       labelField.value = entry.label ?? "";
+      categoryField.value = entry.category ?? "fixed";
       amountField.value = String(entry.amount ?? "");
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
       notesField.value = entry.notes ?? "";
@@ -2356,6 +2360,7 @@ function renderFixedCostPlanner(importDraft) {
 
   saveButton.onclick = async () => {
     const label = labelField.value.trim();
+    const category = categoryField.value || "fixed";
     const amount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value;
     const notes = notesField.value.trim();
@@ -2367,8 +2372,8 @@ function renderFixedCostPlanner(importDraft) {
 
     const isEditing = Boolean(editingId || sourceLineItemId);
     if (!confirmAction(isEditing
-      ? `Fixkosten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
-      : `Neue Fixkosten "${label}" ab ${effectiveFrom} wirklich speichern?`)) {
+      ? `Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
+      : `Neuen Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich speichern?`)) {
       return;
     }
 
@@ -2380,6 +2385,7 @@ function renderFixedCostPlanner(importDraft) {
                 label,
                 amount,
                 effectiveFrom,
+                category,
                 sourceLineItemId: sourceLineItemId || entry.sourceLineItemId,
                 notes,
                 isActive: true,
@@ -2394,8 +2400,8 @@ function renderFixedCostPlanner(importDraft) {
             label,
             amount,
             effectiveFrom,
+            category,
             sourceLineItemId: sourceLineItemId || undefined,
-            category: "fixed",
             cadence: "monthly",
             isActive: true,
             notes,
@@ -2406,7 +2412,7 @@ function renderFixedCostPlanner(importDraft) {
     const result = await saveBaselineOverrides(nextOverrides);
     resetForm();
     await refreshFinanceView({
-      title: isEditing ? "Fixkosten aktualisiert" : "Fixkosten gespeichert",
+      title: isEditing ? "Grundplan-Posten aktualisiert" : "Grundplan-Posten gespeichert",
       detail: statusDetailForMode(result.mode),
       tone: result.mode === "project" ? "success" : "warn",
     });
@@ -2429,11 +2435,13 @@ function renderFixedCostPlanner(importDraft) {
         saveButton.dataset.editingId = "";
         saveButton.dataset.sourceLineItemId = source.id;
         labelField.value = source.label ?? "";
+        categoryField.value = source.category ?? "fixed";
         amountField.value = String(source.amount ?? "");
         effectiveFromField.value = suggestedMonth;
         notesField.value = `Ändert bestehenden Posten ab ${suggestedMonth}.`;
         labelField.readOnly = true;
-        saveButton.textContent = "Fixkosten-Override speichern";
+        categoryField.disabled = true;
+        saveButton.textContent = "Grundplan-Override speichern";
         metaTarget.textContent = `Bearbeitungsmodus aktiv für bestehenden Posten: ${source.label}`;
         labelField.scrollIntoView({ behavior: "smooth", block: "center" });
         amountField.focus();
@@ -2457,7 +2465,7 @@ function renderFixedCostPlanner(importDraft) {
             amount: 0,
             effectiveFrom: suggestedMonth,
             sourceLineItemId: source.id,
-            category: "fixed",
+            category: source.category ?? "fixed",
             cadence: "monthly",
             isActive: true,
             notes: `Beendet bestehenden Posten ab ${suggestedMonth}.`,
@@ -2468,7 +2476,7 @@ function renderFixedCostPlanner(importDraft) {
         const result = await saveBaselineOverrides(nextOverrides);
         resetForm();
         await refreshFinanceView({
-          title: "Fixkosten-Ende gespeichert",
+          title: "Grundplan-Posten beendet",
           detail: statusDetailForMode(result.mode),
           tone: result.mode === "project" ? "success" : "warn",
         });
@@ -2858,7 +2866,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
       ["Nettogehalt", euro.format(baseline.netSalaryAmount)],
       ["Fixkosten", euro.format(baseline.fixedExpensesAmount)],
       ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
-      ["Planrücklage aus Workbook", euro.format(baseline.annualReserveAmount)],
+      ["Jahreskostenblock aus Workbook", euro.format(baseline.annualReserveAmount)],
       ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
       ["Verfügbar laut Workbook", euro.format(baseline.availableBeforeIrregulars)],
       ["Neu berechnet", euro.format(baseline.computedAvailableFromParts)],
@@ -2900,14 +2908,10 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
       <td>${row.label}</td>
       <td>${baselineCategoryLabel(row.category)}</td>
       <td>${euro.format(row.amount)}</td>
-      <td>${
-        row.category === "fixed"
-          ? `<div class="filter-group">
-              <button class="pill" type="button" data-baseline-edit="${row.id}">Ab Datum ändern</button>
-              <button class="pill" type="button" data-baseline-stop="${row.id}">Ab Datum beenden</button>
-            </div>`
-          : "-"
-      }</td>
+      <td><div class="filter-group">
+        <button class="pill" type="button" data-baseline-edit="${row.id}">Ab Datum ändern</button>
+        <button class="pill" type="button" data-baseline-stop="${row.id}">Ab Datum beenden</button>
+      </div></td>
     </tr>
   `);
   renderFixedCostPlanner(importDraft);

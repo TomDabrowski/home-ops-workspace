@@ -32,7 +32,7 @@ interface BaselineOverrideState {
   amount: number;
   effectiveFrom: string;
   sourceLineItemId?: string;
-  category?: "fixed";
+  category?: "fixed" | "variable" | "annual_reserve" | "savings";
   cadence?: "monthly";
   isActive?: boolean;
   notes?: string;
