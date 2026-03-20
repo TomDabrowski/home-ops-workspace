@@ -9,6 +9,7 @@ const retirementPlannerStorageKey = "home-ops-finance-retirement-planner-v1";
 const reconciliationStorageKey = "home-ops-finance-reconciliation-v1";
 const mappingStorageKey = "home-ops-finance-entry-mapping-v1";
 const baselineOverridesStorageKey = "home-ops-finance-baseline-overrides-v1";
+const monthlyExpenseOverridesStorageKey = "home-ops-finance-monthly-expense-overrides-v1";
 const fallbackAccountOptions = [
   { id: "giro", label: "Girokonto" },
   { id: "cash", label: "Bargeld / Alltag" },
@@ -20,9 +21,11 @@ const fallbackAccountOptions = [
 let reconciliationStateCache = {};
 let mappingStateCache = {};
 let baselineOverridesCache = [];
+let monthlyExpenseOverridesCache = [];
 let reconciliationPersistence = "browser";
 let mappingPersistence = "browser";
 let baselinePersistence = "browser";
+let monthlyExpensePersistence = "browser";
 let accountOptions = fallbackAccountOptions;
 
 function defaultPlannerSettings(monthlyPlan) {
@@ -97,6 +100,10 @@ function renderEmptyRow(targetId, colspan, message) {
 
 function makeMoneyCell(value) {
   return `<span class="${classForValue(value)}">${euro.format(value)}</span>`;
+}
+
+function planProfileLabel(value) {
+  return value === "forecast_investing" ? "Investment-Plan" : "Liquiditaets-Plan";
 }
 
 function formatMonthLabel(monthKey) {
@@ -461,6 +468,15 @@ function writeBaselineOverrides(state) {
   window.localStorage.setItem(baselineOverridesStorageKey, JSON.stringify(state));
 }
 
+function readMonthlyExpenseOverrides() {
+  return monthlyExpenseOverridesCache;
+}
+
+function writeMonthlyExpenseOverrides(state) {
+  monthlyExpenseOverridesCache = state;
+  window.localStorage.setItem(monthlyExpenseOverridesStorageKey, JSON.stringify(state));
+}
+
 async function loadStateFromApi(path, storageKey) {
   const response = await fetch(path);
   if (!response.ok) {
@@ -506,6 +522,16 @@ async function initializeWorkflowState() {
     baselineOverridesCache = Array.isArray(fallback) ? fallback : [];
     baselinePersistence = "browser";
   }
+
+  try {
+    const payload = await loadStateFromApi("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey);
+    monthlyExpenseOverridesCache = Array.isArray(payload) ? payload : [];
+    monthlyExpensePersistence = "project";
+  } catch {
+    const fallback = loadStateFromLocalStorage(monthlyExpenseOverridesStorageKey);
+    monthlyExpenseOverridesCache = Array.isArray(fallback) ? fallback : [];
+    monthlyExpensePersistence = "browser";
+  }
 }
 
 async function persistState(path, storageKey, state, modeSetter) {
@@ -534,16 +560,16 @@ async function persistState(path, storageKey, state, modeSetter) {
 
 function suggestionForSignal(signal) {
   if (signal.code === "baseline_anchor_mismatch") {
-    return "Anchor-Werte und aktive Baseline-Posten gegen den Workbook-Monat pruefen.";
+    return "Anchor-Werte und aktive Grundplan-Posten gegen den Workbook-Monat pruefen.";
   }
   if (signal.code === "baseline_deficit") {
-    return "Baseline-Zuschnitt pruefen: Sparen, variable Basis und Fixkosten wirken fuer diesen Monat zu hoch.";
+    return "Grundplan pruefen: Basis-Investment, variable Basis und Fixkosten wirken fuer diesen Monat zu hoch.";
   }
   if (signal.code === "monthly_deficit") {
     return "Einzelne importierte Bewegungen und fehlende Zufluesse im Defizitmonat gegen das Workbook abgleichen.";
   }
   if (signal.code === "expense_over_baseline_available") {
-    return "Ausgaben pruefen und entscheiden, ob sie in die Baseline, Ruecklage oder nur als Einzelereignis gehoeren.";
+    return "Ausgaben pruefen und entscheiden, ob sie in den Grundplan, die Ruecklage oder nur als Einzelereignis gehoeren.";
   }
   if (signal.code === "expense_spike") {
     return "Ausgabenspitze auf Sonderfall, falsche Zuordnung oder fehlende Gegenbuchung pruefen.";
@@ -715,13 +741,12 @@ function renderValidationSignals(draftReport, monthlyPlan) {
   const negativeMonths = monthlyPlan.rows.filter((row) => row.netAfterImportedFlows < 0);
   const suspiciousMonths = monthlyPlan.rows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
   const futureRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
-  const latestDebt = draftReport.latestDebtBalances.reduce((sum, row) => sum + row.balance, 0);
 
   if (Math.abs(delta) > 0.01) {
     signals.push({
       level: "warn",
-      title: "Baseline-Anker weicht vom Rechenweg ab",
-      body: `Im Workbook liegt aktuell eine Differenz von ${euro.format(delta)} zwischen Ankerwert und neu berechneter Baseline. Das ist genau die Art Stelle, die wir in der App sichtbar halten wollen.`,
+      title: "Grundplan-Anker weicht vom Rechenweg ab",
+      body: `Im Workbook liegt aktuell eine Differenz von ${euro.format(delta)} zwischen Ankerwert und neu berechnetem Grundplan. Das ist genau die Art Stelle, die wir in der App sichtbar halten wollen.`,
     });
   }
 
@@ -754,12 +779,6 @@ function renderValidationSignals(draftReport, monthlyPlan) {
       body: `${positiveFuture} von ${futureRows.length} Zukunftsmonaten liegen in der aktuellen Rechnung nicht im Minus. Das hilft uns spaeter beim Abgleich gegen deine Prognose-Logik.`,
     });
   }
-
-  signals.push({
-    level: latestDebt > 0 ? "info" : "warn",
-    title: "Letzte bekannte Schuldenstaende importiert",
-    body: `Aktuell sind ${draftReport.latestDebtBalances.length} Schuldenkonten mit zusammen ${euro.format(latestDebt)} im Report sichtbar.`,
-  });
 
   target.innerHTML = signals
     .map(
@@ -827,7 +846,7 @@ function renderPriorityMonths(monthlyPlan) {
       <article class="priority-card">
         <div class="priority-meta">
           <span class="priority-pill warn">Prioritaet ${index + 1}</span>
-          <span class="priority-pill">${row.baselineProfile === "historical_liquidity" ? "Historisch" : "Forecast"}</span>
+          <span class="priority-pill">${planProfileLabel(row.baselineProfile)}</span>
         </div>
         <h3>${row.monthKey}</h3>
         <p>${row.warningCount} Warnhinweise · Ergebnis ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
@@ -848,9 +867,20 @@ function renderPriorityMonths(monthlyPlan) {
   }
 }
 
+function openMonthReview(monthlyPlan, monthKey) {
+  const monthSelect = document.getElementById("monthReviewSelect");
+  if (!(monthSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  monthSelect.value = monthKey;
+  renderMonthReview(window.__importDraft, monthlyPlan, monthKey);
+}
+
 function bindMonthFilters(monthlyPlan) {
   const buttons = [...document.querySelectorAll("#monthFilters .pill")];
-  const allRows = monthlyPlan.rows.slice(-36);
+  const allRows = monthlyPlan.rows;
+  const tableTarget = document.getElementById("monthlyRows");
 
   function render(filter) {
     const rows = allRows.filter((row) => {
@@ -862,15 +892,16 @@ function bindMonthFilters(monthlyPlan) {
     });
 
     renderRows("monthlyRows", rows, (row) => `
-      <tr>
-        <td>${row.monthKey}</td>
-        <td>${row.baselineProfile}</td>
+      <tr data-month-open="${row.monthKey}">
+        <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.monthKey}</button></td>
+        <td>${planProfileLabel(row.baselineProfile)}</td>
         <td>${euro.format(row.baselineAvailableAmount)}</td>
         <td>${euro.format(row.musicIncomeAmount)}</td>
         <td>${euro.format(row.importedIncomeAvailableAmount)}</td>
         <td>${euro.format(row.importedExpenseAmount)}</td>
+        <td>${row.projectedWealthEndAmount !== undefined ? euro.format(row.projectedWealthEndAmount) : "-"}</td>
         <td>${makeMoneyCell(row.netAfterImportedFlows)}</td>
-        <td>${row.consistencySignals.length}</td>
+        <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.consistencySignals.length} oeffnen</button></td>
       </tr>
     `);
   }
@@ -884,6 +915,28 @@ function bindMonthFilters(monthlyPlan) {
   }
 
   render("focus");
+
+  if (tableTarget) {
+    tableTarget.onclick = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const trigger = target.closest("[data-month-open]");
+      if (!(trigger instanceof HTMLElement)) {
+        return;
+      }
+
+      const monthKey = trigger.getAttribute("data-month-open");
+      if (!monthKey) {
+        return;
+      }
+
+      openMonthReview(monthlyPlan, monthKey);
+      document.getElementById("monthReviewSummary")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  }
 }
 
 function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
@@ -905,6 +958,135 @@ function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
   };
 }
 
+function manualExpensesForMonth(monthKey) {
+  return readMonthlyExpenseOverrides()
+    .filter((entry) => entry.monthKey === monthKey && entry.isActive !== false)
+    .sort((left, right) => left.entryDate.localeCompare(right.entryDate));
+}
+
+function renderMonthlyExpenseEditor(importDraft, monthKey) {
+  const descriptionField = document.getElementById("monthlyExpenseDescription");
+  const amountField = document.getElementById("monthlyExpenseAmount");
+  const dateField = document.getElementById("monthlyExpenseDate");
+  const categoryField = document.getElementById("monthlyExpenseCategory");
+  const accountField = document.getElementById("monthlyExpenseAccount");
+  const notesField = document.getElementById("monthlyExpenseNotes");
+  const metaTarget = document.getElementById("monthlyExpenseMeta");
+  const saveButton = document.getElementById("saveMonthlyExpenseButton");
+  const listTarget = document.getElementById("monthlyExpenseList");
+
+  if (
+    !descriptionField ||
+    !amountField ||
+    !dateField ||
+    !categoryField ||
+    !accountField ||
+    !notesField ||
+    !metaTarget ||
+    !saveButton ||
+    !listTarget
+  ) {
+    return;
+  }
+
+  const items = manualExpensesForMonth(monthKey);
+  categoryField.innerHTML = optionMarkup(buildCategoryOptions(importDraft.expenseCategories), categoryField.value || "other");
+  accountField.innerHTML = optionMarkup(accountOptions, accountField.value || "giro");
+  if (!dateField.value) {
+    dateField.value = `${monthKey}-01`;
+  }
+
+  if (items.length === 0) {
+    listTarget.innerHTML = `<p class="empty-state">Noch keine manuellen Ausgaben fuer diesen Monat.</p>`;
+  } else {
+    listTarget.innerHTML = items
+      .map((entry) => `
+        <div class="mapping-card">
+          <div class="mapping-card-head">
+            <div>
+              <strong>${entry.description}</strong>
+              <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
+            </div>
+            <div class="filter-group">
+              <button class="pill" type="button" data-monthly-expense-edit="${entry.id}">Bearbeiten</button>
+              <button class="pill" type="button" data-monthly-expense-delete="${entry.id}">Loeschen</button>
+            </div>
+          </div>
+          <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
+        </div>
+      `)
+      .join("");
+  }
+
+  const persistenceLabel = monthlyExpensePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
+  metaTarget.textContent = items.length > 0
+    ? `${items.length} manuelle Ausgaben im Monat · Speicherort: ${persistenceLabel}`
+    : `Noch keine manuelle Monatsausgabe gespeichert · Speicherort: ${persistenceLabel}`;
+
+  saveButton.onclick = async () => {
+    const editingId = saveButton.dataset.editingId ?? "";
+    const description = descriptionField.value.trim();
+    const amount = Number(amountField.value);
+    const entryDate = dateField.value || `${monthKey}-01`;
+    const notes = notesField.value.trim();
+
+    if (!description || !Number.isFinite(amount) || amount <= 0) {
+      metaTarget.textContent = "Bitte Beschreibung und positiven Betrag eintragen.";
+      return;
+    }
+
+    const nextEntry = {
+      id: editingId || `manual-expense-${Date.now()}`,
+      monthKey,
+      entryDate,
+      description,
+      amount,
+      expenseCategoryId: categoryField.value || "other",
+      accountId: accountField.value || "giro",
+      expenseType: "variable",
+      isActive: true,
+      notes,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const nextState = editingId
+      ? readMonthlyExpenseOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
+      : [...readMonthlyExpenseOverrides(), nextEntry];
+
+    await saveMonthlyExpenseOverrides(nextState);
+    window.location.reload();
+  };
+
+  for (const button of listTarget.querySelectorAll("[data-monthly-expense-edit]")) {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-monthly-expense-edit");
+      const entry = readMonthlyExpenseOverrides().find((item) => item.id === id);
+      if (!entry) return;
+      saveButton.dataset.editingId = entry.id;
+      saveButton.textContent = "Monatsausgabe aktualisieren";
+      descriptionField.value = entry.description;
+      amountField.value = String(entry.amount);
+      dateField.value = entry.entryDate;
+      categoryField.value = entry.expenseCategoryId || "other";
+      accountField.value = entry.accountId || "giro";
+      notesField.value = entry.notes || "";
+      metaTarget.textContent = `Bearbeitungsmodus aktiv fuer ${entry.description}`;
+    });
+  }
+
+  for (const button of listTarget.querySelectorAll("[data-monthly-expense-delete]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-monthly-expense-delete");
+      if (!id) return;
+      const nextState = readMonthlyExpenseOverrides().map((entry) =>
+        entry.id === id ? { ...entry, isActive: false, updatedAt: new Date().toISOString() } : entry,
+      );
+      await saveMonthlyExpenseOverrides(nextState);
+      window.location.reload();
+    });
+  }
+}
+
 function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const review = buildMonthReviewData(importDraft, monthlyPlan, monthKey);
   if (!review) return;
@@ -912,11 +1094,11 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const summary = document.getElementById("monthReviewSummary");
   if (summary) {
     const entries = [
-      ["Monat", review.row.monthKey],
-      ["Profil", review.row.baselineProfile],
-      ["Anchor ab", review.row.baselineAnchorMonthKey],
-      ["Baseline verfuegbar", euro.format(review.row.baselineAvailableAmount)],
-      ["Anchor verfuegbar", euro.format(review.row.baselineAnchorAvailableAmount)],
+      ["Monat", `${review.row.monthKey} · Stand Monatsende`],
+      ["Profil", planProfileLabel(review.row.baselineProfile)],
+      ["Grundplan ab", review.row.baselineAnchorMonthKey],
+      ["Grundplan frei", euro.format(review.row.baselineAvailableAmount)],
+      ["Anchor frei", euro.format(review.row.baselineAnchorAvailableAmount)],
       ["Anchor-Differenz", euro.format(review.row.baselineAnchorDeltaAmount)],
       ["Musik brutto", euro.format(review.row.musicIncomeAmount)],
       ["Musik Ruecklage", euro.format(review.row.importedIncomeReserveAmount)],
@@ -927,6 +1109,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       ["Safety Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
       ["Investment Start", review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-"],
       ["Investment Ende", review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-"],
+      ["Gesamtvermoegen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
       ["Importierte Ausgaben", euro.format(review.row.importedExpenseAmount)],
       ["Ergebnis", euro.format(review.row.netAfterImportedFlows)],
     ];
@@ -978,6 +1161,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   renderReconciliation(review.row);
   renderEntryMappings(importDraft, review);
+  renderMonthlyExpenseEditor(importDraft, monthKey);
 }
 
 function renderReconciliation(row) {
@@ -1162,8 +1346,14 @@ function bindMonthReview(importDraft, monthlyPlan) {
     .map((monthKey) => `<option value="${monthKey}">${monthKey}</option>`)
     .join("");
 
+  const currentMonthKey = new Date().toLocaleDateString("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }).slice(0, 7);
   const initialMonth =
-    [...monthKeys].reverse().find((monthKey) => monthKey >= reviewFocusMonthKey) ??
+    monthKeys.find((monthKey) => monthKey === currentMonthKey) ??
+    monthKeys.find((monthKey) => monthKey >= reviewFocusMonthKey) ??
     monthKeys.at(-1);
   if (initialMonth) {
     select.value = initialMonth;
@@ -1171,7 +1361,7 @@ function bindMonthReview(importDraft, monthlyPlan) {
   }
 
   select.addEventListener("change", () => {
-    renderMonthReview(importDraft, monthlyPlan, select.value);
+    openMonthReview(monthlyPlan, select.value);
   });
 }
 
@@ -1179,6 +1369,13 @@ async function saveBaselineOverrides(state) {
   writeBaselineOverrides(state);
   await persistState("/api/baseline-overrides", baselineOverridesStorageKey, state, (mode) => {
     baselinePersistence = mode;
+  });
+}
+
+async function saveMonthlyExpenseOverrides(state) {
+  writeMonthlyExpenseOverrides(state);
+  await persistState("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey, state, (mode) => {
+    monthlyExpensePersistence = mode;
   });
 }
 
@@ -1712,7 +1909,6 @@ async function load() {
   setText("netFlow", euro.format(draftReport.totals.netFlow));
   setText("incomeTotal", euro.format(draftReport.totals.incomeTotal));
   setText("expenseTotal", euro.format(draftReport.totals.expenseTotal));
-  setText("debtSnapshotCount", String(draftReport.totals.debtSnapshotCount));
 
   const baseline = draftReport.baselineSummary;
   const baselineSummary = document.getElementById("baselineSummary");
@@ -1723,7 +1919,7 @@ async function load() {
       ["Fixkosten", euro.format(baseline.fixedExpensesAmount)],
       ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
       ["Jaehrliche Ruecklage", euro.format(baseline.annualReserveAmount)],
-      ["Sparen", euro.format(baseline.plannedSavingsAmount)],
+      ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
       ["Verfuegbar laut Workbook", euro.format(baseline.availableBeforeIrregulars)],
       ["Neu berechnet", euro.format(baseline.computedAvailableFromParts)],
       ["Differenz", euro.format(baseline.deltaToAnchor)],
@@ -1775,14 +1971,6 @@ async function load() {
     </tr>
   `);
   renderFixedCostPlanner(importDraft);
-
-  renderRows("debtRows", draftReport.latestDebtBalances, (row) => `
-    <tr>
-      <td>${row.debtAccountId}</td>
-      <td>${euro.format(row.balance)}</td>
-      <td>${row.snapshotLabel}</td>
-    </tr>
-  `);
 
   renderValidationSignals(draftReport, monthlyPlan);
   renderMonthHealth(monthlyPlan);
