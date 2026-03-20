@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { execFileSync } from "node:child_process";
-import { readFileSync, existsSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
 
@@ -14,6 +14,7 @@ const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
 const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
+const activityLogPath = financeDataPath("activity-log.log");
 
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -60,6 +61,28 @@ function writeJsonFile(path: string, payload: unknown): void {
   writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
 }
 
+function describePayload(payload: unknown): string {
+  if (Array.isArray(payload)) {
+    return `${payload.length} Einträge`;
+  }
+
+  if (payload && typeof payload === "object") {
+    return `${Object.keys(payload).length} Schlüssel`;
+  }
+
+  return typeof payload;
+}
+
+function appendActivityLog(event: string, details: Record<string, string | number> = {}): void {
+  const lines = [`[${new Date().toISOString()}] ${event}`];
+
+  for (const [key, value] of Object.entries(details)) {
+    lines.push(`  ${key}: ${String(value)}`);
+  }
+
+  appendFileSync(activityLogPath, lines.join("\n") + "\n", "utf8");
+}
+
 function refreshReviewedArtifacts(): void {
   execFileSync(process.execPath, ["--experimental-strip-types", "src/apply-review-state.ts"], {
     cwd: root,
@@ -67,6 +90,9 @@ function refreshReviewedArtifacts(): void {
   });
 
   if (!existsSync(financeDataPath("import-draft-reviewed.json"))) {
+    appendActivityLog("reviewed-artifacts übersprungen", {
+      grund: "kein reviewed import draft vorhanden",
+    });
     return;
   }
 
@@ -114,6 +140,10 @@ function refreshReviewedArtifacts(): void {
       stdio: "pipe",
     },
   );
+
+  appendActivityLog("reviewed-artifacts aktualisiert", {
+    quelle: financeDataPath("import-draft-reviewed.json"),
+  });
 }
 
 async function readRequestJson(req: IncomingMessage): Promise<unknown> {
@@ -140,10 +170,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST") {
-      const payload = await readRequestJson(req);
-      writeJsonFile(reconciliationStatePath, payload);
-      refreshReviewedArtifacts();
-      return sendJson(res, 200, { ok: true });
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(reconciliationStatePath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("reconciliation gespeichert", {
+          datei: reconciliationStatePath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("reconciliation fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "reconciliation_save_failed" });
+      }
     }
   }
 
@@ -153,10 +194,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST") {
-      const payload = await readRequestJson(req);
-      writeJsonFile(importMappingsPath, payload);
-      refreshReviewedArtifacts();
-      return sendJson(res, 200, { ok: true });
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(importMappingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("mappings gespeichert", {
+          datei: importMappingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("mappings fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "mapping_save_failed" });
+      }
     }
   }
 
@@ -166,10 +218,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST") {
-      const payload = await readRequestJson(req);
-      writeJsonFile(baselineOverridesPath, payload);
-      refreshReviewedArtifacts();
-      return sendJson(res, 200, { ok: true });
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(baselineOverridesPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("fixkosten gespeichert", {
+          datei: baselineOverridesPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("fixkosten fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "baseline_save_failed" });
+      }
     }
   }
 
@@ -179,10 +242,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "POST") {
-      const payload = await readRequestJson(req);
-      writeJsonFile(monthlyExpenseOverridesPath, payload);
-      refreshReviewedArtifacts();
-      return sendJson(res, 200, { ok: true });
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(monthlyExpenseOverridesPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("monatsausgaben gespeichert", {
+          datei: monthlyExpenseOverridesPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("monatsausgaben fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "monthly_expense_save_failed" });
+      }
     }
   }
 
@@ -216,5 +290,6 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
+  appendActivityLog("server gestartet", { url: `http://localhost:${port}` });
   console.log(`Home Ops Finance app available at http://localhost:${port}`);
 });
