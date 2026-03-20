@@ -45,6 +45,10 @@ body {
   border-color: rgba(201, 52, 47, 0.18);
   background: rgba(253, 231, 228, 0.94);
 }
+.app-status.is-info {
+  border-color: rgba(0, 113, 227, 0.18);
+  background: rgba(232, 242, 253, 0.94);
+}
 .app-status strong {
   display: block;
   margin-bottom: 4px;
@@ -102,6 +106,7 @@ h1 {
 .hero-meta {
   display: grid;
   gap: 14px;
+  align-content: start;
 }
 .metric, .stat {
   border: 1px solid var(--line);
@@ -241,6 +246,15 @@ h2 {
   color: white;
   background: var(--ink);
   border-color: var(--ink);
+}
+.pill-danger {
+  color: white;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.hero-quit {
+  justify-self: start;
+  padding-inline: 16px;
 }
 table {
   width: 100%;

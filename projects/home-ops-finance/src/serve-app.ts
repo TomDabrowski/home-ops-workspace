@@ -168,6 +168,21 @@ async function readRequestJson(req: IncomingMessage): Promise<unknown> {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${port}`);
 
+  if (url.pathname === "/api/shutdown" && req.method === "POST") {
+    appendActivityLog("app-beenden angefordert", {
+      quelle: req.socket.remoteAddress ?? "unbekannt",
+    });
+    sendJson(res, 200, { ok: true });
+    server.close(() => {
+      appendActivityLog("server beendet", { url: `http://localhost:${port}` });
+      process.exit(0);
+    });
+    setTimeout(() => {
+      process.exit(0);
+    }, 1500).unref();
+    return;
+  }
+
   if (url.pathname === "/api/reconciliation-state") {
     if (req.method === "GET") {
       return sendJson(res, 200, readJsonFile(reconciliationStatePath));
