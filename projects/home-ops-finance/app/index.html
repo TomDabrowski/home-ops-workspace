@@ -273,10 +273,22 @@
             <h2>Monats-Arbeitsfläche</h2>
             <p class="section-copy">Hier arbeitest du am aktuell geöffneten Monat. Cash, Investment und Gesamtvermögen meinen immer den Stand zum Monatsende, nachdem die Berechnung für diesen Monat bereits durchgelaufen ist.</p>
           </div>
-          <label class="select-wrap month-picker">
-            <span>Monat</span>
-            <select id="monthReviewSelect"></select>
-          </label>
+        </div>
+      </article>
+      <article class="card month-nav-bar">
+        <div class="month-nav-head">
+          <div>
+            <p class="eyebrow">Aktueller Monat</p>
+            <h2 id="monthReviewCurrentLabel">-</h2>
+          </div>
+          <div class="month-nav-actions">
+            <button class="pill" id="monthPrevButton" type="button">Vorheriger</button>
+            <label class="select-wrap month-picker">
+              <span>Direkt wählen</span>
+              <select id="monthReviewSelect"></select>
+            </label>
+            <button class="pill" id="monthNextButton" type="button">Nächster</button>
+          </div>
         </div>
       </article>
       <div class="month-workbench">
@@ -343,6 +355,45 @@
             <div class="reconciliation-footer">
               <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Monatsausgabe gespeichert.</p>
               <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Monatsausgabe speichern</button>
+            </div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Musik-Istwert pflegen</h2>
+                <p class="section-copy">Sobald die echte Musik-Einnahme da ist, kannst du hier den Forecast für genau diesen Monat ersetzen.</p>
+              </div>
+            </div>
+            <div class="grid two">
+              <div class="subcard">
+                <h3 class="subhead">Ist-Wert speichern</h3>
+                <div class="planner-inputs">
+                  <label class="select-wrap">
+                    <span>Musik brutto</span>
+                    <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
+                  </label>
+                  <label class="select-wrap">
+                    <span>Monat</span>
+                    <input id="musicIncomeActualDate" type="month">
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Notiz</span>
+                    <input id="musicIncomeActualNotes" type="text" placeholder="optional">
+                  </label>
+                </div>
+                <div class="reconciliation-footer">
+                  <p class="section-copy" id="musicIncomeActualMeta">Noch kein Musik-Istwert gespeichert.</p>
+                  <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
+                </div>
+              </div>
+              <div class="subcard">
+                <h3 class="subhead">Wirkung im Monat</h3>
+                <div id="musicIncomeActualSummary" class="mapping-list"></div>
+              </div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Gespeicherte Ist-Werte</h3>
+              <div id="musicIncomeActualList" class="mapping-list"></div>
             </div>
           </article>
         </div>
