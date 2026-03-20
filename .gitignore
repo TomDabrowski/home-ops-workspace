@@ -6,6 +6,7 @@ node_modules/
 
 # Generated local finance artifacts
 projects/home-ops-finance/dist/
+projects/home-ops-finance/config.local.json
 projects/home-ops-finance/data/import-draft.json
 projects/home-ops-finance/data/draft-report.json
 projects/home-ops-finance/data/draft-report.md

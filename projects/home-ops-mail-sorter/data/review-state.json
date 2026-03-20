@@ -1,0 +1,18 @@
+{
+  "decisions": [
+    {
+      "messageId": "msg-subscription-01",
+      "sender": "hello@streaming.example",
+      "subject": "Your subscription renews tomorrow",
+      "sourcePath": "data/sample-mails.json",
+      "decidedAt": "2026-03-20T14:03:21.071Z",
+      "category": "subscription",
+      "action": {
+        "type": "file_to_folder",
+        "folder": "Finance/Streaming-Renewals",
+        "automationReady": false,
+        "summary": "File with subscription notices and check whether the renewal is still wanted."
+      }
+    }
+  ]
+}

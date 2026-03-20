@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.js";
 import type {
   BaselineLineItem,
   ExpenseEntry,
@@ -532,9 +533,10 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 }
 
 function main(): void {
-  const inputPath = resolve(process.argv[2] ?? "data/import-draft.json");
-  const outputJsonPath = resolve(process.argv[3] ?? "data/monthly-plan.json");
-  const outputMarkdownPath = resolve(process.argv[4] ?? "data/monthly-plan.md");
+  ensureFinanceDataDir();
+  const inputPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
+  const outputJsonPath = resolve(process.argv[3] ?? financeDataPath("monthly-plan.json"));
+  const outputMarkdownPath = resolve(process.argv[4] ?? financeDataPath("monthly-plan.md"));
 
   const draft = readDraft(inputPath);
   const anchor = draft.monthlyBaselines[0];

@@ -1,0 +1,17 @@
+{
+  "name": "home-ops-mail-sorter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Suggestion-first mail classification prototype for household operations.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "suggest": "node --experimental-strip-types src/cli.ts suggest",
+    "review:record": "node --experimental-strip-types src/cli.ts review"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.2"
+  }
+}

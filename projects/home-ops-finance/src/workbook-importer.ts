@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
+import { ensureFinanceDataDir, financeDataPath, financeWorkbookPath } from "./local-config.js";
 import type {
   BaselineLineItem,
   DebtAccount,
@@ -987,8 +988,9 @@ function createImportDraft(workbookPath: string): ImportDraft {
 }
 
 function main(): void {
-  const workbookPath = resolve(process.argv[2] ?? "/path/to/private/finance-workbook.xlsx");
-  const outputPath = resolve(process.argv[3] ?? "data/import-draft.json");
+  ensureFinanceDataDir();
+  const workbookPath = resolve(process.argv[2] ?? financeWorkbookPath());
+  const outputPath = resolve(process.argv[3] ?? financeDataPath("import-draft.json"));
 
   const draft = createImportDraft(workbookPath);
   writeFileSync(outputPath, JSON.stringify(draft, null, 2) + "\n", "utf8");

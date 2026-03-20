@@ -1,0 +1,45 @@
+{
+  "autoArchiveThreshold": 0.9,
+  "actions": {
+    "finance_bill": {
+      "type": "review_finance",
+      "folder": "Finance/To Review",
+      "automationReady": false,
+      "summary": "Flag for review before filing because it may require payment."
+    },
+    "finance_statement": {
+      "type": "archive_after_review",
+      "folder": "Finance/Statements",
+      "automationReady": false,
+      "summary": "Review briefly, then archive into statements."
+    },
+    "subscription": {
+      "type": "file_to_folder",
+      "folder": "Finance/Subscriptions",
+      "automationReady": false,
+      "summary": "File with subscription notices and check whether the renewal is still wanted."
+    },
+    "shipping_update": {
+      "type": "archive_after_review",
+      "folder": "Operations/Deliveries",
+      "automationReady": true,
+      "summary": "Useful short-term, then archive once the delivery is complete."
+    },
+    "marketing": {
+      "type": "unsubscribe_or_archive",
+      "folder": "Archive/Marketing",
+      "automationReady": true,
+      "summary": "Low-value marketing mail, likely safe to archive or unsubscribe from."
+    },
+    "personal": {
+      "type": "keep_in_inbox",
+      "automationReady": false,
+      "summary": "Keep visible because it looks like a personal conversation."
+    },
+    "unknown": {
+      "type": "keep_in_inbox",
+      "automationReady": false,
+      "summary": "Confidence is too low for automation, keep it in the inbox."
+    }
+  }
+}

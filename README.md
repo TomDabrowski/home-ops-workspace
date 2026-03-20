@@ -17,3 +17,24 @@ Private umbrella repository for personal finance and home-ops projects.
 This repo is private, but generated finance data and raw spreadsheet exports should still stay untracked unless explicitly needed.
 
 See `.gitignore` for the default local-only files.
+
+## Local Finance Data
+
+`projects/home-ops-finance` can keep private workbook exports and generated JSON outside the repo, for example on a NAS mount.
+
+Create a local-only config at `projects/home-ops-finance/config.local.json`:
+
+```json
+{
+  "dataDir": "/Volumes/FinanceData/home-ops-finance",
+  "workbookPath": "/Volumes/FinanceData/finance-workbook.xlsx"
+}
+```
+
+Behavior:
+
+- `dataDir` becomes the default location for import drafts, reports, monthly plans, reviewed artifacts, and local review state files.
+- `workbookPath` becomes the default workbook import source for `projects/home-ops-finance/src/workbook-importer.ts`.
+- `HOME_OPS_FINANCE_DATA_DIR` and `HOME_OPS_FINANCE_WORKBOOK_PATH` override the config file when set.
+
+If a configured NAS path is unavailable, the finance scripts fail with a clear error instead of silently writing private data into the repo.

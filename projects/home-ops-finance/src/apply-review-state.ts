@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.js";
 import type { ImportDraft } from "./types.js";
 
 interface EntryMappingState {
@@ -153,12 +154,13 @@ export function applyReviewState(
 }
 
 function main(): void {
-  const inputPath = resolve(process.argv[2] ?? "data/import-draft.json");
-  const mappingPath = resolve(process.argv[3] ?? "data/import-mappings.json");
-  const reconciliationPath = resolve(process.argv[4] ?? "data/reconciliation-state.json");
-  const baselineOverridesPath = resolve(process.argv[5] ?? "data/baseline-overrides.json");
-  const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? "data/monthly-expense-overrides.json");
-  const outputPath = resolve(process.argv[7] ?? "data/import-draft-reviewed.json");
+  ensureFinanceDataDir();
+  const inputPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
+  const mappingPath = resolve(process.argv[3] ?? financeDataPath("import-mappings.json"));
+  const reconciliationPath = resolve(process.argv[4] ?? financeDataPath("reconciliation-state.json"));
+  const baselineOverridesPath = resolve(process.argv[5] ?? financeDataPath("baseline-overrides.json"));
+  const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? financeDataPath("monthly-expense-overrides.json"));
+  const outputPath = resolve(process.argv[7] ?? financeDataPath("import-draft-reviewed.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);

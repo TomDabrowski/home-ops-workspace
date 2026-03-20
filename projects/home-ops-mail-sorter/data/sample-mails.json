@@ -1,0 +1,44 @@
+[
+  {
+    "id": "msg-electricity-01",
+    "receivedAt": "2026-03-18T08:12:00Z",
+    "from": "billing@utility.example",
+    "subject": "Your March electricity bill is ready",
+    "snippet": "Please review the invoice for your latest electricity usage."
+  },
+  {
+    "id": "msg-bank-01",
+    "receivedAt": "2026-03-18T09:25:00Z",
+    "from": "noreply@bank.example",
+    "subject": "Monthly statement available",
+    "snippet": "Your account statement for February can now be viewed online."
+  },
+  {
+    "id": "msg-shipping-01",
+    "receivedAt": "2026-03-18T10:41:00Z",
+    "from": "updates@parcel.example",
+    "subject": "Your package is out for delivery",
+    "snippet": "Track the shipment and expected delivery window."
+  },
+  {
+    "id": "msg-marketing-01",
+    "receivedAt": "2026-03-18T12:03:00Z",
+    "from": "offers@shop.example",
+    "subject": "Weekend sale: 30% off selected items",
+    "snippet": "You are receiving this offer because you subscribed to product updates."
+  },
+  {
+    "id": "msg-personal-01",
+    "receivedAt": "2026-03-18T18:30:00Z",
+    "from": "alex@example.org",
+    "subject": "Dinner next week?",
+    "snippet": "Want to plan a quiet evening and catch up?"
+  },
+  {
+    "id": "msg-subscription-01",
+    "receivedAt": "2026-03-19T07:55:00Z",
+    "from": "hello@streaming.example",
+    "subject": "Your subscription renews tomorrow",
+    "snippet": "We will charge your saved payment method unless you cancel."
+  }
+]
