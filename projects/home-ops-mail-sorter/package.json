@@ -3,15 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Suggestion-first mail classification prototype for household operations.",
+  "description": "Conservative multi-account IMAP spam cleaner for home operations.",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "suggest": "node --experimental-strip-types src/cli.ts suggest",
-    "review:record": "node --experimental-strip-types src/cli.ts review"
+    "suggest:accounts": "node --experimental-strip-types src/cli.ts accounts",
+    "validate:accounts": "node --experimental-strip-types src/cli.ts validate-accounts",
+    "run:scheduled": "node --experimental-strip-types src/cli.ts run-scheduled"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "imapflow": "^1.2.16"
   }
 }

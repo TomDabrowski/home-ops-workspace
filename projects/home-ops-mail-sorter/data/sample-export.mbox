@@ -1,0 +1,19 @@
+From sender@example.com Thu Mar 19 09:25:00 2026
+From: Bank Notifications <noreply@bank.example>
+Date: Thu, 19 Mar 2026 09:25:00 +0000
+Subject: Monthly statement available
+Message-ID: <bank-statement-mbox-2026-03@example>
+Content-Type: text/plain; charset="utf-8"
+
+Your account statement for February can now be viewed online.
+Review the transactions and keep the statement for your records.
+
+From sender@example.com Thu Mar 19 07:55:00 2026
+From: Streaming Service <hello@streaming.example>
+Date: Thu, 19 Mar 2026 07:55:00 +0000
+Subject: Your subscription renews tomorrow
+Message-ID: <subscription-renewal-mbox-2026-03@example>
+Content-Type: text/plain; charset="utf-8"
+
+We will charge your saved payment method unless you cancel.
+This renewal covers your next billing period.

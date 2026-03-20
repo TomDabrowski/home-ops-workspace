@@ -1,16 +1,16 @@
 import path from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-import { classifyMessages, selectAction } from "./classifier.ts";
+import { runAccountSuggestions, validateAccountsConfig } from "./account-runner.ts";
+import { classifyMessages } from "./classifier.ts";
 import { loadMessages } from "./mail-loader.ts";
+import { runScheduledAccountCycle } from "./ops-runner.ts";
 import { renderSuggestionReport, renderSuggestionReportAsJson } from "./report.ts";
-import { buildLearnedRules, createReviewDecision, loadReviewState, saveReviewState, upsertReviewDecision } from "./review-state.ts";
 import type {
   MailCategory,
   MailSuggestionReport,
   MailboxConfig,
-  SuggestedActionType,
 } from "./types.ts";
-import { readFile } from "node:fs/promises";
 
 async function loadMailboxConfig(filePath: string): Promise<MailboxConfig> {
   const raw = await readFile(filePath, "utf8");
@@ -21,6 +21,38 @@ function resolveProjectPath(relativePath: string): string {
   return path.resolve(process.cwd(), relativePath);
 }
 
+function readFlagValue(args: string[], flagName: string): string | undefined {
+  const index = args.findIndex((arg) => arg === flagName);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+function hasFlag(args: string[], flagName: string): boolean {
+  return args.includes(flagName);
+}
+
+function readInputArg(args: string[]): string | undefined {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (!arg) {
+      continue;
+    }
+
+    if (arg === "--format" || arg === "--category") {
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--")) {
+      continue;
+    }
+
+    return arg;
+  }
+
+  return undefined;
+}
+
 function buildCategoryCounts(report: MailSuggestionReport["suggestions"]): MailSuggestionReport["countsByCategory"] {
   return report.reduce<MailSuggestionReport["countsByCategory"]>((counts, suggestion) => {
     counts[suggestion.category] = (counts[suggestion.category] ?? 0) + 1;
@@ -29,73 +61,47 @@ function buildCategoryCounts(report: MailSuggestionReport["suggestions"]): MailS
 }
 
 async function runSuggest(args: string[]): Promise<void> {
-  const formatFlagIndex = args.findIndex((arg) => arg === "--format");
-  const format = formatFlagIndex >= 0 ? args[formatFlagIndex + 1] ?? "text" : "text";
-  const inputArg = args.find((arg, index) => index === 0 || (formatFlagIndex >= 0 && index !== formatFlagIndex + 1 && index !== formatFlagIndex));
+  const format = readFlagValue(args, "--format") ?? "text";
+  const categoryFilter = readFlagValue(args, "--category") as MailCategory | undefined;
+  const outputArg = readFlagValue(args, "--output");
+  const onlyReady = hasFlag(args, "--only-ready");
+  const inputArg = readInputArg(args);
   const inputPath = inputArg
     ? path.resolve(process.cwd(), inputArg)
     : resolveProjectPath("data/sample-mails.json");
   const configPath = resolveProjectPath("data/mailbox-config.json");
-  const reviewStatePath = resolveProjectPath("data/review-state.json");
   const messages = await loadMessages(inputPath);
   const config = await loadMailboxConfig(configPath);
-  const reviewState = await loadReviewState(reviewStatePath);
-  const learnedRules = buildLearnedRules(reviewState);
-  const suggestions = classifyMessages(messages, { config, learnedRules });
+  const suggestions = classifyMessages(messages, { config })
+    .map((suggestion) => ({
+      ...suggestion,
+      safeToAutomate: suggestion.action.automationReady && suggestion.confidence >= config.autoArchiveThreshold,
+    }))
+    .filter((suggestion) => !categoryFilter || suggestion.category === categoryFilter)
+    .filter((suggestion) => !onlyReady || suggestion.safeToAutomate);
   const report: MailSuggestionReport = {
     generatedAt: new Date().toISOString(),
     sourcePath: inputPath,
-    totalMessages: messages.length,
+    totalMessages: suggestions.length,
     countsByCategory: buildCategoryCounts(suggestions),
     suggestions,
   };
+  const output = format === "json"
+    ? `${renderSuggestionReportAsJson(report)}\n`
+    : `${renderSuggestionReport(report)}\n`;
+
+  if (outputArg) {
+    const outputPath = path.resolve(process.cwd(), outputArg);
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, output, "utf8");
+  }
 
   if (format === "json") {
-    process.stdout.write(`${renderSuggestionReportAsJson(report)}\n`);
+    process.stdout.write(output);
     return;
   }
 
-  process.stdout.write(`${renderSuggestionReport(report)}\n`);
-}
-
-async function runReview(args: string[]): Promise<void> {
-  const [messageId, categoryArg, actionTypeArg, folderArg, inputArg] = args;
-
-  if (!messageId || !categoryArg || !actionTypeArg) {
-    throw new Error("Usage: review <message-id> <category> <action-type> [folder] [input-path]");
-  }
-
-  const inputPath = inputArg
-    ? path.resolve(process.cwd(), inputArg)
-    : resolveProjectPath("data/sample-mails.json");
-  const configPath = resolveProjectPath("data/mailbox-config.json");
-  const reviewStatePath = resolveProjectPath("data/review-state.json");
-  const messages = await loadMessages(inputPath);
-  const message = messages.find((entry) => entry.id === messageId);
-
-  if (!message) {
-    throw new Error(`Message "${messageId}" was not found in ${inputPath}.`);
-  }
-
-  const category = categoryArg as MailCategory;
-  const config = await loadMailboxConfig(configPath);
-  const baseAction = selectAction(category, config);
-  const action = {
-    ...baseAction,
-    type: actionTypeArg as SuggestedActionType,
-    folder: folderArg || baseAction.folder,
-  };
-  const reviewState = await loadReviewState(reviewStatePath);
-  const decision = createReviewDecision({
-    message,
-    sourcePath: inputPath,
-    category,
-    action,
-  });
-  const nextState = upsertReviewDecision(reviewState, decision);
-
-  await saveReviewState(reviewStatePath, nextState);
-  process.stdout.write(`Saved review decision for ${message.id} -> ${category} (${action.type})\n`);
+  process.stdout.write(output);
 }
 
 async function main(): Promise<void> {
@@ -106,12 +112,34 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (command === "review") {
-    await runReview(args);
+  if (command === "accounts") {
+    const configArg = readInputArg(args);
+    const configPath = configArg
+      ? path.resolve(process.cwd(), configArg)
+      : resolveProjectPath("data/accounts.json");
+    await runAccountSuggestions(configPath);
     return;
   }
 
-  throw new Error(`Unknown command "${command}". Use "suggest" or "review".`);
+  if (command === "validate-accounts") {
+    const configArg = readInputArg(args);
+    const configPath = configArg
+      ? path.resolve(process.cwd(), configArg)
+      : resolveProjectPath("data/accounts.json");
+    await validateAccountsConfig(configPath);
+    return;
+  }
+
+  if (command === "run-scheduled") {
+    const configArg = readInputArg(args);
+    const configPath = configArg
+      ? path.resolve(process.cwd(), configArg)
+      : resolveProjectPath("data/accounts.json");
+    await runScheduledAccountCycle(configPath);
+    return;
+  }
+
+  throw new Error(`Unknown command "${command}". Use "suggest", "accounts", "validate-accounts", or "run-scheduled".`);
 }
 
 main().catch((error: unknown) => {

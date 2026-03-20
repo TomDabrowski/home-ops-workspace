@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log
+reports
+data/accounts.json
+data/accounts.local.json
+data/account-state.json
+dist

@@ -1,0 +1,30 @@
+{
+  "reportsDir": "reports/accounts",
+  "mailboxConfigPath": "data/mailbox-config.json",
+  "statePath": "data/account-state.json",
+  "lockPath": "reports/accounts/.run.lock",
+  "runLogPath": "reports/accounts/run-log.json",
+  "retention": {
+    "keepSnapshots": 12
+  },
+  "accounts": [
+    {
+      "id": "personal-inbox",
+      "label": "Personal Inbox",
+      "reportsSubdir": "personal-inbox",
+      "source": {
+        "type": "imap",
+        "host": "imap.example.com",
+        "port": 993,
+        "secure": true,
+        "username": "mail@example.com",
+        "passwordEnv": "MAIL_SORTER_PERSONAL_PASSWORD",
+        "mailbox": "INBOX",
+        "maxMessages": 50,
+        "unseenOnly": true,
+        "sinceDays": 7,
+        "tlsRejectUnauthorized": true
+      }
+    }
+  ]
+}

@@ -22,6 +22,9 @@ projects/home-ops-finance/data/import-mappings.json
 projects/home-ops-finance/data/reconciliation-state.json
 projects/home-ops-finance/data/baseline-overrides.json
 projects/home-ops-finance/data/monthly-expense-overrides.json
+projects/home-ops-mail-sorter/data/accounts.json
+projects/home-ops-mail-sorter/data/accounts.local.json
+projects/home-ops-mail-sorter/reports/
 
 # Sensitive local spreadsheet exports
 *.xlsx

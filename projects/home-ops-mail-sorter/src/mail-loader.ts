@@ -66,6 +66,51 @@ function decodeTransferEncoding(body: string, encoding: string | undefined): str
   return body;
 }
 
+function extractBoundary(contentType: string | undefined): string | null {
+  if (!contentType) {
+    return null;
+  }
+
+  const match = contentType.match(/boundary="?([^";]+)"?/i);
+  return match?.[1] ?? null;
+}
+
+function extractMultipartBody(rawBody: string, contentType: string | undefined): string {
+  const boundary = extractBoundary(contentType);
+
+  if (!boundary || !contentType?.toLowerCase().includes("multipart/")) {
+    return rawBody;
+  }
+
+  const parts = rawBody.split(`--${boundary}`);
+  const parsedParts = parts
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && part !== "--")
+    .map((part) => {
+      const [rawPartHeaders = "", ...bodyParts] = part.split(/\r?\n\r?\n/);
+      const headers = parseHeaders(rawPartHeaders);
+      const contentTransferEncoding = headers.get("content-transfer-encoding");
+      const decodedBody = decodeTransferEncoding(bodyParts.join("\n\n"), contentTransferEncoding);
+
+      return {
+        contentType: headers.get("content-type")?.toLowerCase() ?? "text/plain",
+        body: decodedBody,
+      };
+    });
+
+  const plainPart = parsedParts.find((part) => part.contentType.includes("text/plain"));
+  if (plainPart) {
+    return plainPart.body;
+  }
+
+  const htmlPart = parsedParts.find((part) => part.contentType.includes("text/html"));
+  if (htmlPart) {
+    return htmlPart.body;
+  }
+
+  return rawBody;
+}
+
 function extractSnippet(rawBody: string): string {
   const compact = rawBody
     .replace(/<[^>]+>/g, " ")
@@ -81,6 +126,8 @@ export function parseEml(raw: string, sourcePath: string): MailMessage {
   const headers = parseHeaders(rawHeaders);
   const contentTransferEncoding = headers.get("content-transfer-encoding");
   const decodedBody = decodeTransferEncoding(rawBody, contentTransferEncoding);
+  const contentType = headers.get("content-type");
+  const extractedBody = extractMultipartBody(decodedBody, contentType);
   const sourceName = path.basename(sourcePath, path.extname(sourcePath));
 
   return {
@@ -88,10 +135,28 @@ export function parseEml(raw: string, sourcePath: string): MailMessage {
     receivedAt: headers.get("date") ? new Date(headers.get("date") as string).toISOString() : new Date(0).toISOString(),
     from: extractEmailAddress(headers.get("from")) ?? "unknown@example.invalid",
     subject: headers.get("subject") ?? "(no subject)",
-    snippet: extractSnippet(decodedBody),
+    snippet: extractSnippet(extractedBody),
     sourceType: "eml",
     sourcePath,
   };
+}
+
+export function parseMbox(raw: string, sourcePath: string): MailMessage[] {
+  const normalized = raw.replace(/\r\n/g, "\n");
+  const chunks = normalized
+    .split(/^From .*\n/m)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0);
+
+  return chunks.map((chunk, index) => {
+    const message = parseEml(chunk, `${sourcePath}#${index + 1}`);
+    return {
+      ...message,
+      sourceType: "eml",
+      sourcePath,
+      id: message.id || `${path.basename(sourcePath, path.extname(sourcePath))}-${index + 1}`,
+    };
+  });
 }
 
 export async function loadMessagesFromJson(filePath: string): Promise<MailMessage[]> {
@@ -142,5 +207,10 @@ export async function loadMessages(inputPath: string): Promise<MailMessage[]> {
     return loadMessagesFromJson(inputPath);
   }
 
-  throw new Error(`Unsupported input path "${inputPath}". Use a .json file, a .eml file, or a directory of .eml files.`);
+  if (inputPath.toLowerCase().endsWith(".mbox")) {
+    const raw = await readFile(inputPath, "utf8");
+    return parseMbox(raw, inputPath);
+  }
+
+  throw new Error(`Unsupported input path "${inputPath}". Use a .json file, a .eml file, a .mbox file, or a directory of .eml files.`);
 }

@@ -1,6 +1,5 @@
 import type {
   CategoryScore,
-  LearnedRule,
   MailCategory,
   MailboxConfig,
   MailMessage,
@@ -184,42 +183,10 @@ export function selectAction(category: MailCategory, config?: MailboxConfig): Su
   return config?.actions[category] ?? DEFAULT_ACTIONS[category];
 }
 
-function findLearnedRule(message: MailMessage, learnedRules: LearnedRule[]): LearnedRule | undefined {
-  const sender = normalize(message.from);
-  const [, domain = ""] = sender.split("@");
-
-  return learnedRules.find((rule) => {
-    if (rule.matchType === "sender") {
-      return normalize(rule.sender) === sender;
-    }
-
-    return normalize(rule.sender) === domain;
-  });
-}
-
 export function classifyMessage(
   message: MailMessage,
-  options?: { config?: MailboxConfig; learnedRules?: LearnedRule[] },
+  options?: { config?: MailboxConfig },
 ): MailSuggestion {
-  const learnedRule = findLearnedRule(message, options?.learnedRules ?? []);
-
-  if (learnedRule) {
-    const reasonSubject = learnedRule.matchType === "sender" ? "this sender" : `domain ${learnedRule.sender}`;
-    return {
-      message,
-      category: learnedRule.category,
-      confidence: learnedRule.matchType === "sender" ? 0.99 : 0.93,
-      reasons: [`Learned from ${learnedRule.decisionCount} saved review decision(s) for ${reasonSubject}.`],
-      action: learnedRule.action,
-      alternatives: [{
-        category: learnedRule.category,
-        score: learnedRule.matchType === "sender" ? 99 : 93,
-        reasons: [`${learnedRule.matchType} matched stored review rule`],
-      }],
-      learnedRule,
-    };
-  }
-
   const alternatives = scoreMessage(message);
   const [best, second] = alternatives;
   const bestScore = best?.score ?? 0;
@@ -243,7 +210,7 @@ export function classifyMessage(
 
 export function classifyMessages(
   messages: MailMessage[],
-  options?: { config?: MailboxConfig; learnedRules?: LearnedRule[] },
+  options?: { config?: MailboxConfig },
 ): MailSuggestion[] {
   return messages.map((message) => classifyMessage(message, options));
 }

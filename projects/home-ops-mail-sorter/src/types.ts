@@ -20,7 +20,7 @@ export interface MailMessage {
   from: string;
   subject: string;
   snippet?: string;
-  sourceType?: "json" | "eml";
+  sourceType?: "json" | "eml" | "imap";
   sourcePath?: string;
 }
 
@@ -37,15 +37,6 @@ export interface SuggestedAction {
   summary: string;
 }
 
-export interface LearnedRule {
-  sender: string;
-  matchType: "sender" | "domain";
-  category: MailCategory;
-  action: SuggestedAction;
-  decisionCount: number;
-  lastDecidedAt: string;
-}
-
 export interface MailSuggestion {
   message: MailMessage;
   category: MailCategory;
@@ -53,7 +44,7 @@ export interface MailSuggestion {
   reasons: string[];
   action: SuggestedAction;
   alternatives: CategoryScore[];
-  learnedRule?: LearnedRule;
+  safeToAutomate?: boolean;
 }
 
 export interface MailSuggestionReport {
@@ -64,23 +55,90 @@ export interface MailSuggestionReport {
   suggestions: MailSuggestion[];
 }
 
-export interface ReviewDecision {
-  messageId: string;
-  sender: string;
-  subject: string;
-  sourcePath: string;
-  decidedAt: string;
-  category: MailCategory;
-  action: SuggestedAction;
-}
-
-export interface ReviewState {
-  decisions: ReviewDecision[];
-}
-
 export type MailboxActionConfig = Partial<Record<MailCategory, SuggestedAction>>;
 
 export interface MailboxConfig {
   autoArchiveThreshold: number;
   actions: MailboxActionConfig;
+}
+
+export interface ImapAccountSourceConfig {
+  type: "imap";
+  host: string;
+  port: number;
+  secure?: boolean;
+  username: string;
+  passwordEnv: string;
+  mailbox: string;
+  maxMessages?: number;
+  unseenOnly?: boolean;
+  sinceDays?: number;
+  tlsRejectUnauthorized?: boolean;
+}
+
+export interface MailAccountConfig {
+  id: string;
+  label: string;
+  source: ImapAccountSourceConfig;
+  mailboxConfigPath?: string;
+  reportsSubdir?: string;
+}
+
+export interface MailAccountsConfig {
+  reportsDir?: string;
+  mailboxConfigPath?: string;
+  statePath?: string;
+  lockPath?: string;
+  runLogPath?: string;
+  retention?: {
+    keepSnapshots?: number;
+  };
+  accounts: MailAccountConfig[];
+}
+
+export interface ProcessedMessageRecord {
+  fingerprint: string;
+  seenAt: string;
+}
+
+export interface ProcessedAccountState {
+  accountId: string;
+  messages: ProcessedMessageRecord[];
+}
+
+export interface ProcessedState {
+  accounts: ProcessedAccountState[];
+}
+
+export interface ScheduledRunLock {
+  pid: number;
+  startedAt: string;
+  hostname?: string;
+  configPath: string;
+}
+
+export interface ScheduledRunLogEntry {
+  startedAt: string;
+  finishedAt: string;
+  status: "success" | "failure";
+  configPath: string;
+  message: string;
+}
+
+export interface AccountLatestSummary {
+  accountId: string;
+  generatedAt?: string;
+  totalMessages: number;
+  countsByCategory: Record<string, number>;
+  readyCount: number;
+}
+
+export interface LatestSummaryReport {
+  generatedAt: string;
+  accountCount: number;
+  accountsWithMessages: number;
+  totalMessages: number;
+  readyCount: number;
+  topCategories: Array<{ category: string; count: number }>;
+  accounts: AccountLatestSummary[];
 }

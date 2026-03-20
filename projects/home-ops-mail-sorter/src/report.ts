@@ -23,10 +23,8 @@ export function renderSuggestionReport(report: MailSuggestionReport): string {
     lines.push(`  From: ${suggestion.message.from}`);
     lines.push(`  Category: ${suggestion.category} (${formatConfidence(suggestion.confidence)})`);
     lines.push(`  Action: ${suggestion.action.type}${suggestion.action.folder ? ` -> ${suggestion.action.folder}` : ""}`);
+    lines.push(`  Automation: ${suggestion.safeToAutomate ? "ready" : "review-first"}`);
     lines.push(`  Why: ${suggestion.reasons.join("; ")}`);
-    if (suggestion.learnedRule) {
-      lines.push(`  Learned: ${suggestion.learnedRule.matchType} rule from ${suggestion.learnedRule.decisionCount} saved review decision(s)`);
-    }
     lines.push(`  Note: ${suggestion.action.summary}`);
     lines.push("");
   }
