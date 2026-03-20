@@ -69,7 +69,7 @@ The suggestion report also flags whether each message is already safe enough for
 - Scheduled runs now also use a simple lock file and a JSON run log, so overlapping starts and failures are easier to spot.
 - Scheduled runs also write `latest-summary.json` and `latest-summary.txt` for a quick cross-account overview.
 - Automatic mail moves are intentionally not enabled yet. The current focus is a safe spam-cleaner dry-run.
-- See [docs/synology.md](docs/synology.md) for a first Docker and Synology setup path.
+- See `docs/synology.md` for a first Docker and Synology setup path.
 
 ## Next Steps
 
