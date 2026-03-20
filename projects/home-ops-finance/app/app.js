@@ -10,6 +10,9 @@ const reconciliationStorageKey = "home-ops-finance-reconciliation-v1";
 const mappingStorageKey = "home-ops-finance-entry-mapping-v1";
 const baselineOverridesStorageKey = "home-ops-finance-baseline-overrides-v1";
 const monthlyExpenseOverridesStorageKey = "home-ops-finance-monthly-expense-overrides-v1";
+const activeTabStorageKey = "home-ops-finance-active-tab-v1";
+const monthReviewStorageKey = "home-ops-finance-month-review-v1";
+const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
 const fallbackAccountOptions = [
   { id: "giro", label: "Girokonto" },
   { id: "cash", label: "Bargeld / Alltag" },
@@ -27,6 +30,118 @@ let mappingPersistence = "browser";
 let baselinePersistence = "browser";
 let monthlyExpensePersistence = "browser";
 let accountOptions = fallbackAccountOptions;
+let statusHideTimer = null;
+
+function financeState() {
+  return window.__financeState ?? null;
+}
+
+function currentImportDraft() {
+  return financeState()?.importDraft ?? window.__importDraft;
+}
+
+function currentMonthlyPlan() {
+  return financeState()?.monthlyPlan ?? null;
+}
+
+function statusDetailForMode(mode) {
+  return mode === "project"
+    ? "Die Änderung wurde in den Projektdateien gespeichert."
+    : "Der Server war nicht erreichbar. Die Änderung liegt vorerst nur im Browser-Fallback.";
+}
+
+function showStatus(title, detail = "", tone = "success") {
+  const bar = document.getElementById("appStatusBar");
+  if (!bar) return;
+
+  bar.hidden = false;
+  bar.className = `app-status ${tone === "warn" ? "is-warn" : "is-success"}`;
+  bar.innerHTML = `<strong>${title}</strong>${detail ? `<p>${detail}</p>` : ""}`;
+
+  if (statusHideTimer) {
+    window.clearTimeout(statusHideTimer);
+  }
+
+  statusHideTimer = window.setTimeout(() => {
+    bar.hidden = true;
+  }, 4200);
+}
+
+function activeTabId() {
+  return document.querySelector(".tab.is-active")?.dataset.tab ?? "overview";
+}
+
+function activeMonthFilter() {
+  return document.querySelector("#monthFilters .pill.is-active")?.dataset.filter ?? "focus";
+}
+
+function saveViewState(viewState = {}) {
+  window.localStorage.setItem(activeTabStorageKey, viewState.tabId ?? activeTabId());
+  if (viewState.monthKey) {
+    window.localStorage.setItem(monthReviewStorageKey, viewState.monthKey);
+  }
+  window.localStorage.setItem(monthFilterStorageKey, viewState.monthFilter ?? activeMonthFilter());
+}
+
+function currentViewState() {
+  const monthSelect = document.getElementById("monthReviewSelect");
+
+  return {
+    tabId: activeTabId(),
+    monthKey:
+      viewStateMonthValue(monthSelect) ??
+      window.localStorage.getItem(monthReviewStorageKey) ??
+      null,
+    monthFilter: window.localStorage.getItem(monthFilterStorageKey) ?? activeMonthFilter(),
+    scrollY: window.scrollY,
+  };
+}
+
+function viewStateMonthValue(monthSelect) {
+  return monthSelect instanceof HTMLSelectElement ? monthSelect.value : null;
+}
+
+function activateTab(tabId) {
+  const targetTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  targetTab?.click();
+}
+
+function confirmAction(message) {
+  return window.confirm(message);
+}
+
+async function fetchFinanceData() {
+  const importDraftPromise = fetch("/data/import-draft-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/import-draft.json").then((fallback) => fallback.json()),
+  );
+  const draftReportPromise = fetch("/data/draft-report-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/draft-report.json").then((fallback) => fallback.json()),
+  );
+  const monthlyPlanPromise = fetch("/data/monthly-plan-reviewed.json").then((response) =>
+    response.ok ? response.json() : fetch("/data/monthly-plan.json").then((fallback) => fallback.json()),
+  );
+
+  const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
+    draftReportPromise,
+    monthlyPlanPromise,
+    importDraftPromise,
+    fetch("/data/accounts.json").then((response) => response.ok ? response.json() : []),
+  ]);
+
+  return { draftReport, monthlyPlan, importDraft, accounts };
+}
+
+async function refreshFinanceView(status = null) {
+  const viewState = currentViewState();
+  await initializeWorkflowState();
+  const nextState = await fetchFinanceData();
+  renderApp(nextState, viewState);
+  window.scrollTo({ top: viewState.scrollY });
+
+  if (status) {
+    showStatus(status.title, status.detail, status.tone);
+  }
+}
 
 function defaultPlannerSettings(monthlyPlan) {
   const forecastRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
@@ -554,11 +669,11 @@ async function persistState(path, storageKey, state, modeSetter) {
 
     window.localStorage.setItem(storageKey, JSON.stringify(state));
     modeSetter("project");
-    return true;
+    return { ok: true, mode: "project" };
   } catch {
     window.localStorage.setItem(storageKey, JSON.stringify(state));
     modeSetter("browser");
-    return false;
+    return { ok: false, mode: "browser" };
   }
 }
 
@@ -625,7 +740,7 @@ async function saveReconciliationForMonth(monthKey, value) {
     updatedAt: new Date().toISOString(),
   };
   writeReconciliationState(state);
-  await persistState("/api/reconciliation-state", reconciliationStorageKey, state, (mode) => {
+  return persistState("/api/reconciliation-state", reconciliationStorageKey, state, (mode) => {
     reconciliationPersistence = mode;
   });
 }
@@ -713,7 +828,7 @@ async function saveMappings(entries) {
   }
 
   writeMappingState(state);
-  await persistState("/api/import-mappings", mappingStorageKey, state, (mode) => {
+  return persistState("/api/import-mappings", mappingStorageKey, state, (mode) => {
     mappingPersistence = mode;
   });
 }
@@ -864,7 +979,8 @@ function renderPriorityMonths(monthlyPlan) {
       const monthKey = button.getAttribute("data-priority-month");
       if (!monthKey) return;
       monthSelect.value = monthKey;
-      renderMonthReview(window.__importDraft, monthlyPlan, monthKey);
+      renderMonthReview(currentImportDraft(), monthlyPlan, monthKey);
+      saveViewState({ monthKey });
       const monthsTab = document.querySelector('.tab[data-tab="months"]');
       monthsTab?.click();
     });
@@ -878,10 +994,11 @@ function openMonthReview(monthlyPlan, monthKey) {
   }
 
   monthSelect.value = monthKey;
-  renderMonthReview(window.__importDraft, monthlyPlan, monthKey);
+  saveViewState({ monthKey });
+  renderMonthReview(currentImportDraft(), monthlyPlan, monthKey);
 }
 
-function bindMonthFilters(monthlyPlan) {
+function bindMonthFilters(monthlyPlan, initialFilter = "focus") {
   const buttons = [...document.querySelectorAll("#monthFilters .pill")];
   const allRows = monthlyPlan.rows;
   const tableTarget = document.getElementById("monthlyRows");
@@ -911,14 +1028,17 @@ function bindMonthFilters(monthlyPlan) {
   }
 
   for (const button of buttons) {
-    button.addEventListener("click", () => {
+    button.onclick = () => {
       const filter = button.dataset.filter ?? "all";
       buttons.forEach((item) => item.classList.toggle("is-active", item === button));
+      saveViewState({ monthFilter: filter });
       render(filter);
-    });
+    };
   }
 
-  render("focus");
+  const selectedFilter = buttons.some((button) => button.dataset.filter === initialFilter) ? initialFilter : "focus";
+  buttons.forEach((item) => item.classList.toggle("is-active", item.dataset.filter === selectedFilter));
+  render(selectedFilter);
 
   if (tableTarget) {
     tableTarget.onclick = (event) => {
@@ -1039,6 +1159,13 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       return;
     }
 
+    const isEditing = Boolean(editingId);
+    if (!confirmAction(isEditing
+      ? `Monatsausgabe "${description}" für ${entryDate} wirklich aktualisieren?`
+      : `Monatsausgabe "${description}" für ${entryDate} wirklich speichern?`)) {
+      return;
+    }
+
     const nextEntry = {
       id: editingId || `manual-expense-${Date.now()}`,
       monthKey,
@@ -1057,8 +1184,12 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       ? readMonthlyExpenseOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
       : [...readMonthlyExpenseOverrides(), nextEntry];
 
-    await saveMonthlyExpenseOverrides(nextState);
-    window.location.reload();
+    const result = await saveMonthlyExpenseOverrides(nextState);
+    await refreshFinanceView({
+      title: isEditing ? "Monatsausgabe aktualisiert" : "Monatsausgabe gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 
   for (const button of listTarget.querySelectorAll("[data-monthly-expense-edit]")) {
@@ -1082,11 +1213,19 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
     button.addEventListener("click", async () => {
       const id = button.getAttribute("data-monthly-expense-delete");
       if (!id) return;
+      const entry = readMonthlyExpenseOverrides().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Monatsausgabe "${entry.description}" vom ${entry.entryDate} wirklich löschen?`)) {
+        return;
+      }
       const nextState = readMonthlyExpenseOverrides().map((entry) =>
         entry.id === id ? { ...entry, isActive: false, updatedAt: new Date().toISOString() } : entry,
       );
-      await saveMonthlyExpenseOverrides(nextState);
-      window.location.reload();
+      const result = await saveMonthlyExpenseOverrides(nextState);
+      await refreshFinanceView({
+        title: "Monatsausgabe gelöscht",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
     });
   }
 }
@@ -1207,6 +1346,10 @@ function renderReconciliation(row) {
     : `Noch nicht gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
+    if (!confirmAction(`Reconciliation für ${row.monthKey} wirklich speichern?`)) {
+      return;
+    }
+
     const nextValue = {
       status: statusSelect.value,
       note: noteField.value.trim(),
@@ -1224,8 +1367,12 @@ function renderReconciliation(row) {
       statusSelect.value = "resolved";
     }
 
-    await saveReconciliationForMonth(row.monthKey, nextValue);
-    renderReconciliation(row);
+    const result = await saveReconciliationForMonth(row.monthKey, nextValue);
+    await refreshFinanceView({
+      title: `Reconciliation für ${row.monthKey} gespeichert`,
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 }
 
@@ -1334,12 +1481,20 @@ function renderEntryMappings(importDraft, review) {
     : `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · noch keine Mapping-Korrekturen gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
-    await saveMappings([...review.incomeEntries, ...review.expenseEntries]);
-    renderEntryMappings(importDraft, review);
+    if (!confirmAction(`Mappings für ${review.row.monthKey} wirklich speichern?`)) {
+      return;
+    }
+
+    const result = await saveMappings([...review.incomeEntries, ...review.expenseEntries]);
+    await refreshFinanceView({
+      title: `Mappings für ${review.row.monthKey} gespeichert`,
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 }
 
-function bindMonthReview(importDraft, monthlyPlan) {
+function bindMonthReview(importDraft, monthlyPlan, preferredMonthKey = null) {
   const select = document.getElementById("monthReviewSelect");
   if (!select) return;
 
@@ -1356,29 +1511,32 @@ function bindMonthReview(importDraft, monthlyPlan) {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   }).slice(0, 7);
   const initialMonth =
+    monthKeys.find((monthKey) => monthKey === preferredMonthKey) ??
     monthKeys.find((monthKey) => monthKey === currentMonthKey) ??
     monthKeys.find((monthKey) => monthKey >= reviewFocusMonthKey) ??
     monthKeys.at(-1);
   if (initialMonth) {
     select.value = initialMonth;
+    saveViewState({ monthKey: initialMonth });
     renderMonthReview(importDraft, monthlyPlan, initialMonth);
   }
 
-  select.addEventListener("change", () => {
+  select.onchange = () => {
+    saveViewState({ monthKey: select.value });
     openMonthReview(monthlyPlan, select.value);
-  });
+  };
 }
 
 async function saveBaselineOverrides(state) {
   writeBaselineOverrides(state);
-  await persistState("/api/baseline-overrides", baselineOverridesStorageKey, state, (mode) => {
+  return persistState("/api/baseline-overrides", baselineOverridesStorageKey, state, (mode) => {
     baselinePersistence = mode;
   });
 }
 
 async function saveMonthlyExpenseOverrides(state) {
   writeMonthlyExpenseOverrides(state);
-  await persistState("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey, state, (mode) => {
+  return persistState("/api/monthly-expense-overrides", monthlyExpenseOverridesStorageKey, state, (mode) => {
     monthlyExpensePersistence = mode;
   });
 }
@@ -1471,6 +1629,10 @@ function renderFixedCostPlanner(importDraft) {
     button.addEventListener("click", async () => {
       const id = button.getAttribute("data-fixed-cost-toggle");
       if (!id) return;
+      const entry = readBaselineOverrides().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Fixkosten "${entry.label}" wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
+        return;
+      }
 
       const nextOverrides = readBaselineOverrides().map((entry) =>
         entry.id === id
@@ -1478,8 +1640,12 @@ function renderFixedCostPlanner(importDraft) {
           : entry,
       );
 
-      await saveBaselineOverrides(nextOverrides);
-      renderFixedCostPlanner(importDraft);
+      const result = await saveBaselineOverrides(nextOverrides);
+      await refreshFinanceView({
+        title: `Fixkosten ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
     });
   }
 
@@ -1491,6 +1657,13 @@ function renderFixedCostPlanner(importDraft) {
 
     if (!label || !effectiveFrom || !Number.isFinite(amount) || amount <= 0) {
       metaTarget.textContent = "Bitte Name, positiven Monatsbetrag und gültig-ab-Monat eintragen.";
+      return;
+    }
+
+    const isEditing = Boolean(editingId || sourceLineItemId);
+    if (!confirmAction(isEditing
+      ? `Fixkosten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
+      : `Neue Fixkosten "${label}" ab ${effectiveFrom} wirklich speichern?`)) {
       return;
     }
 
@@ -1525,9 +1698,13 @@ function renderFixedCostPlanner(importDraft) {
           },
         ];
 
-    await saveBaselineOverrides(nextOverrides);
+    const result = await saveBaselineOverrides(nextOverrides);
     resetForm();
-    renderFixedCostPlanner(importDraft);
+    await refreshFinanceView({
+      title: isEditing ? "Fixkosten aktualisiert" : "Fixkosten gespeichert",
+      detail: statusDetailForMode(result.mode),
+      tone: result.mode === "project" ? "success" : "warn",
+    });
   };
 
   const baselineTarget = document.getElementById("baselineLineItems");
@@ -1563,6 +1740,9 @@ function renderFixedCostPlanner(importDraft) {
         const id = stopButton.getAttribute("data-baseline-stop");
         const source = importDraft.baselineLineItems.find((item) => item.id === id);
         if (!source) return;
+        if (!confirmAction(`Posten "${source.label}" ab ${suggestedMonth} wirklich beenden?`)) {
+          return;
+        }
 
         const nextOverrides = [
           ...readBaselineOverrides(),
@@ -1580,9 +1760,13 @@ function renderFixedCostPlanner(importDraft) {
           },
         ];
 
-        await saveBaselineOverrides(nextOverrides);
+        const result = await saveBaselineOverrides(nextOverrides);
         resetForm();
-        renderFixedCostPlanner(importDraft);
+        await refreshFinanceView({
+          title: "Fixkosten-Ende gespeichert",
+          detail: statusDetailForMode(result.mode),
+          tone: result.mode === "project" ? "success" : "warn",
+        });
       }
     };
   }
@@ -1937,38 +2121,23 @@ function bindTabs(tabHooks = {}) {
   const panels = [...document.querySelectorAll(".tab-panel")];
 
   for (const tab of tabs) {
-    tab.addEventListener("click", () => {
+    tab.onclick = () => {
       const target = tab.dataset.tab;
       tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
       panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === target));
+      saveViewState({ tabId: target ?? "overview" });
       const hook = target ? tabHooks[target] : undefined;
       if (typeof hook === "function") {
         hook();
       }
-    });
+    };
   }
 }
 
-async function load() {
-  await initializeWorkflowState();
-
-  const importDraftPromise = fetch("/data/import-draft-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/import-draft.json").then((fallback) => fallback.json()),
-  );
-  const draftReportPromise = fetch("/data/draft-report-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/draft-report.json").then((fallback) => fallback.json()),
-  );
-  const monthlyPlanPromise = fetch("/data/monthly-plan-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/monthly-plan.json").then((fallback) => fallback.json()),
-  );
-  const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
-    draftReportPromise,
-    monthlyPlanPromise,
-    importDraftPromise,
-    fetch("/data/accounts.json").then((response) => response.ok ? response.json() : []),
-  ]);
+function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewState = {}) {
   accountOptions = buildAccountOptions(accounts);
   window.__importDraft = importDraft;
+  window.__financeState = { draftReport, monthlyPlan, importDraft, accounts };
 
   setText("workbookPath", draftReport.workbookPath);
   setText("generatedAt", draftReport.generatedAt);
@@ -2048,9 +2217,21 @@ async function load() {
   renderValidationSignals(draftReport, monthlyPlan);
   renderMonthHealth(monthlyPlan);
   renderPriorityMonths(monthlyPlan);
-  bindMonthFilters(monthlyPlan);
-  bindMonthReview(importDraft, monthlyPlan);
+  bindMonthFilters(monthlyPlan, viewState.monthFilter ?? window.localStorage.getItem(monthFilterStorageKey) ?? "focus");
+  bindMonthReview(
+    importDraft,
+    monthlyPlan,
+    viewState.monthKey ?? window.localStorage.getItem(monthReviewStorageKey) ?? null,
+  );
   bindTabs({ retirement: initRetirement });
+
+  activateTab(viewState.tabId ?? window.localStorage.getItem(activeTabStorageKey) ?? "overview");
+}
+
+async function load() {
+  await initializeWorkflowState();
+  const state = await fetchFinanceData();
+  renderApp(state);
 }
 
 load().catch((error) => {
