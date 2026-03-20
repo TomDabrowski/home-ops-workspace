@@ -327,14 +327,14 @@ function buildConsistencySignals(input: {
     });
   }
 
-  if (input.importedExpenseAmount > input.monthAvailableBeforeExpensesAmount && input.importedExpenseAmount > 0) {
+  if (input.importedExpenseAmount > input.baselineAvailableAmount && input.importedExpenseAmount > 0) {
     signals.push({
       code: "expense_over_baseline_available",
       severity: "warn",
-      title: "Importierte Ausgaben uebersteigen freie Mittel des Monats",
+      title: "Importierte Ausgaben uebersteigen freie Baseline",
       detail:
-        `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen frei ${formatCurrency(input.monthAvailableBeforeExpensesAmount)} ` +
-        `(Baseline ${formatCurrency(input.baselineAvailableAmount)} + freie Import-Einnahmen ${formatCurrency(input.importedIncomeAvailableAmount)}).`,
+        `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen freie Baseline ${formatCurrency(input.baselineAvailableAmount)}. ` +
+        `Freie Import-Einnahmen im Monat: ${formatCurrency(input.importedIncomeAvailableAmount)}.`,
     });
   }
 
