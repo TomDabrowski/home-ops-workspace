@@ -297,12 +297,14 @@ function main(): void {
       plannedSavingsAmount: item.plannedSavingsAmount,
       availableBeforeIrregulars: item.availableBeforeIrregulars,
     })),
-    baselineLineItems: draft.baselineLineItems.map((item) => ({
-      id: item.id,
-      label: item.label,
-      amount: item.amount,
-      category: item.category,
-    })),
+    baselineLineItems: draft.baselineLineItems
+      .filter((item) => item.amount > 0)
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        amount: item.amount,
+        category: item.category,
+      })),
     topExpenseMonths: [...monthSummaries]
       .sort((left, right) => right.expenseTotal - left.expenseTotal)
       .slice(0, 5),

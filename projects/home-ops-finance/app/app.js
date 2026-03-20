@@ -253,6 +253,13 @@ function formatMonthLabel(monthKey) {
   });
 }
 
+function currentMonthKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 function monthKeyToDate(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, 1));
@@ -1285,20 +1292,30 @@ function bindMonthFilters(monthlyPlan, initialFilter = "focus") {
   }
 }
 
-function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
-  const row = monthlyPlan.rows.find((item) => item.monthKey === monthKey);
-  if (!row) return null;
-
+function activeBaselineLineItemsForMonth(importDraft, monthKey) {
   const activeItems = importDraft.baselineLineItems.filter((item) => item.effectiveFrom <= monthKey);
   const latestByKey = new Map();
 
   for (const item of activeItems.sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom))) {
-    latestByKey.set(`${item.category}:${item.label}`, item);
+    const key = `${item.category}:${item.label}`;
+    if (Number(item.amount) <= 0) {
+      latestByKey.delete(key);
+      continue;
+    }
+
+    latestByKey.set(key, item);
   }
+
+  return [...latestByKey.values()];
+}
+
+function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
+  const row = monthlyPlan.rows.find((item) => item.monthKey === monthKey);
+  if (!row) return null;
 
   return {
     row,
-    baselineLineItems: [...latestByKey.values()],
+    baselineLineItems: activeBaselineLineItemsForMonth(importDraft, monthKey),
     incomeEntries: importDraft.incomeEntries.filter((entry) => entry.entryDate.slice(0, 7) === monthKey),
     expenseEntries: importDraft.expenseEntries.filter((entry) => entry.entryDate.slice(0, 7) === monthKey),
   };
@@ -2276,19 +2293,22 @@ function renderFixedCostPlanner(importDraft) {
     labelField.readOnly = false;
     saveButton.dataset.editingId = "";
     saveButton.dataset.sourceLineItemId = "";
-    saveButton.textContent = "Fixkosten speichern";
+    saveButton.dataset.stopMode = "";
+    saveButton.textContent = "Grundplan-Posten speichern";
   }
 
   if (overrides.length === 0) {
     listTarget.innerHTML = `<p class="empty-state">Noch keine zusätzlichen Zukunfts-Fixkosten angelegt.</p>`;
   } else {
     listTarget.innerHTML = overrides
-      .map((entry) => `
+      .map((entry) => {
+        const isStopEntry = Number(entry.amount) === 0 && entry.sourceLineItemId;
+        return `
         <div class="mapping-card">
           <div class="mapping-card-head">
             <div>
               <strong>${entry.label}</strong>
-              <p>${baselineCategoryLabel(entry.category ?? "fixed")} · ab ${entry.effectiveFrom} · ${euro.format(entry.amount)} pro Monat · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
+              <p>${baselineCategoryLabel(entry.category ?? "fixed")} · ab ${entry.effectiveFrom} · ${isStopEntry ? "endet ab diesem Monat" : `${euro.format(entry.amount)} pro Monat`} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-fixed-cost-edit="${entry.id}">Bearbeiten</button>
@@ -2299,7 +2319,8 @@ function renderFixedCostPlanner(importDraft) {
           </div>
           <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
         </div>
-      `)
+      `;
+      })
       .join("");
   }
 
@@ -2323,9 +2344,10 @@ function renderFixedCostPlanner(importDraft) {
       editingId = entry.id;
       saveButton.dataset.editingId = entry.id;
       saveButton.dataset.sourceLineItemId = entry.sourceLineItemId ?? "";
+      saveButton.dataset.stopMode = "";
       labelField.value = entry.label ?? "";
       categoryField.value = entry.category ?? "fixed";
-      amountField.value = String(entry.amount ?? "");
+      amountField.value = entry.amount > 0 ? String(entry.amount ?? "") : "";
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
       notesField.value = entry.notes ?? "";
       labelField.readOnly = Boolean(entry.sourceLineItemId);
@@ -2364,20 +2386,41 @@ function renderFixedCostPlanner(importDraft) {
     const amount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value;
     const notes = notesField.value.trim();
+    const stopMode = saveButton.dataset.stopMode === "true";
 
-    if (!label || !effectiveFrom || !Number.isFinite(amount) || amount <= 0) {
+    if (!label || !effectiveFrom || (!stopMode && (!Number.isFinite(amount) || amount <= 0))) {
       metaTarget.textContent = "Bitte Name, positiven Monatsbetrag und gültig-ab-Monat eintragen.";
       return;
     }
 
     const isEditing = Boolean(editingId || sourceLineItemId);
-    if (!confirmAction(isEditing
-      ? `Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
-      : `Neuen Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich speichern?`)) {
+    if (!confirmAction(
+      stopMode
+        ? `Posten "${label}" ab ${effectiveFrom} wirklich beenden?`
+        : isEditing
+          ? `Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich aktualisieren?`
+          : `Neuen Grundplan-Posten "${label}" ab ${effectiveFrom} wirklich speichern?`,
+    )) {
       return;
     }
 
-    const nextOverrides = editingId
+    const nextOverrides = stopMode
+      ? [
+          ...readBaselineOverrides(),
+          {
+            id: `fixed-stop-${sourceLineItemId || label}-${Date.now()}`,
+            label,
+            amount: 0,
+            effectiveFrom,
+            sourceLineItemId: sourceLineItemId || undefined,
+            category,
+            cadence: "monthly",
+            isActive: true,
+            notes: notes || `Beendet bestehenden Posten ab ${effectiveFrom}.`,
+            updatedAt: new Date().toISOString(),
+          },
+        ]
+      : editingId
       ? readBaselineOverrides().map((entry) =>
           entry.id === editingId
             ? {
@@ -2412,7 +2455,11 @@ function renderFixedCostPlanner(importDraft) {
     const result = await saveBaselineOverrides(nextOverrides);
     resetForm();
     await refreshFinanceView({
-      title: isEditing ? "Grundplan-Posten aktualisiert" : "Grundplan-Posten gespeichert",
+      title: stopMode
+        ? "Grundplan-Posten beendet"
+        : isEditing
+          ? "Grundplan-Posten aktualisiert"
+          : "Grundplan-Posten gespeichert",
       detail: statusDetailForMode(result.mode),
       tone: result.mode === "project" ? "success" : "warn",
     });
@@ -2434,6 +2481,7 @@ function renderFixedCostPlanner(importDraft) {
 
         saveButton.dataset.editingId = "";
         saveButton.dataset.sourceLineItemId = source.id;
+        saveButton.dataset.stopMode = "";
         labelField.value = source.label ?? "";
         categoryField.value = source.category ?? "fixed";
         amountField.value = String(source.amount ?? "");
@@ -2453,33 +2501,20 @@ function renderFixedCostPlanner(importDraft) {
         const id = stopButton.getAttribute("data-baseline-stop");
         const source = importDraft.baselineLineItems.find((item) => item.id === id);
         if (!source) return;
-        if (!confirmAction(`Posten "${source.label}" ab ${suggestedMonth} wirklich beenden?`)) {
-          return;
-        }
-
-        const nextOverrides = [
-          ...readBaselineOverrides(),
-          {
-            id: `fixed-stop-${source.id}-${Date.now()}`,
-            label: source.label,
-            amount: 0,
-            effectiveFrom: suggestedMonth,
-            sourceLineItemId: source.id,
-            category: source.category ?? "fixed",
-            cadence: "monthly",
-            isActive: true,
-            notes: `Beendet bestehenden Posten ab ${suggestedMonth}.`,
-            updatedAt: new Date().toISOString(),
-          },
-        ];
-
-        const result = await saveBaselineOverrides(nextOverrides);
-        resetForm();
-        await refreshFinanceView({
-          title: "Grundplan-Posten beendet",
-          detail: statusDetailForMode(result.mode),
-          tone: result.mode === "project" ? "success" : "warn",
-        });
+        saveButton.dataset.editingId = "";
+        saveButton.dataset.sourceLineItemId = source.id;
+        saveButton.dataset.stopMode = "true";
+        labelField.value = source.label ?? "";
+        categoryField.value = source.category ?? "fixed";
+        amountField.value = "";
+        effectiveFromField.value = effectiveFromField.value || suggestedMonth;
+        notesField.value = `Beendet bestehenden Posten ab ${effectiveFromField.value || suggestedMonth}.`;
+        labelField.readOnly = true;
+        categoryField.disabled = true;
+        saveButton.textContent = "Beenden ab Monat speichern";
+        metaTarget.textContent = `Beenden-Modus aktiv für ${source.label}. Wähle jetzt im Feld "Gültig ab" den Monat aus und speichere dann.`;
+        effectiveFromField.scrollIntoView({ behavior: "smooth", block: "center" });
+        effectiveFromField.focus();
       }
     };
   }
@@ -2903,7 +2938,8 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
     </tr>
   `);
 
-  renderRows("baselineLineItems", draftReport.baselineLineItems, (row) => `
+  const visibleBaselineLineItems = activeBaselineLineItemsForMonth(importDraft, currentMonthKey());
+  renderRows("baselineLineItems", visibleBaselineLineItems, (row) => `
     <tr>
       <td>${row.label}</td>
       <td>${baselineCategoryLabel(row.category)}</td>
