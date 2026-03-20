@@ -4,6 +4,14 @@ Local-first finance tracker for migrating spreadsheet-based planning into a more
 
 This project is designed to keep private source data outside the repository while still allowing the app, importer, and review workflow to be developed in public.
 
+## Preview
+
+Illustrative preview with sanitized example values:
+
+![Home Ops Finance overview preview](docs/assets/overview-preview.svg)
+
+![Home Ops Finance month review preview](docs/assets/month-review-preview.svg)
+
 ## Current Direction
 
 The current spreadsheet already combines income, expenses, asset tracking, and monthly rollups. The app should keep that same mental model and move it into a cleaner system instead of forcing a completely different workflow.

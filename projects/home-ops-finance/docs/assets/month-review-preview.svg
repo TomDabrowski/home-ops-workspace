@@ -1,0 +1,46 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" rx="32" fill="#EEF2F3"/>
+  <rect x="28" y="28" width="1144" height="704" rx="28" fill="#FBFCFC" stroke="#D2D9DC"/>
+  <text x="68" y="96" fill="#50666C" font-family="Arial, sans-serif" font-size="18" font-weight="700">Beispielvorschau</text>
+  <text x="68" y="142" fill="#112024" font-family="Arial, sans-serif" font-size="38" font-weight="700">Monats-Review fuer April 2026</text>
+  <text x="68" y="178" fill="#66757A" font-family="Arial, sans-serif" font-size="20">Bearbeitung von importierten Ausgaben, Warnhinweisen und Planung in einer fokussierten Ansicht.</text>
+
+  <rect x="68" y="224" width="706" height="456" rx="28" fill="#FFFFFF" stroke="#D7E0E2"/>
+  <text x="102" y="270" fill="#112024" font-family="Arial, sans-serif" font-size="26" font-weight="700">Warnungen und Bewegungen</text>
+
+  <rect x="102" y="304" width="638" height="72" rx="18" fill="#FFF2E5"/>
+  <text x="128" y="336" fill="#8E5D2E" font-family="Arial, sans-serif" font-size="18" font-weight="700">Warnsignal</text>
+  <text x="128" y="360" fill="#48372A" font-family="Arial, sans-serif" font-size="18">Importierte Ausgaben liegen ueber der freien Baseline. Monat gezielt pruefen.</text>
+
+  <rect x="102" y="402" width="638" height="74" rx="18" fill="#F5F8F9"/>
+  <text x="128" y="434" fill="#112024" font-family="Arial, sans-serif" font-size="18" font-weight="700">Miete</text>
+  <text x="128" y="458" fill="#6A7C82" font-family="Arial, sans-serif" font-size="17">Fixkosten, Wohnen</text>
+  <text x="628" y="446" text-anchor="end" fill="#112024" font-family="Arial, sans-serif" font-size="22" font-weight="700">980 EUR</text>
+
+  <rect x="102" y="492" width="638" height="74" rx="18" fill="#F5F8F9"/>
+  <text x="128" y="524" fill="#112024" font-family="Arial, sans-serif" font-size="18" font-weight="700">Lebensmittel</text>
+  <text x="128" y="548" fill="#6A7C82" font-family="Arial, sans-serif" font-size="17">Variable Kosten, Alltag</text>
+  <text x="628" y="536" text-anchor="end" fill="#112024" font-family="Arial, sans-serif" font-size="22" font-weight="700">364 EUR</text>
+
+  <rect x="102" y="582" width="638" height="74" rx="18" fill="#F5F8F9"/>
+  <text x="128" y="614" fill="#112024" font-family="Arial, sans-serif" font-size="18" font-weight="700">Reparatur Fahrrad</text>
+  <text x="128" y="638" fill="#6A7C82" font-family="Arial, sans-serif" font-size="17">Einmalig, Mobilitaet</text>
+  <text x="628" y="626" text-anchor="end" fill="#112024" font-family="Arial, sans-serif" font-size="22" font-weight="700">186 EUR</text>
+
+  <rect x="806" y="224" width="326" height="456" rx="28" fill="#F7F3EB" stroke="#D8CCBB"/>
+  <text x="838" y="270" fill="#112024" font-family="Arial, sans-serif" font-size="26" font-weight="700">Seitenpanel</text>
+
+  <rect x="838" y="304" width="262" height="98" rx="20" fill="#FFFFFF"/>
+  <text x="862" y="338" fill="#8A5B2E" font-family="Arial, sans-serif" font-size="17" font-weight="700">Monatsergebnis</text>
+  <text x="862" y="378" fill="#1E2C2D" font-family="Arial, sans-serif" font-size="34" font-weight="700">-34 EUR</text>
+
+  <rect x="838" y="420" width="262" height="112" rx="20" fill="#FFFFFF"/>
+  <text x="862" y="454" fill="#50666C" font-family="Arial, sans-serif" font-size="17" font-weight="700">Aktive Baseline</text>
+  <text x="862" y="486" fill="#1E2C2D" font-family="Arial, sans-serif" font-size="18">historical_liquidity</text>
+  <text x="862" y="516" fill="#66757A" font-family="Arial, sans-serif" font-size="16">Ruecklage 220 EUR</text>
+
+  <rect x="838" y="548" width="262" height="96" rx="20" fill="#FFFFFF"/>
+  <text x="862" y="582" fill="#50666C" font-family="Arial, sans-serif" font-size="17" font-weight="700">Aktion</text>
+  <rect x="862" y="598" width="214" height="28" rx="14" fill="#D68544"/>
+  <text x="914" y="617" fill="#FFF8F1" font-family="Arial, sans-serif" font-size="15" font-weight="700">Werte uebernehmen</text>
+</svg>
