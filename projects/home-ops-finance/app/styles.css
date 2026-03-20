@@ -374,6 +374,9 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.planner-span-two {
+  grid-column: 1 / -1;
+}
 .month-workbench {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
@@ -491,9 +494,15 @@ th {
   margin: 4px 0 0;
   color: var(--muted);
 }
+.mapping-source {
+  margin: -2px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.94rem;
+}
 .mapping-fields {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .mapping-check {
@@ -501,6 +510,30 @@ th {
   gap: 10px;
   align-items: center;
   color: var(--ink);
+  grid-column: 1 / -1;
+  padding-top: 4px;
+}
+.detail-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.detail-strip div {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 12px;
+}
+.detail-strip span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.detail-strip strong {
+  display: block;
 }
 .reconciliation-action {
   display: grid;
@@ -551,7 +584,8 @@ th {
     flex-direction: column;
   }
   .planner-inputs,
-  .mapping-fields {
+  .mapping-fields,
+  .detail-strip {
     grid-template-columns: 1fr;
   }
   .priority-list {

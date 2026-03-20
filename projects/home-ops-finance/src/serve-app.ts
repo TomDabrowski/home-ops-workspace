@@ -15,6 +15,7 @@ const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
 const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
 const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
+const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
 const activityLogPath = financeDataPath("activity-log.log");
 
@@ -282,6 +283,30 @@ const server = createServer(async (req, res) => {
           fehler: error instanceof Error ? error.message : String(error),
         });
         return sendJson(res, 500, { ok: false, error: "music_tax_settings_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/forecast-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(forecastSettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(forecastSettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("forecast-plan gespeichert", {
+          datei: forecastSettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("forecast-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "forecast_settings_save_failed" });
       }
     }
   }
