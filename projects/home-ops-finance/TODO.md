@@ -2,19 +2,19 @@
 
 ## Now
 
-- Work through the highest-impact `2026+` warning months in the review UI using the bootstrapped default mappings.
-- Validate the next few workbook wealth checkpoints after the explicit `2026-02` anchor.
-- Tune the new goals and retirement planner assumptions against the workbook so the required-music target is trustworthy.
-- Convert the default category/account guesses into reviewed decisions for the largest outlier months first.
-- Use reviewed account mappings to seed the first real account model from workbook usage.
+- Work through the highest-impact `2026+` months in the month workspace and turn the bootstrapped default mappings into reviewed decisions.
+- Validate a few more workbook wealth checkpoints after the explicit `2026-02` anchor using the new end-of-month month review.
+- Tighten the retirement model by adding a true post-retirement withdrawal phase after the target month instead of stopping at the nest-egg target.
+- Split conservative cost growth into more explicit buckets where useful, especially insurance/other fixed costs.
+- Decide whether imported historical entries should become directly editable in the month workspace or remain review-only with overrides.
 
 ## Next
 
 - Recreate the forecast engine from assumptions plus monthly inputs.
 - Add stronger workbook-vs-app comparison checks for wealth buckets and monthly handoff points.
+- Add lightweight charts for wealth path, safety vs. investment, and retirement target progress.
 
 ## Later
 
-- Add charts and forecasting views.
 - Add account balance history.
 - Add smarter categorization helpers.
