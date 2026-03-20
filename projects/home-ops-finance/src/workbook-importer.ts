@@ -8,6 +8,7 @@ import type {
   DebtSnapshot,
   ExpenseEntry,
   ExpenseCategory,
+  ForecastWealthAnchor,
   ForecastAssumption,
   ImportDraft,
   IncomeEntry,
@@ -16,6 +17,7 @@ import type {
   WealthBucket,
   WorkbookSheetSummary,
 } from "./types.js";
+import { ensureFinanceDataDir, financeDataPath, financeWorkbookPath } from "./local-config.ts";
 
 function unzipText(workbookPath: string, entry: string): string {
   return execFileSync("unzip", ["-p", workbookPath, entry], {
@@ -242,6 +244,10 @@ function numberFromCellValue(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function monthKey(year: number, monthName: string): string | null {
   const index = MONTH_NAMES.findIndex((entry) => entry === monthName);
   if (index === -1) {
@@ -249,6 +255,19 @@ function monthKey(year: number, monthName: string): string | null {
   }
 
   return `${year}-${String(index + 1).padStart(2, "0")}`;
+}
+
+function monthKeyFromExcelSerial(value: string | undefined): string | null {
+  const serial = numberFromCellValue(value);
+  if (serial === null) {
+    return null;
+  }
+
+  const wholeDays = Math.floor(serial);
+  const utcMillis = Date.UTC(1899, 11, 30) + wholeDays * 24 * 60 * 60 * 1000;
+  const date = new Date(utcMillis);
+
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function classifyExpenseCategory(description: string): string {
@@ -393,6 +412,24 @@ function buildAssumptions(): ForecastAssumption[] {
       value: 1050,
       valueType: "number",
       notes: "Übersicht Vermögen!L6",
+    },
+    {
+      key: "music_investment_share_after_threshold",
+      value: 0.6,
+      valueType: "number",
+      notes: "Übersicht Vermögen monthly formulas route 60% of music income to investment after threshold.",
+    },
+    {
+      key: "music_safety_share_after_threshold",
+      value: 0.4,
+      valueType: "number",
+      notes: "Übersicht Vermögen monthly formulas route 40% of music income to safety after threshold.",
+    },
+    {
+      key: "music_tax_prepayment_quarterly_amount",
+      value: 501,
+      valueType: "number",
+      notes: "Current quarterly music tax prepayment. Keep editable in the app.",
     },
   ];
 }
@@ -583,13 +620,22 @@ function buildExpenseCategories(): ExpenseCategory[] {
   ];
 }
 
-function buildWealthBuckets(): WealthBucket[] {
+function extractWealthBuckets(workbookPath: string, context: WorkbookContext): WealthBucket[] {
+  const rows = readSheetRows(workbookPath, context, "Übersicht Vermögen");
+  const valueAt = (ref: string): number | undefined => {
+    const column = extractColumn(ref);
+    const rowNumber = extractRowNumber(ref);
+    const row = rows.find((entry) => entry.rowNumber === rowNumber);
+    return numberFromCellValue(row?.cells.get(column)?.value) ?? undefined;
+  };
+
   return [
     {
       id: "safety-bucket",
       name: "Sicherheitsbaustein",
       kind: "safety",
       targetAmount: 10000,
+      currentAmount: valueAt("G35"),
       expectedAnnualReturn: 0.02,
       isThresholdBucket: true,
     },
@@ -597,10 +643,49 @@ function buildWealthBuckets(): WealthBucket[] {
       id: "investment-bucket",
       name: "Renditebaustein",
       kind: "investment",
+      currentAmount: valueAt("L35"),
       expectedAnnualReturn: 0.05,
       isThresholdBucket: false,
     },
   ];
+}
+
+function extractForecastWealthAnchors(
+  workbookPath: string,
+  context: WorkbookContext,
+): ForecastWealthAnchor[] {
+  const rows = readSheetRows(workbookPath, context, "Übersicht Vermögen");
+  const anchors: ForecastWealthAnchor[] = [];
+
+  for (const row of rows) {
+    const month = monthKeyFromExcelSerial(row.cells.get("J")?.value);
+    const safetyBucketAmount = numberFromCellValue(row.cells.get("G")?.value);
+    const investmentBucketAmount = numberFromCellValue(row.cells.get("L")?.value);
+
+    if (!month || safetyBucketAmount === null || investmentBucketAmount === null) {
+      continue;
+    }
+
+    const safetyCell = row.cells.get("G");
+    const investmentCell = row.cells.get("L");
+    const isManualAnchor = !safetyCell?.formula && !investmentCell?.formula;
+
+    if (!isManualAnchor) {
+      continue;
+    }
+
+    anchors.push({
+      monthKey: month,
+      safetyBucketAmount: roundCurrency(safetyBucketAmount),
+      investmentBucketAmount: roundCurrency(investmentBucketAmount),
+      totalWealthAmount: roundCurrency(safetyBucketAmount + investmentBucketAmount),
+      sourceSheet: "Übersicht Vermögen",
+      sourceRowNumber: row.rowNumber,
+      isManualAnchor,
+    });
+  }
+
+  return anchors.sort((left, right) => left.monthKey.localeCompare(right.monthKey));
 }
 
 function extractMusicIncomeEntries(workbookPath: string, context: WorkbookContext): IncomeEntry[] {
@@ -628,6 +713,8 @@ function extractMusicIncomeEntries(workbookPath: string, context: WorkbookContex
       incomeStreamId: "music-income",
       entryDate: `${key}-01`,
       amount: gross,
+      reserveAmount: reserve ?? 0,
+      availableAmount: free ?? roundCurrency(gross - (reserve ?? 0)),
       kind: "music",
       isRecurring: false,
       isPlanned: year >= 2026,
@@ -899,15 +986,17 @@ function createImportDraft(workbookPath: string): ImportDraft {
     incomeEntries: [...musicIncomeEntries, ...irregularInflowEntries],
     expenseCategories: buildExpenseCategories(),
     expenseEntries: extractIrregularExpenseEntries(workbookPath, context),
-    wealthBuckets: buildWealthBuckets(),
+    wealthBuckets: extractWealthBuckets(workbookPath, context),
+    forecastWealthAnchors: extractForecastWealthAnchors(workbookPath, context),
     debtAccounts: extractDebtAccounts(workbookPath, context),
     debtSnapshots: extractDebtSnapshots(workbookPath, context),
   };
 }
 
 function main(): void {
-  const workbookPath = resolve(process.argv[2] ?? "/path/to/private/finance-workbook.xlsx");
-  const outputPath = resolve(process.argv[3] ?? "data/import-draft.json");
+  ensureFinanceDataDir();
+  const workbookPath = resolve(process.argv[2] ?? financeWorkbookPath());
+  const outputPath = resolve(process.argv[3] ?? financeDataPath("import-draft.json"));
 
   const draft = createImportDraft(workbookPath);
   writeFileSync(outputPath, JSON.stringify(draft, null, 2) + "\n", "utf8");

@@ -6,11 +6,22 @@ node_modules/
 
 # Generated local finance artifacts
 projects/home-ops-finance/dist/
+projects/home-ops-finance/config.local.json
 projects/home-ops-finance/data/import-draft.json
 projects/home-ops-finance/data/draft-report.json
 projects/home-ops-finance/data/draft-report.md
 projects/home-ops-finance/data/monthly-plan.json
 projects/home-ops-finance/data/monthly-plan.md
+projects/home-ops-finance/data/accounts.json
+projects/home-ops-finance/data/import-draft-reviewed.json
+projects/home-ops-finance/data/draft-report-reviewed.json
+projects/home-ops-finance/data/draft-report-reviewed.md
+projects/home-ops-finance/data/monthly-plan-reviewed.json
+projects/home-ops-finance/data/monthly-plan-reviewed.md
+projects/home-ops-finance/data/import-mappings.json
+projects/home-ops-finance/data/reconciliation-state.json
+projects/home-ops-finance/data/baseline-overrides.json
+projects/home-ops-finance/data/monthly-expense-overrides.json
 
 # Sensitive local spreadsheet exports
 *.xlsx

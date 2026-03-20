@@ -17,7 +17,12 @@ function createDraft(): ImportDraft {
     source: "xlsx",
     workbookPath: "/tmp/example.xlsx",
     sheets: [],
-    forecastAssumptions: [],
+    forecastAssumptions: [
+      { key: "safety_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold", value: 10000, valueType: "number" },
+      { key: "music_investment_share_after_threshold", value: 0.6, valueType: "number" },
+      { key: "music_safety_share_after_threshold", value: 0.4, valueType: "number" },
+    ],
     monthlyBaselines: [
       {
         monthKey: "2023-01",
@@ -56,18 +61,22 @@ function createDraft(): ImportDraft {
     incomeEntries: [
       {
         id: "music-2024-01",
-        incomeStreamId: "music",
+        incomeStreamId: "music-income",
         entryDate: "2024-01-01",
         amount: 500,
+        reserveAmount: 150,
+        availableAmount: 350,
         kind: "music",
         isRecurring: false,
         isPlanned: false,
       },
       {
         id: "music-2026-03",
-        incomeStreamId: "music",
+        incomeStreamId: "music-income",
         entryDate: "2026-03-01",
         amount: 700,
+        reserveAmount: 210,
+        availableAmount: 490,
         kind: "music",
         isRecurring: false,
         isPlanned: true,
@@ -96,7 +105,26 @@ function createDraft(): ImportDraft {
         isPlanned: true,
       },
     ],
-    wealthBuckets: [],
+    wealthBuckets: [
+      {
+        id: "safety-bucket",
+        name: "Sicherheitsbaustein",
+        kind: "safety",
+        targetAmount: 10000,
+        currentAmount: 9916,
+        expectedAnnualReturn: 0.02,
+        isThresholdBucket: true,
+      },
+      {
+        id: "investment-bucket",
+        name: "Renditebaustein",
+        kind: "investment",
+        currentAmount: 9916,
+        expectedAnnualReturn: 0.05,
+        isThresholdBucket: false,
+      },
+    ],
+    forecastWealthAnchors: [],
     debtAccounts: [],
     debtSnapshots: [],
   };
@@ -128,11 +156,24 @@ test("builds monthly rows with historical and investing profiles", () => {
 
   assert.equal(historical?.baselineProfile, "historical_liquidity");
   assert.equal(historical?.baselineAvailableAmount, 1333.51);
-  assert.equal(historical?.netAfterImportedFlows, 1733.51);
+  assert.equal(historical?.baselineAnchorDeltaAmount, 0);
+  assert.equal(historical?.importedIncomeAmount, 500);
+  assert.equal(historical?.importedIncomeAvailableAmount, 350);
+  assert.equal(historical?.netAfterImportedFlows, 1583.51);
+  assert.equal(historical?.consistencySignals.length, 0);
 
   assert.equal(investing?.baselineProfile, "forecast_investing");
   assert.equal(investing?.baselineAvailableAmount, 283.51);
-  assert.equal(investing?.netAfterImportedFlows, 683.51);
+  assert.equal(investing?.importedIncomeReserveAmount, 210);
+  assert.equal(investing?.importedIncomeAvailableAmount, 490);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 700);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 0);
+  assert.equal(investing?.netAfterImportedFlows, 473.51);
+  assert.equal(investing?.consistencySignals.length, 1);
+  assert.deepEqual(
+    investing?.consistencySignals.map((signal) => signal.code),
+    ["expense_over_baseline_available"],
+  );
 });
 
 test("selects imported flows for a specific month", () => {
@@ -152,4 +193,85 @@ test("builds a month review with baseline and imported flows", () => {
   assert.equal(review?.incomeEntries.length, 1);
   assert.equal(review?.expenseEntries.length, 1);
   assert.equal(review?.row.baselineAvailableAmount, 283.51);
+  assert.equal(review?.row.safetyBucketStartAmount, 9916);
+  assert.equal(review?.row.safetyBucketEndAmount, 10632.53);
+  assert.deepEqual(
+    review?.row.consistencySignals.map((signal) => signal.title),
+    ["Importierte Ausgaben uebersteigen freie Baseline"],
+  );
+});
+
+test("flags anchor mismatches and negative months automatically", () => {
+  const draft = createDraft();
+  draft.baselineLineItems = draft.baselineLineItems.map((item) =>
+    item.id === "invest" ? { ...item, amount: 900 } : item,
+  );
+  draft.expenseEntries.push({
+    id: "expense-2026-03-spike",
+    entryDate: "2026-03-15",
+    description: "Unexpected repair",
+    amount: 1300,
+    expenseCategoryId: "other",
+    expenseType: "variable",
+    isRecurring: false,
+    isPlanned: false,
+  });
+
+  const row = buildMonthlyRows(draft).find((item) => item.monthKey === "2026-03");
+
+  assert.ok(row);
+  assert.equal(row?.baselineAnchorDeltaAmount, 150);
+  assert.equal(row?.netAfterImportedFlows, -676.49);
+  assert.deepEqual(
+    row?.consistencySignals.map((signal) => signal.code),
+    ["baseline_anchor_mismatch", "monthly_deficit", "expense_over_baseline_available", "expense_spike"],
+  );
+});
+
+test("respects explicit workbook wealth anchors before continuing the forecast", () => {
+  const draft = createDraft();
+  draft.incomeEntries.push({
+    id: "music-2026-02",
+    incomeStreamId: "music-income",
+    entryDate: "2026-02-01",
+    amount: 600,
+    reserveAmount: 180,
+    availableAmount: 420,
+    kind: "music",
+    isRecurring: false,
+    isPlanned: true,
+  });
+  draft.expenseEntries.push({
+    id: "expense-2026-02",
+    entryDate: "2026-02-01",
+    description: "Forecast",
+    amount: 250,
+    expenseCategoryId: "other",
+    expenseType: "variable",
+    isRecurring: false,
+    isPlanned: true,
+  });
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-02",
+      safetyBucketAmount: 6300,
+      investmentBucketAmount: 12077,
+      totalWealthAmount: 18377,
+      sourceSheet: "Übersicht Vermögen",
+      sourceRowNumber: 38,
+      isManualAnchor: true,
+    },
+  ];
+
+  const rows = buildMonthlyRows(draft);
+  const anchored = rows.find((row) => row.monthKey === "2026-02");
+  const continued = rows.find((row) => row.monthKey === "2026-03");
+
+  assert.ok(anchored);
+  assert.ok(continued);
+  assert.equal(anchored?.safetyBucketEndAmount, 6300);
+  assert.equal(anchored?.investmentBucketEndAmount, 12077);
+  assert.equal(anchored?.projectedWealthEndAmount, 18377);
+  assert.equal(continued?.safetyBucketStartAmount, 6300);
+  assert.equal(continued?.investmentBucketStartAmount, 12077);
 });

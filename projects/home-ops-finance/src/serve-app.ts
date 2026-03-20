@@ -1,12 +1,23 @@
-import { createServer, type ServerResponse } from "node:http";
-import { readFileSync, existsSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { execFileSync } from "node:child_process";
+import { appendFileSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
+import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
 
 const root = resolve(".");
 const appDir = join(root, "app");
-const dataDir = join(root, "data");
+ensureFinanceDataDir();
+const dataDir = financeDataDir();
 const distDir = join(root, "dist");
 const port = Number(process.env.PORT ?? 4310);
+const reconciliationStatePath = financeDataPath("reconciliation-state.json");
+const importMappingsPath = financeDataPath("import-mappings.json");
+const baselineOverridesPath = financeDataPath("baseline-overrides.json");
+const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
+const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
+const forecastSettingsPath = financeDataPath("forecast-settings.json");
+const salarySettingsPath = financeDataPath("salary-settings.json");
+const activityLogPath = financeDataPath("activity-log.log");
 
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -14,6 +25,15 @@ const mimeTypes: Record<string, string> = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
 };
+
+function noCacheHeaders(type: string): Record<string, string> {
+  return {
+    "Content-Type": type,
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  };
+}
 
 function safeJoin(base: string, candidate: string): string | null {
   const target = normalize(join(base, candidate));
@@ -23,12 +43,297 @@ function safeJoin(base: string, candidate: string): string | null {
 function sendFile(path: string, res: ServerResponse): void {
   const ext = extname(path);
   const type = mimeTypes[ext] ?? "text/plain; charset=utf-8";
-  res.writeHead(200, { "Content-Type": type });
+  res.writeHead(200, noCacheHeaders(type));
   res.end(readFileSync(path));
 }
 
-const server = createServer((req, res) => {
+function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
+  res.writeHead(statusCode, noCacheHeaders("application/json; charset=utf-8"));
+  res.end(JSON.stringify(payload, null, 2));
+}
+
+function readJsonFile(path: string): unknown {
+  if (!existsSync(path)) {
+    return {};
+  }
+
+  return JSON.parse(readFileSync(path, "utf8")) as unknown;
+}
+
+function writeJsonFile(path: string, payload: unknown): void {
+  writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
+}
+
+function describePayload(payload: unknown): string {
+  if (Array.isArray(payload)) {
+    return `${payload.length} Einträge`;
+  }
+
+  if (payload && typeof payload === "object") {
+    return `${Object.keys(payload).length} Schlüssel`;
+  }
+
+  return typeof payload;
+}
+
+function appendActivityLog(event: string, details: Record<string, string | number> = {}): void {
+  const lines = [`[${new Date().toISOString()}] ${event}`];
+
+  for (const [key, value] of Object.entries(details)) {
+    lines.push(`  ${key}: ${String(value)}`);
+  }
+
+  appendFileSync(activityLogPath, lines.join("\n") + "\n", "utf8");
+}
+
+function refreshReviewedArtifacts(): void {
+  execFileSync(process.execPath, ["--experimental-strip-types", "src/apply-review-state.ts"], {
+    cwd: root,
+    stdio: "pipe",
+  });
+
+  if (!existsSync(financeDataPath("import-draft-reviewed.json"))) {
+    appendActivityLog("reviewed-artifacts übersprungen", {
+      grund: "kein reviewed import draft vorhanden",
+    });
+    return;
+  }
+
+  execFileSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "src/draft-report.ts",
+      financeDataPath("import-draft-reviewed.json"),
+      financeDataPath("draft-report-reviewed.json"),
+      financeDataPath("draft-report-reviewed.md"),
+    ],
+    {
+      cwd: root,
+      stdio: "pipe",
+    },
+  );
+
+  execFileSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "src/monthly-engine.ts",
+      financeDataPath("import-draft-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.md"),
+    ],
+    {
+      cwd: root,
+      stdio: "pipe",
+    },
+  );
+
+  execFileSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "src/build-dashboard.ts",
+      financeDataPath("draft-report-reviewed.json"),
+      financeDataPath("monthly-plan-reviewed.json"),
+      "dist/dashboard-reviewed.html",
+    ],
+    {
+      cwd: root,
+      stdio: "pipe",
+    },
+  );
+
+  appendActivityLog("reviewed-artifacts aktualisiert", {
+    quelle: financeDataPath("import-draft-reviewed.json"),
+  });
+}
+
+async function readRequestJson(req: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+
+  const body = Buffer.concat(chunks).toString("utf8").trim();
+  if (!body) {
+    return {};
+  }
+
+  return JSON.parse(body) as unknown;
+}
+
+const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${port}`);
+
+  if (url.pathname === "/api/reconciliation-state") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(reconciliationStatePath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(reconciliationStatePath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("reconciliation gespeichert", {
+          datei: reconciliationStatePath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("reconciliation fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "reconciliation_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/import-mappings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(importMappingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(importMappingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("mappings gespeichert", {
+          datei: importMappingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("mappings fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "mapping_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/baseline-overrides") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(baselineOverridesPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(baselineOverridesPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("fixkosten gespeichert", {
+          datei: baselineOverridesPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("fixkosten fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "baseline_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/monthly-expense-overrides") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(monthlyExpenseOverridesPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(monthlyExpenseOverridesPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("monatsausgaben gespeichert", {
+          datei: monthlyExpenseOverridesPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("monatsausgaben fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "monthly_expense_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/music-tax-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(musicTaxSettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(musicTaxSettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("musik-steuer-plan gespeichert", {
+          datei: musicTaxSettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("musik-steuer-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "music_tax_settings_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/forecast-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(forecastSettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(forecastSettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("forecast-plan gespeichert", {
+          datei: forecastSettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("forecast-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "forecast_settings_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/salary-settings") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(salarySettingsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(salarySettingsPath, payload);
+        refreshReviewedArtifacts();
+        appendActivityLog("gehalt-plan gespeichert", {
+          datei: salarySettingsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("gehalt-plan fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "salary_settings_save_failed" });
+      }
+    }
+  }
 
   if (url.pathname === "/" || url.pathname === "/index.html") {
     return sendFile(join(appDir, "index.html"), res);
@@ -55,10 +360,11 @@ const server = createServer((req, res) => {
     }
   }
 
-  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+  res.writeHead(404, noCacheHeaders("text/plain; charset=utf-8"));
   res.end("Not found");
 });
 
 server.listen(port, () => {
+  appendActivityLog("server gestartet", { url: `http://localhost:${port}` });
   console.log(`Home Ops Finance app available at http://localhost:${port}`);
 });

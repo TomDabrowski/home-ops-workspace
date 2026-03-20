@@ -2,20 +2,62 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { BaselineLineItem, ExpenseEntry, ImportDraft, IncomeEntry, MonthlyBaseline } from "./types.js";
+import type {
+  BaselineLineItem,
+  ExpenseEntry,
+  ForecastWealthAnchor,
+  ImportDraft,
+  IncomeEntry,
+  MonthlyBaseline,
+  WealthBucket,
+} from "./types.js";
+import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 
 export interface MonthlyPlanRow {
   monthKey: string;
   baselineProfile: "historical_liquidity" | "forecast_investing";
+  baselineAnchorMonthKey: string;
   netSalaryAmount: number;
   baselineFixedAmount: number;
   baselineVariableAmount: number;
   annualReserveAmount: number;
   plannedSavingsAmount: number;
   baselineAvailableAmount: number;
+  monthAvailableBeforeExpensesAmount: number;
+  baselineAnchorAvailableAmount: number;
+  baselineAnchorDeltaAmount: number;
+  baselineFixedDeltaAmount: number;
+  baselineVariableDeltaAmount: number;
+  annualReserveDeltaAmount: number;
+  plannedSavingsDeltaAmount: number;
   importedIncomeAmount: number;
+  importedIncomeReserveAmount: number;
+  importedIncomeAvailableAmount: number;
+  musicIncomeAmount: number;
+  musicAllocationToSafetyAmount: number;
+  musicAllocationToInvestmentAmount: number;
+  salaryAllocationToSafetyAmount: number;
+  salaryAllocationToInvestmentAmount: number;
+  safetyBucketStartAmount?: number;
+  safetyBucketEndAmount?: number;
+  investmentBucketStartAmount?: number;
+  investmentBucketEndAmount?: number;
+  projectedWealthEndAmount?: number;
   importedExpenseAmount: number;
   netAfterImportedFlows: number;
+  consistencySignals: MonthlyConsistencySignal[];
+}
+
+export interface MonthlyConsistencySignal {
+  code:
+    | "baseline_anchor_mismatch"
+    | "baseline_deficit"
+    | "monthly_deficit"
+    | "expense_over_baseline_available"
+    | "expense_spike";
+  severity: "info" | "warn";
+  title: string;
+  detail: string;
 }
 
 export interface MonthReview {
@@ -32,6 +74,26 @@ export interface MonthlyPlanReport {
   anchorMonthKey: string;
   baselineMode: "exclude_annual_reserve_from_available";
   rows: MonthlyPlanRow[];
+}
+
+function resolvePaths(): {
+  inputPath: string;
+  outputJsonPath: string;
+  outputMarkdownPath: string;
+} {
+  if (process.argv[2] === "--reviewed") {
+    return {
+      inputPath: resolve(financeDataPath("import-draft-reviewed.json")),
+      outputJsonPath: resolve(financeDataPath("monthly-plan-reviewed.json")),
+      outputMarkdownPath: resolve(financeDataPath("monthly-plan-reviewed.md")),
+    };
+  }
+
+  return {
+    inputPath: resolve(process.argv[2] ?? financeDataPath("import-draft.json")),
+    outputJsonPath: resolve(process.argv[3] ?? financeDataPath("monthly-plan.json")),
+    outputMarkdownPath: resolve(process.argv[4] ?? financeDataPath("monthly-plan.md")),
+  };
 }
 
 function readDraft(inputPath: string): ImportDraft {
@@ -130,6 +192,51 @@ export function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): num
   );
 }
 
+export function sumIncomeReserveForMonth(entries: IncomeEntry[], monthKey: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .reduce((sum, entry) => sum + (entry.reserveAmount ?? 0), 0),
+  );
+}
+
+export function sumIncomeAvailableForMonth(entries: IncomeEntry[], monthKey: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .reduce((sum, entry) => sum + (entry.availableAmount ?? entry.amount - (entry.reserveAmount ?? 0)), 0),
+  );
+}
+
+export function sumMusicIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => entry.incomeStreamId === "music-income" && monthFromDate(entry.entryDate) === monthKey)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+}
+
+function assumptionNumber(draft: ImportDraft, key: string, fallback: number): number {
+  const assumption = draft.forecastAssumptions.find((entry) => entry.key === key);
+  return typeof assumption?.value === "number" ? assumption.value : fallback;
+}
+
+function wealthBucket(draft: ImportDraft, kind: WealthBucket["kind"]): WealthBucket | undefined {
+  return draft.wealthBuckets.find((bucket) => bucket.kind === kind);
+}
+
+function wealthAnchorForMonth(draft: ImportDraft, monthKey: string): ForecastWealthAnchor | undefined {
+  return (draft.forecastWealthAnchors ?? []).find((anchor) => anchor.monthKey === monthKey);
+}
+
+function monthlyReturnFromAnnualRate(rate: number, mode: "simple_division" | "compound"): number {
+  if (mode === "compound") {
+    return Math.pow(1 + rate, 1 / 12) - 1;
+  }
+
+  return rate / 12;
+}
+
 export function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): number {
   return roundCurrency(
     entries
@@ -146,12 +253,129 @@ export function selectExpenseEntriesForMonth(entries: ExpenseEntry[], monthKey: 
   return entries.filter((entry) => monthFromDate(entry.entryDate) === monthKey);
 }
 
+function formatCurrency(value: number): string {
+  return `${value.toFixed(2)} EUR`;
+}
+
+function buildConsistencySignals(input: {
+  monthKey: string;
+  baselineAnchorMonthKey: string;
+  baselineAvailableAmount: number;
+  baselineAnchorAvailableAmount: number;
+  baselineAnchorDeltaAmount: number;
+  baselineFixedDeltaAmount: number;
+  baselineVariableDeltaAmount: number;
+  annualReserveDeltaAmount: number;
+  plannedSavingsDeltaAmount: number;
+  importedExpenseAmount: number;
+  importedVariableThresholdAmount: number;
+  importedIncomeAvailableAmount: number;
+  monthAvailableBeforeExpensesAmount: number;
+  netAfterImportedFlows: number;
+}): MonthlyConsistencySignal[] {
+  const signals: MonthlyConsistencySignal[] = [];
+
+  const mismatchEntries: Array<[string, number]> = [
+    ["Fixkosten", input.baselineFixedDeltaAmount],
+    ["Variable Basis", input.baselineVariableDeltaAmount],
+    ["Ruecklage", input.annualReserveDeltaAmount],
+    ["Sparen", input.plannedSavingsDeltaAmount],
+  ];
+  const mismatchParts = mismatchEntries
+    .filter(([, delta]) => Math.abs(delta) > 0.01)
+    .map(([label, delta]) => `${label} ${formatCurrency(delta)}`);
+
+  if (Math.abs(input.baselineAnchorDeltaAmount) > 0.01 || mismatchParts.length > 0) {
+    const detailParts = [
+      `Anker ${input.baselineAnchorMonthKey}`,
+      `Verfuegbar-Differenz ${formatCurrency(input.baselineAnchorDeltaAmount)}`,
+    ];
+
+    if (mismatchParts.length > 0) {
+      detailParts.push(`Teilabweichungen: ${mismatchParts.join(", ")}`);
+    }
+
+    signals.push({
+      code: "baseline_anchor_mismatch",
+      severity: "warn",
+      title: "Baseline passt nicht sauber zum Anchor",
+      detail: detailParts.join(" · "),
+    });
+  }
+
+  if (input.baselineAvailableAmount < 0) {
+    signals.push({
+      code: "baseline_deficit",
+      severity: "warn",
+      title: "Baseline selbst liegt unter null",
+      detail: `${input.monthKey} startet schon vor Importen mit ${formatCurrency(input.baselineAvailableAmount)}.`,
+    });
+  }
+
+  if (input.netAfterImportedFlows < 0) {
+    signals.push({
+      code: "monthly_deficit",
+      severity: "warn",
+      title: "Monat endet nach Importen im Minus",
+      detail: `${input.monthKey} faellt auf ${formatCurrency(input.netAfterImportedFlows)} nach importierten Bewegungen.`,
+    });
+  }
+
+  if (input.importedExpenseAmount > input.monthAvailableBeforeExpensesAmount && input.importedExpenseAmount > 0) {
+    signals.push({
+      code: "expense_over_baseline_available",
+      severity: "warn",
+      title: "Importierte Ausgaben uebersteigen freie Mittel des Monats",
+      detail:
+        `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen frei ${formatCurrency(input.monthAvailableBeforeExpensesAmount)} ` +
+        `(Baseline ${formatCurrency(input.baselineAvailableAmount)} + freie Import-Einnahmen ${formatCurrency(input.importedIncomeAvailableAmount)}).`,
+    });
+  }
+
+  if (input.importedExpenseAmount > input.importedVariableThresholdAmount && input.importedExpenseAmount > 0) {
+    signals.push({
+      code: "expense_spike",
+      severity: "info",
+      title: "Importierter Ausgabenmonat wirkt ungewoehnlich hoch",
+      detail: `Ausgaben ${formatCurrency(input.importedExpenseAmount)} liegen ueber dem Vergleichswert von ${formatCurrency(input.importedVariableThresholdAmount)}.`,
+    });
+  }
+
+  return signals;
+}
+
 export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   if (draft.monthlyBaselines.length === 0) {
     return [];
   }
 
   const monthKeys = uniqueMonthKeys(draft.incomeEntries, draft.expenseEntries);
+  const safetyThreshold = assumptionNumber(draft, "safety_threshold", 10000);
+  const musicThreshold = assumptionNumber(draft, "music_threshold", safetyThreshold);
+  const musicInvestmentShare = assumptionNumber(draft, "music_investment_share_after_threshold", 0.6);
+  const musicSafetyShare = assumptionNumber(draft, "music_safety_share_after_threshold", 0.4);
+  const safetyStartDefault = wealthBucket(draft, "safety")?.currentAmount ?? 0;
+  const investmentStartDefault = wealthBucket(draft, "investment")?.currentAmount ?? 0;
+  const safetyMonthlyReturn = monthlyReturnFromAnnualRate(
+    wealthBucket(draft, "safety")?.expectedAnnualReturn ?? assumptionNumber(draft, "savings_interest_annual", 0.02),
+    "simple_division",
+  );
+  const investmentMonthlyReturn = monthlyReturnFromAnnualRate(
+    wealthBucket(draft, "investment")?.expectedAnnualReturn ?? assumptionNumber(draft, "investment_return_annual", 0.05),
+    "compound",
+  );
+  const firstPlannedMonthKey =
+    draft.incomeEntries
+      .filter((entry) => entry.isPlanned)
+      .map((entry) => monthFromDate(entry.entryDate))
+      .sort((left, right) => compareMonthKeys(left, right))[0] ??
+    draft.expenseEntries
+      .filter((entry) => entry.isPlanned)
+      .map((entry) => monthFromDate(entry.entryDate))
+      .sort((left, right) => compareMonthKeys(left, right))[0];
+
+  let safetyBucketEndAmount = safetyStartDefault;
+  let investmentBucketEndAmount = investmentStartDefault;
 
   return monthKeys.map((monthKey) => {
     const selectedBaseline = selectBaselineForMonth(draft.monthlyBaselines, monthKey);
@@ -162,32 +386,139 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const annualReserveAmount = sumLineItems(activeLineItems, "annual_reserve");
     const plannedSavingsAmount = sumLineItems(activeLineItems, "savings");
     const importedIncomeAmount = sumIncomeForMonth(draft.incomeEntries, monthKey);
+    const importedIncomeReserveAmount = sumIncomeReserveForMonth(draft.incomeEntries, monthKey);
+    const importedIncomeAvailableAmount = sumIncomeAvailableForMonth(draft.incomeEntries, monthKey);
+    const musicIncomeAmount = sumMusicIncomeForMonth(draft.incomeEntries, monthKey);
     const importedExpenseAmount = sumExpensesForMonth(draft.expenseEntries, monthKey);
+    const baselineAvailableAmount = roundCurrency(
+      baseline.netSalaryAmount -
+        fixedAmount -
+        variableAmount -
+        plannedSavingsAmount,
+    );
+    const netAfterImportedFlows = roundCurrency(
+      baseline.netSalaryAmount -
+        fixedAmount -
+        variableAmount -
+        plannedSavingsAmount +
+        importedIncomeAvailableAmount -
+        importedExpenseAmount,
+    );
+    const monthAvailableBeforeExpensesAmount = roundCurrency(
+      baselineAvailableAmount + importedIncomeAvailableAmount,
+    );
+    const baselineAnchorAvailableAmount = roundCurrency(selectedBaseline.availableBeforeIrregulars);
+    const baselineAnchorDeltaAmount = roundCurrency(baselineAvailableAmount - baselineAnchorAvailableAmount);
+    const baselineFixedDeltaAmount = roundCurrency(fixedAmount - selectedBaseline.fixedExpensesAmount);
+    const baselineVariableDeltaAmount = roundCurrency(variableAmount - selectedBaseline.baselineVariableAmount);
+    const annualReserveDeltaAmount = roundCurrency(annualReserveAmount - (selectedBaseline.annualReserveAmount ?? 0));
+    const plannedSavingsDeltaAmount = roundCurrency(plannedSavingsAmount - selectedBaseline.plannedSavingsAmount);
+    const importedVariableThresholdAmount = roundCurrency(
+      Math.max(baselineAvailableAmount, variableAmount),
+    );
+    const salaryAllocationToSafetyAmount = roundCurrency(
+      Math.max(0, baselineAvailableAmount - importedExpenseAmount),
+    );
+    const salaryAllocationToInvestmentAmount = roundCurrency(
+      Math.max(0, baselineAvailableAmount + plannedSavingsAmount - importedExpenseAmount),
+    );
+    const useForecastRouting = firstPlannedMonthKey ? compareMonthKeys(monthKey, firstPlannedMonthKey) >= 0 : false;
+    const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
+    const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
+    const explicitWealthAnchor = wealthAnchorForMonth(draft, monthKey);
+    const musicAllocationToSafetyAmount = roundCurrency(
+      !useForecastRouting
+        ? 0
+        : (safetyBucketStartAmount ?? 0) < musicThreshold
+          ? musicIncomeAmount
+          : musicIncomeAmount * musicSafetyShare,
+    );
+    const musicAllocationToInvestmentAmount = roundCurrency(
+      !useForecastRouting
+        ? 0
+        : (safetyBucketStartAmount ?? 0) >= musicThreshold
+          ? musicIncomeAmount * musicInvestmentShare
+          : 0,
+    );
+    const safetyBucketProjectedEndAmount = useForecastRouting
+      ? roundCurrency(
+          (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
+            ((safetyBucketStartAmount ?? 0) < safetyThreshold ? salaryAllocationToSafetyAmount : 0) +
+            musicAllocationToSafetyAmount,
+        )
+      : undefined;
+    const investmentBucketProjectedEndAmount = useForecastRouting
+      ? roundCurrency(
+          (investmentBucketStartAmount ?? 0) * (1 + investmentMonthlyReturn) +
+            plannedSavingsAmount +
+            ((safetyBucketStartAmount ?? 0) >= safetyThreshold ? salaryAllocationToInvestmentAmount : 0) +
+            musicAllocationToInvestmentAmount,
+        )
+      : undefined;
+    const safetyBucketResolvedEndAmount =
+      explicitWealthAnchor?.safetyBucketAmount ?? safetyBucketProjectedEndAmount;
+    const investmentBucketResolvedEndAmount =
+      explicitWealthAnchor?.investmentBucketAmount ?? investmentBucketProjectedEndAmount;
+    const projectedWealthEndAmount =
+      safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
+        ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
+        : undefined;
+    if (safetyBucketResolvedEndAmount !== undefined) {
+      safetyBucketEndAmount = safetyBucketResolvedEndAmount;
+    }
+    if (investmentBucketResolvedEndAmount !== undefined) {
+      investmentBucketEndAmount = investmentBucketResolvedEndAmount;
+    }
+    const consistencySignals = buildConsistencySignals({
+      monthKey,
+      baselineAnchorMonthKey: selectedBaseline.monthKey,
+      baselineAvailableAmount,
+      baselineAnchorAvailableAmount,
+      baselineAnchorDeltaAmount,
+      baselineFixedDeltaAmount,
+      baselineVariableDeltaAmount,
+      annualReserveDeltaAmount,
+      plannedSavingsDeltaAmount,
+      importedExpenseAmount,
+      importedVariableThresholdAmount,
+      importedIncomeAvailableAmount,
+      monthAvailableBeforeExpensesAmount,
+      netAfterImportedFlows,
+    });
 
     return {
       monthKey,
       baselineProfile: baseline.baselineProfile,
+      baselineAnchorMonthKey: selectedBaseline.monthKey,
       netSalaryAmount: baseline.netSalaryAmount,
       baselineFixedAmount: fixedAmount,
       baselineVariableAmount: variableAmount,
       annualReserveAmount,
       plannedSavingsAmount,
-      baselineAvailableAmount: roundCurrency(
-        baseline.netSalaryAmount -
-          fixedAmount -
-          variableAmount -
-          plannedSavingsAmount,
-      ),
+      baselineAvailableAmount,
+      monthAvailableBeforeExpensesAmount,
+      baselineAnchorAvailableAmount,
+      baselineAnchorDeltaAmount,
+      baselineFixedDeltaAmount,
+      baselineVariableDeltaAmount,
+      annualReserveDeltaAmount,
+      plannedSavingsDeltaAmount,
       importedIncomeAmount,
+      importedIncomeReserveAmount,
+      importedIncomeAvailableAmount,
+      musicIncomeAmount,
+      musicAllocationToSafetyAmount,
+      musicAllocationToInvestmentAmount,
+      salaryAllocationToSafetyAmount,
+      salaryAllocationToInvestmentAmount,
+      safetyBucketStartAmount,
+      safetyBucketEndAmount: safetyBucketResolvedEndAmount,
+      investmentBucketStartAmount,
+      investmentBucketEndAmount: investmentBucketResolvedEndAmount,
+      projectedWealthEndAmount,
       importedExpenseAmount,
-      netAfterImportedFlows: roundCurrency(
-        baseline.netSalaryAmount -
-          fixedAmount -
-          variableAmount -
-          plannedSavingsAmount +
-          importedIncomeAmount -
-          importedExpenseAmount,
-      ),
+      netAfterImportedFlows,
+      consistencySignals,
     };
   });
 }
@@ -224,7 +555,7 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 
   for (const row of report.rows.slice(-12)) {
     lines.push(
-      `- ${row.monthKey} (${row.baselineProfile}): baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, imported income ${row.importedIncomeAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
+      `- ${row.monthKey} (${row.baselineProfile}): baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, music gross ${row.musicIncomeAmount.toFixed(2)} EUR, free ${row.importedIncomeAvailableAmount.toFixed(2)} EUR, reserve ${row.importedIncomeReserveAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
     );
   }
 
@@ -233,9 +564,8 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 }
 
 function main(): void {
-  const inputPath = resolve(process.argv[2] ?? "data/import-draft.json");
-  const outputJsonPath = resolve(process.argv[3] ?? "data/monthly-plan.json");
-  const outputMarkdownPath = resolve(process.argv[4] ?? "data/monthly-plan.md");
+  ensureFinanceDataDir();
+  const { inputPath, outputJsonPath, outputMarkdownPath } = resolvePaths();
 
   const draft = readDraft(inputPath);
   const anchor = draft.monthlyBaselines[0];
