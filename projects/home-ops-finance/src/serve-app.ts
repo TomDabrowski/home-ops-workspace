@@ -19,6 +19,11 @@ const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
 const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
 const activityLogPath = financeDataPath("activity-log.log");
+const autoShutdownGraceMs = 5000;
+const activeClientSessions = new Map<string, number>();
+
+let idleShutdownTimer: NodeJS.Timeout | null = null;
+let shutdownRequested = false;
 
 const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -85,6 +90,54 @@ function appendActivityLog(event: string, details: Record<string, string | numbe
   }
 
   appendFileSync(activityLogPath, lines.join("\n") + "\n", "utf8");
+}
+
+function clientSessionCount(): number {
+  return activeClientSessions.size;
+}
+
+function cancelIdleShutdown(reason: string): void {
+  if (!idleShutdownTimer) {
+    return;
+  }
+
+  clearTimeout(idleShutdownTimer);
+  idleShutdownTimer = null;
+  appendActivityLog("server-shutdown abgebrochen", { grund: reason, aktive_tabs: clientSessionCount() });
+}
+
+function performShutdown(reason: string): void {
+  if (shutdownRequested) {
+    return;
+  }
+
+  shutdownRequested = true;
+  appendActivityLog("server-shutdown gestartet", { grund: reason, aktive_tabs: clientSessionCount() });
+  server.close(() => {
+    appendActivityLog("server beendet", { url: `http://localhost:${port}`, grund: reason });
+    process.exit(0);
+  });
+  setTimeout(() => {
+    process.exit(0);
+  }, 1500).unref();
+}
+
+function scheduleIdleShutdown(reason: string): void {
+  if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0) {
+    return;
+  }
+
+  appendActivityLog("server-shutdown geplant", {
+    grund: reason,
+    warte_ms: autoShutdownGraceMs,
+  });
+  idleShutdownTimer = setTimeout(() => {
+    idleShutdownTimer = null;
+    if (clientSessionCount() === 0) {
+      performShutdown(reason);
+    }
+  }, autoShutdownGraceMs);
+  idleShutdownTimer.unref();
 }
 
 function refreshReviewedArtifacts(): void {
@@ -173,14 +226,52 @@ const server = createServer(async (req, res) => {
       quelle: req.socket.remoteAddress ?? "unbekannt",
     });
     sendJson(res, 200, { ok: true });
-    server.close(() => {
-      appendActivityLog("server beendet", { url: `http://localhost:${port}` });
-      process.exit(0);
-    });
-    setTimeout(() => {
-      process.exit(0);
-    }, 1500).unref();
+    performShutdown("manuell über app-beenden");
     return;
+  }
+
+  if (url.pathname === "/api/client-session" && req.method === "POST") {
+    try {
+      const payload = await readRequestJson(req);
+      const clientId =
+        payload && typeof payload === "object" && "clientId" in payload ? payload.clientId : null;
+      const action =
+        payload && typeof payload === "object" && "action" in payload ? payload.action : null;
+
+      if (typeof clientId !== "string" || typeof action !== "string" || clientId.length < 8) {
+        return sendJson(res, 400, { ok: false, error: "invalid_client_session_payload" });
+      }
+
+      if (action === "open" || action === "heartbeat") {
+        activeClientSessions.set(clientId, Date.now());
+        cancelIdleShutdown(action === "open" ? "tab wieder geöffnet" : "heartbeat empfangen");
+        if (action === "open") {
+          appendActivityLog("tab verbunden", {
+            client_id: clientId,
+            aktive_tabs: clientSessionCount(),
+          });
+        }
+        return sendJson(res, 200, { ok: true, activeClients: clientSessionCount() });
+      }
+
+      if (action === "close") {
+        activeClientSessions.delete(clientId);
+        appendActivityLog("tab geschlossen", {
+          client_id: clientId,
+          aktive_tabs: clientSessionCount(),
+        });
+        sendJson(res, 200, { ok: true, activeClients: clientSessionCount() });
+        scheduleIdleShutdown("letzter tab geschlossen");
+        return;
+      }
+
+      return sendJson(res, 400, { ok: false, error: "invalid_client_session_action" });
+    } catch (error) {
+      appendActivityLog("client-session fehlgeschlagen", {
+        fehler: error instanceof Error ? error.message : String(error),
+      });
+      return sendJson(res, 500, { ok: false, error: "client_session_failed" });
+    }
   }
 
   if (url.pathname === "/api/reconciliation-state") {
