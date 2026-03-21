@@ -20,6 +20,8 @@ const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 5000;
+const staleClientSessionMs = 45000;
+const staleClientSweepMs = 15000;
 const activeClientSessions = new Map<string, number>();
 
 let idleShutdownTimer: NodeJS.Timeout | null = null;
@@ -96,6 +98,29 @@ function clientSessionCount(): number {
   return activeClientSessions.size;
 }
 
+function removeStaleClientSessions(reason: string): void {
+  const now = Date.now();
+  let removedCount = 0;
+
+  for (const [clientId, lastSeenAt] of activeClientSessions.entries()) {
+    if (now - lastSeenAt <= staleClientSessionMs) {
+      continue;
+    }
+
+    activeClientSessions.delete(clientId);
+    removedCount += 1;
+  }
+
+  if (removedCount > 0) {
+    appendActivityLog("verwaiste tabs entfernt", {
+      grund: reason,
+      entfernt: removedCount,
+      aktive_tabs: clientSessionCount(),
+    });
+  }
+
+}
+
 function cancelIdleShutdown(reason: string): void {
   if (!idleShutdownTimer) {
     return;
@@ -123,6 +148,8 @@ function performShutdown(reason: string): void {
 }
 
 function scheduleIdleShutdown(reason: string): void {
+  removeStaleClientSessions(`${reason} (stale sweep)`);
+
   if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0) {
     return;
   }
@@ -139,6 +166,12 @@ function scheduleIdleShutdown(reason: string): void {
   }, autoShutdownGraceMs);
   idleShutdownTimer.unref();
 }
+
+const staleClientSweepTimer = setInterval(() => {
+  removeStaleClientSessions("heartbeat ausgeblieben");
+  scheduleIdleShutdown("heartbeat ausgeblieben");
+}, staleClientSweepMs);
+staleClientSweepTimer.unref();
 
 function refreshReviewedArtifacts(): void {
   execFileSync(process.execPath, ["--experimental-strip-types", "src/apply-review-state.ts"], {
