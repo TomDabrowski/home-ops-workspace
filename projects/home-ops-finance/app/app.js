@@ -17,6 +17,8 @@ const salarySettingsStorageKey = "home-ops-finance-salary-settings-v1";
 const activeTabStorageKey = "home-ops-finance-active-tab-v1";
 const monthReviewStorageKey = "home-ops-finance-month-review-v1";
 const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
+const clientSessionStorageKey = "home-ops-finance-client-session-v1";
+const clientHeartbeatMs = 15000;
 const fallbackAccountOptions = [
   { id: "giro", label: "CHECK24 Alltag" },
   { id: "cash", label: "Trade Republic Cash" },
@@ -44,6 +46,9 @@ let statusHideTimer = null;
 let musicTaxSettingsCache = null;
 let forecastSettingsCache = null;
 let salarySettingsCache = [];
+let clientSessionId = null;
+let clientHeartbeatTimer = null;
+let closeSignalSent = false;
 
 function financeState() {
   return window.__financeState ?? null;
@@ -130,6 +135,74 @@ async function shutdownApp() {
       "warn",
     );
   }
+}
+
+function getClientSessionId() {
+  if (clientSessionId) {
+    return clientSessionId;
+  }
+
+  const stored = window.sessionStorage.getItem(clientSessionStorageKey);
+  if (stored) {
+    clientSessionId = stored;
+    return clientSessionId;
+  }
+
+  clientSessionId =
+    typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : `finance-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.sessionStorage.setItem(clientSessionStorageKey, clientSessionId);
+  return clientSessionId;
+}
+
+function sendClientSessionEvent(action, useBeacon = false) {
+  const payload = JSON.stringify({
+    clientId: getClientSessionId(),
+    action,
+  });
+
+  if (useBeacon && typeof navigator.sendBeacon === "function") {
+    const body = new Blob([payload], { type: "application/json" });
+    navigator.sendBeacon("/api/client-session", body);
+    return Promise.resolve();
+  }
+
+  return fetch("/api/client-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+    keepalive: useBeacon,
+  });
+}
+
+function stopClientHeartbeat() {
+  if (clientHeartbeatTimer) {
+    window.clearInterval(clientHeartbeatTimer);
+    clientHeartbeatTimer = null;
+  }
+}
+
+function signalTabClosed() {
+  if (closeSignalSent) {
+    return;
+  }
+
+  closeSignalSent = true;
+  stopClientHeartbeat();
+  sendClientSessionEvent("close", true).catch(() => {});
+}
+
+async function startClientSessionLifecycle() {
+  closeSignalSent = false;
+  await sendClientSessionEvent("open");
+  stopClientHeartbeat();
+  clientHeartbeatTimer = window.setInterval(() => {
+    sendClientSessionEvent("heartbeat").catch(() => {});
+  }, clientHeartbeatMs);
+
+  window.addEventListener("pagehide", signalTabClosed);
+  window.addEventListener("beforeunload", signalTabClosed);
 }
 
 function bindAppControls() {
@@ -3037,6 +3110,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
 }
 
 async function load() {
+  await startClientSessionLifecycle();
   await initializeWorkflowState();
   const state = await fetchFinanceData();
   renderApp(state);
