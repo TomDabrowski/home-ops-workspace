@@ -20,6 +20,8 @@ const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 5000;
+const staleClientSessionMs = 45000;
+const staleClientSweepMs = 15000;
 const activeClientSessions = new Map<string, number>();
 
 let idleShutdownTimer: NodeJS.Timeout | null = null;
@@ -92,8 +94,43 @@ function appendActivityLog(event: string, details: Record<string, string | numbe
   appendFileSync(activityLogPath, lines.join("\n") + "\n", "utf8");
 }
 
+function notifyMac(title: string, message: string): void {
+  try {
+    const escapedTitle = title.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+    const escapedMessage = message.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+    execFileSync("/usr/bin/osascript", ["-e", `display notification "${escapedMessage}" with title "${escapedTitle}"`], {
+      stdio: "ignore",
+    });
+  } catch {
+    // Best effort only: notifications should never block the server lifecycle.
+  }
+}
+
 function clientSessionCount(): number {
   return activeClientSessions.size;
+}
+
+function removeStaleClientSessions(reason: string): void {
+  const now = Date.now();
+  let removedCount = 0;
+
+  for (const [clientId, lastSeenAt] of activeClientSessions.entries()) {
+    if (now - lastSeenAt <= staleClientSessionMs) {
+      continue;
+    }
+
+    activeClientSessions.delete(clientId);
+    removedCount += 1;
+  }
+
+  if (removedCount > 0) {
+    appendActivityLog("verwaiste tabs entfernt", {
+      grund: reason,
+      entfernt: removedCount,
+      aktive_tabs: clientSessionCount(),
+    });
+  }
+
 }
 
 function cancelIdleShutdown(reason: string): void {
@@ -113,6 +150,7 @@ function performShutdown(reason: string): void {
 
   shutdownRequested = true;
   appendActivityLog("server-shutdown gestartet", { grund: reason, aktive_tabs: clientSessionCount() });
+  notifyMac("Home Ops Finance", `Server wird beendet (${reason}).`);
   server.close(() => {
     appendActivityLog("server beendet", { url: `http://localhost:${port}`, grund: reason });
     process.exit(0);
@@ -123,6 +161,8 @@ function performShutdown(reason: string): void {
 }
 
 function scheduleIdleShutdown(reason: string): void {
+  removeStaleClientSessions(`${reason} (stale sweep)`);
+
   if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0) {
     return;
   }
@@ -139,6 +179,12 @@ function scheduleIdleShutdown(reason: string): void {
   }, autoShutdownGraceMs);
   idleShutdownTimer.unref();
 }
+
+const staleClientSweepTimer = setInterval(() => {
+  removeStaleClientSessions("heartbeat ausgeblieben");
+  scheduleIdleShutdown("heartbeat ausgeblieben");
+}, staleClientSweepMs);
+staleClientSweepTimer.unref();
 
 function refreshReviewedArtifacts(): void {
   execFileSync(process.execPath, ["--experimental-strip-types", "src/apply-review-state.ts"], {
