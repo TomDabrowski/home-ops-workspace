@@ -94,6 +94,18 @@ function appendActivityLog(event: string, details: Record<string, string | numbe
   appendFileSync(activityLogPath, lines.join("\n") + "\n", "utf8");
 }
 
+function notifyMac(title: string, message: string): void {
+  try {
+    const escapedTitle = title.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+    const escapedMessage = message.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+    execFileSync("/usr/bin/osascript", ["-e", `display notification "${escapedMessage}" with title "${escapedTitle}"`], {
+      stdio: "ignore",
+    });
+  } catch {
+    // Best effort only: notifications should never block the server lifecycle.
+  }
+}
+
 function clientSessionCount(): number {
   return activeClientSessions.size;
 }
@@ -138,6 +150,7 @@ function performShutdown(reason: string): void {
 
   shutdownRequested = true;
   appendActivityLog("server-shutdown gestartet", { grund: reason, aktive_tabs: clientSessionCount() });
+  notifyMac("Home Ops Finance", `Server wird beendet (${reason}).`);
   server.close(() => {
     appendActivityLog("server beendet", { url: `http://localhost:${port}`, grund: reason });
     process.exit(0);

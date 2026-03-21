@@ -81,10 +81,14 @@ if ! "$LSOF_BIN" -iTCP:"$PORT" -sTCP:LISTEN -n -P >/dev/null 2>&1; then
   for _ in {1..30}; do
     if "$LSOF_BIN" -iTCP:"$PORT" -sTCP:LISTEN -n -P >/dev/null 2>&1; then
       log "Server erfolgreich gestartet"
+      notify "Home Ops Finance" "Server ist bereit. Die lokale Ansicht wird geöffnet."
       break
     fi
     sleep 1
   done
+else
+  log "Server läuft bereits auf Port ${PORT}"
+  notify "Home Ops Finance" "Server läuft bereits. Die lokale Ansicht wird geöffnet."
 fi
 
 if ! "$LSOF_BIN" -iTCP:"$PORT" -sTCP:LISTEN -n -P >/dev/null 2>&1; then
