@@ -90,6 +90,16 @@ interface SalarySettingState {
   isActive?: boolean;
 }
 
+interface WealthSnapshotState {
+  id: string;
+  snapshotDate: string;
+  cashAmount: number;
+  investmentAmount: number;
+  notes?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+}
+
 type MappingState = Record<string, EntryMappingState>;
 type ReconciliationState = Record<string, ReconciliationMonthState>;
 type BaselineOverrideCollection = BaselineOverrideState[];
@@ -98,6 +108,7 @@ type MonthlyMusicIncomeOverrideCollection = MonthlyMusicIncomeOverrideState[];
 type MusicTaxSetting = MusicTaxSettingState | null;
 type ForecastSettings = ForecastSettingsState | null;
 type SalarySettingCollection = SalarySettingState[];
+type WealthSnapshotCollection = WealthSnapshotState[];
 
 function readJsonFile<T>(path: string, fallback: T): T {
   try {
@@ -286,6 +297,7 @@ export function applyReviewState(
   musicTaxSetting: MusicTaxSetting = null,
   forecastSettings: ForecastSettings = null,
   salarySettings: SalarySettingCollection = [],
+  wealthSnapshots: WealthSnapshotCollection = [],
 ): ImportDraft {
   const expenseCategoryById = new Map(draft.expenseCategories.map((category) => [category.id, category]));
   const activeBaselineOverrides = baselineOverrides
@@ -334,6 +346,23 @@ export function applyReviewState(
         entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
       ]),
     }));
+  const manualWealthAnchors = wealthSnapshots
+    .filter((entry) => entry.isActive !== false)
+    .sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate))
+    .map((entry) => ({
+      monthKey: entry.snapshotDate.slice(0, 7),
+      safetyBucketAmount: entry.cashAmount,
+      investmentBucketAmount: entry.investmentAmount,
+      totalWealthAmount: roundCurrency(entry.cashAmount + entry.investmentAmount),
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 0,
+      isManualAnchor: true,
+      snapshotDate: entry.snapshotDate,
+      notes: mergeNotes(entry.notes, [
+        entry.updatedAt ? `wealth snapshot ${entry.updatedAt}` : "wealth snapshot",
+      ]),
+    }));
+  const manualAnchorMonths = new Set(manualWealthAnchors.map((entry) => entry.monthKey));
   const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.entryDate.slice(0, 7)));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
   const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
@@ -415,11 +444,23 @@ export function applyReviewState(
     ...draft.incomeEntries.filter((entry) => !(entry.incomeStreamId === "music-income" && musicOverrideMonths.has(entry.entryDate.slice(0, 7)))),
     ...activeMonthlyMusicIncomeOverrides,
   ];
+  const nextExpenseEntriesWithOverrides = [
+    ...nextExpenseEntries,
+    ...generatedPrepayments,
+    ...activeMonthlyExpenseOverrides,
+  ];
+  const reviewedExpenseEntries = [...new Map(
+    nextExpenseEntriesWithOverrides.map((entry) => [entry.id, entry]),
+  ).values()];
 
   return {
     ...draft,
     forecastAssumptions: nextForecastAssumptions,
     wealthBuckets: forecastSettingApplied.wealthBuckets,
+    forecastWealthAnchors: [
+      ...manualWealthAnchors,
+      ...(draft.forecastWealthAnchors ?? []).filter((entry) => !manualAnchorMonths.has(entry.monthKey)),
+    ],
     monthlyBaselines: applySalarySettingsToBaselines(draft.monthlyBaselines, salarySettings),
     baselineLineItems: [...draft.baselineLineItems, ...activeBaselineOverrides],
     incomeEntries: nextIncomeEntries.map((entry) => {
@@ -437,8 +478,7 @@ export function applyReviewState(
         ]),
       };
     }),
-    expenseEntries: [
-      ...nextExpenseEntries.map((entry) => {
+    expenseEntries: reviewedExpenseEntries.map((entry) => {
       const mapping = mappings[entry.id];
       const monthKey = entry.entryDate.slice(0, 7);
       const monthReview = reconciliation[monthKey];
@@ -458,9 +498,6 @@ export function applyReviewState(
         ]),
       };
       }),
-      ...generatedPrepayments,
-      ...activeMonthlyExpenseOverrides,
-    ],
   };
 }
 
@@ -476,6 +513,7 @@ function main(): void {
   const musicTaxSettingsPath = resolve(process.argv[9] ?? financeDataPath("music-tax-settings.json"));
   const forecastSettingsPath = resolve(process.argv[10] ?? financeDataPath("forecast-settings.json"));
   const salarySettingsPath = resolve(process.argv[11] ?? financeDataPath("salary-settings.json"));
+  const wealthSnapshotsPath = resolve(process.argv[12] ?? financeDataPath("wealth-snapshots.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -491,6 +529,7 @@ function main(): void {
   const musicTaxSetting = readJsonFile<MusicTaxSetting>(musicTaxSettingsPath, null);
   const forecastSettings = readJsonFile<ForecastSettings>(forecastSettingsPath, null);
   const salarySettings = readJsonFile<SalarySettingCollection>(salarySettingsPath, []);
+  const wealthSnapshots = readJsonFile<WealthSnapshotCollection>(wealthSnapshotsPath, []);
 
   const reviewedDraft = applyReviewState(
     draft,
@@ -502,6 +541,7 @@ function main(): void {
     musicTaxSetting,
     forecastSettings,
     salarySettings,
+    wealthSnapshots,
   );
   writeFileSync(outputPath, JSON.stringify(reviewedDraft, null, 2) + "\n", "utf8");
 

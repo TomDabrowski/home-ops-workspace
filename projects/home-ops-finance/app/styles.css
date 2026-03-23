@@ -377,6 +377,9 @@ th {
   display: grid;
   gap: 10px;
 }
+.month-kpi-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .planner-grid {
   align-items: start;
 }
@@ -520,6 +523,10 @@ th {
   background: var(--card-strong);
   box-shadow: var(--shadow-soft);
 }
+.mapping-card.is-expanded {
+  border-color: rgba(0, 113, 227, 0.22);
+  box-shadow: 0 12px 26px rgba(0, 113, 227, 0.08);
+}
 .mapping-card-head {
   display: flex;
   justify-content: space-between;
@@ -543,6 +550,9 @@ th {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+.month-inline-form {
+  padding-top: 4px;
 }
 .mapping-check {
   display: flex;
@@ -611,6 +621,35 @@ th {
   line-height: 1.5;
   box-shadow: var(--shadow-soft);
 }
+.signal-inline {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.signal-inline-item {
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+.signal-inline-item.warn {
+  border-color: rgba(201, 52, 47, 0.18);
+  background: rgba(253, 231, 228, 0.9);
+}
+.signal-inline-item.info {
+  border-color: rgba(0, 113, 227, 0.18);
+  background: rgba(232, 242, 253, 0.9);
+}
+.signal-inline-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.signal-inline-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
 .empty-state {
   color: var(--muted);
   font-style: italic;
@@ -618,7 +657,7 @@ th {
 .positive { color: var(--accent); }
 .negative { color: var(--danger); }
 @media (max-width: 960px) {
-  .hero, .grid.two, .grid.four, .detail-list, .compact-details, .month-workbench { grid-template-columns: 1fr; }
+  .hero, .grid.two, .grid.four, .detail-list, .compact-details, .month-workbench, .month-kpi-grid { grid-template-columns: 1fr; }
   .section-head {
     flex-direction: column;
   }

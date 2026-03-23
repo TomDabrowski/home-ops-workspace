@@ -32,6 +32,8 @@
 
     <nav class="tabs">
       <button class="tab is-active" data-tab="months">Monate</button>
+      <button class="tab" data-tab="music">Musik</button>
+      <button class="tab" data-tab="imports">Importe</button>
       <button class="tab" data-tab="overview">Einordnung</button>
       <button class="tab" data-tab="baseline">Grundplan</button>
       <button class="tab" data-tab="retirement">Rente</button>
@@ -244,35 +246,39 @@
       <article class="card">
         <div class="section-head">
           <div>
-            <h2>Musik & Steuer</h2>
-            <p class="section-copy">Hier steuerst du die geplante quartalsweise Steuer-Vorauszahlung für Musik. Zusätzliche echte Nachzahlungen kannst du weiter als normale Monatsausgabe eintragen.</p>
+            <h2>Depot- & Cash-Stand</h2>
+            <p class="section-copy">Hier kannst du bei größeren Schwankungen einen echten Ist-Stand mit Datum setzen. Die App verwendet ihn für den zugehörigen Monat als manuellen Vermögensanker.</p>
           </div>
         </div>
         <div class="grid two">
           <div class="subcard">
-            <h3 class="subhead">Quartals-Vorauszahlung</h3>
+            <h3 class="subhead">Ist-Stand speichern</h3>
             <div class="planner-inputs">
               <label class="select-wrap">
-                <span>Betrag pro Quartal</span>
-                <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
+                <span>Datum</span>
+                <input id="wealthSnapshotDate" type="date">
               </label>
               <label class="select-wrap">
-                <span>Gültig ab</span>
-                <input id="musicTaxEffectiveFrom" type="month">
+                <span>Cash aktuell</span>
+                <input id="wealthSnapshotCashAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
               <label class="select-wrap">
+                <span>Investment aktuell</span>
+                <input id="wealthSnapshotInvestmentAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap planner-span-two">
                 <span>Notiz</span>
-                <input id="musicTaxNotes" type="text" placeholder="optional">
+                <input id="wealthSnapshotNotes" type="text" placeholder="z. B. nach starkem Marktmove aktualisiert">
               </label>
             </div>
             <div class="reconciliation-footer">
-              <p class="section-copy" id="musicTaxMeta">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
-              <button class="pill is-active" id="saveMusicTaxButton" type="button">Steuer-Plan speichern</button>
+              <p class="section-copy" id="wealthSnapshotMeta">Noch kein manueller Vermögensstand gespeichert.</p>
+              <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
             </div>
           </div>
           <div class="subcard">
-            <h3 class="subhead">So wirkt es</h3>
-            <div id="musicTaxSummary" class="mapping-list"></div>
+            <h3 class="subhead">Gespeicherte Ist-Stände</h3>
+            <div id="wealthSnapshotList" class="mapping-list"></div>
           </div>
         </div>
       </article>
@@ -305,37 +311,20 @@
       </article>
       <div class="month-workbench">
         <div class="month-main">
-          <div class="grid two month-summary-grid">
-            <article class="card">
-              <h2>Monat auf einen Blick</h2>
-              <p class="section-copy">Hier stehen nur die Kernwerte für den Monatsstand zum Monatsende.</p>
-              <dl class="detail-list compact-details" id="monthReviewSummary"></dl>
-            </article>
-            <article class="card">
-              <h2>Monatshinweise</h2>
-              <ul class="signal-list" id="monthReviewSignals"></ul>
-            </article>
-          </div>
-          <div class="grid two">
-            <article class="card">
-              <h2>Importierte Ausgaben des Monats</h2>
-              <div class="table-wrap table-wrap--month">
-                <table>
-                  <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
-                  <tbody id="monthReviewExpenseRows"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="card">
-              <h2>Manuelle variable Ausgaben</h2>
-              <div id="monthlyExpenseList" class="mapping-list"></div>
-            </article>
-          </div>
           <article class="card">
             <div class="section-head">
               <div>
-                <h2>Monatsausgabe anlegen</h2>
-                <p class="section-copy">Hier erfasst du zusätzliche Monatsausgaben, die im Workbook-Import fehlen oder bewusst manuell ergänzt werden sollen.</p>
+                <h2>Wichtigste Kennzahlen</h2>
+                <p class="section-copy">Hier stehen nur die Kernwerte des geöffneten Monats. Fixe und variable Ausgaben sind Monatswerte; Cash, Investment und Gesamtvermögen sind der Stand zum Monatsende.</p>
+              </div>
+            </div>
+            <dl class="detail-list compact-details month-kpi-grid" id="monthReviewSummary"></dl>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <div>
+                <h2>Neue Ausgabe erfassen</h2>
+                <p class="section-copy">Neue Ausgaben landen direkt in der Monatsansicht. Vor dem Speichern prüft die App auf Auffälligkeiten und doppelte oder ungewöhnliche Einträge.</p>
               </div>
             </div>
             <div class="planner-inputs">
@@ -364,67 +353,53 @@
                 <input id="monthlyExpenseNotes" type="text" placeholder="optional">
               </label>
             </div>
+            <div id="monthlyExpenseWarnings" class="signal-inline"></div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Monatsausgabe gespeichert.</p>
               <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Monatsausgabe speichern</button>
             </div>
           </article>
+          <div class="grid two month-summary-grid">
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Einnahmen</h2>
+                  <p class="section-copy">Alle Einnahmen des Monats an einer Stelle. Musik-Istwerte lassen sich hier direkt inline bearbeiten.</p>
+                </div>
+              </div>
+              <div id="monthUnifiedIncomeList" class="mapping-list"></div>
+            </article>
+            <article class="card">
+              <div class="section-head">
+                <div>
+                  <h2>Ausgaben</h2>
+                  <p class="section-copy">Importierte und manuelle Ausgaben stehen gemeinsam hier. Manuelle Einträge kannst du direkt in der Karte aufklappen und ändern.</p>
+                </div>
+              </div>
+              <div id="monthUnifiedExpenseList" class="mapping-list"></div>
+            </article>
+          </div>
           <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Musik-Istwert pflegen</h2>
-                <p class="section-copy">Sobald die echte Musik-Einnahme da ist, kannst du hier den Forecast für genau diesen Monat ersetzen.</p>
-              </div>
-            </div>
-            <div class="grid two">
-              <div class="subcard">
-                <h3 class="subhead">Ist-Wert speichern</h3>
-                <div class="planner-inputs">
-                  <label class="select-wrap">
-                    <span>Musik brutto</span>
-                    <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
-                  </label>
-                  <label class="select-wrap">
-                    <span>Monat</span>
-                    <input id="musicIncomeActualDate" type="month">
-                  </label>
-                  <label class="select-wrap planner-span-two">
-                    <span>Notiz</span>
-                    <input id="musicIncomeActualNotes" type="text" placeholder="optional">
-                  </label>
-                </div>
-                <div class="reconciliation-footer">
-                  <p class="section-copy" id="musicIncomeActualMeta">Noch kein Musik-Istwert gespeichert.</p>
-                  <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
-                </div>
-              </div>
-              <div class="subcard">
-                <h3 class="subhead">Wirkung im Monat</h3>
-                <div id="musicIncomeActualSummary" class="mapping-list"></div>
-              </div>
-            </div>
-            <div class="subcard">
-              <h3 class="subhead">Gespeicherte Ist-Werte</h3>
-              <div id="musicIncomeActualList" class="mapping-list"></div>
-            </div>
+            <h2>Monatshinweise</h2>
+            <ul class="signal-list" id="monthReviewSignals"></ul>
           </article>
         </div>
         <aside class="month-side">
-          <article class="card">
-            <h2>Importierte Einnahmen</h2>
-            <div class="table-wrap table-wrap--side">
-              <table>
-                <thead><tr><th>Datum</th><th>Quelle</th><th>Betrag</th></tr></thead>
-                <tbody id="monthReviewIncomeRows"></tbody>
-              </table>
-            </div>
-          </article>
           <article class="card">
             <h2>Aktive Grundplan-Posten</h2>
             <div class="table-wrap table-wrap--side">
               <table>
                 <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
                 <tbody id="monthReviewBaselineItems"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h2>Monatsquelle</h2>
+            <div class="table-wrap table-wrap--side">
+              <table>
+                <thead><tr><th>Wert</th><th>Stand</th></tr></thead>
+                <tbody id="monthReviewSourceStats"></tbody>
               </table>
             </div>
           </article>
@@ -456,28 +431,6 @@
               <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
             </div>
           </article>
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Import-Korrekturen</h2>
-                <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen. Die Herkunftsnotiz unter jedem Eintrag hilft bei der Nachvollziehbarkeit.</p>
-              </div>
-            </div>
-            <div class="grid two reconciliation-grid">
-              <div>
-                <h3 class="subhead">Einnahmen-Mappings</h3>
-                <div id="incomeMappingRows" class="mapping-list"></div>
-              </div>
-              <div>
-                <h3 class="subhead">Ausgaben-Mappings</h3>
-                <div id="expenseMappingRows" class="mapping-list"></div>
-              </div>
-            </div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
-              <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
-            </div>
-          </article>
         </aside>
       </div>
       <article class="card">
@@ -499,6 +452,173 @@
             <thead><tr><th>Monat</th><th>Planmodus</th><th>Frei aus Gehalt</th><th>Musik brutto</th><th>Frei aus Importen</th><th>Ausgaben</th><th>Gesamtvermögen</th><th>Monatssaldo</th><th>Signale</th></tr></thead>
             <tbody id="monthlyRows" data-month-table="true"></tbody>
           </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="music" class="tab-panel">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Musik-Monat</p>
+            <h2 id="musicCurrentMonthLabel">-</h2>
+            <p class="section-copy">Hier stehen Musik-Einnahmen, musiknahe Ausgaben und die voraussichtliche Steuerwirkung gemeinsam. Die Steuer ist eine Schätzung aus dem offiziellen Einkommensteuertarif, verteilt auf deinen Musik-Anteil.</p>
+          </div>
+        </div>
+        <dl class="detail-list compact-details month-kpi-grid" id="musicSummary"></dl>
+      </article>
+      <div class="grid two">
+        <article class="card">
+          <div class="section-head">
+            <div>
+              <h2>Musik pro Monat</h2>
+              <p class="section-copy">Brutto, musiknahe Ausgaben, geschätzte Steuer und die voraussichtliche Nachzahlung oder Erstattung im Jahresverlauf.</p>
+            </div>
+          </div>
+          <div class="table-wrap table-wrap--months">
+            <table>
+              <thead><tr><th>Monat</th><th>Musik brutto</th><th>Musik-Ausgaben</th><th>Steuer geschätzt</th><th>Vorausgezahlt</th><th>Saldo</th></tr></thead>
+              <tbody id="musicMonthRows"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card">
+          <div class="section-head">
+            <div>
+              <h2>Musik-Istwert pflegen</h2>
+              <p class="section-copy">Sobald der echte Musikumsatz da ist, ersetzt du hier den Forecast für genau diesen Monat.</p>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="subcard">
+              <h3 class="subhead">Ist-Wert speichern</h3>
+              <div class="planner-inputs">
+                <label class="select-wrap">
+                  <span>Musik brutto</span>
+                  <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
+                </label>
+                <label class="select-wrap">
+                  <span>Monat</span>
+                  <input id="musicIncomeActualDate" type="month">
+                </label>
+                <label class="select-wrap planner-span-two">
+                  <span>Notiz</span>
+                  <input id="musicIncomeActualNotes" type="text" placeholder="optional">
+                </label>
+              </div>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="musicIncomeActualMeta">Noch kein Musik-Istwert gespeichert.</p>
+                <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
+              </div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Wirkung im Monat</h3>
+              <div id="musicIncomeActualSummary" class="mapping-list"></div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Gespeicherte Ist-Werte</h3>
+              <div id="musicIncomeActualList" class="mapping-list"></div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <div class="section-head">
+            <div>
+              <h2>Quartals-Vorauszahlung</h2>
+              <p class="section-copy">Geplante Steuer-Vorauszahlung für Musik. Diese fließt direkt in die Musik-Prognose ein.</p>
+            </div>
+          </div>
+          <div class="planner-inputs">
+            <label class="select-wrap">
+              <span>Betrag pro Quartal</span>
+              <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
+            </label>
+            <label class="select-wrap">
+              <span>Gültig ab</span>
+              <input id="musicTaxEffectiveFrom" type="month">
+            </label>
+            <label class="select-wrap">
+              <span>Notiz</span>
+              <input id="musicTaxNotes" type="text" placeholder="optional">
+            </label>
+          </div>
+          <div class="reconciliation-footer">
+            <p class="section-copy" id="musicTaxMeta">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
+            <button class="pill is-active" id="saveMusicTaxButton" type="button">Steuer-Plan speichern</button>
+          </div>
+        </article>
+        <article class="card">
+          <div class="section-head">
+            <div>
+              <h2>Steuerlogik</h2>
+              <p class="section-copy">Die Schätzung verwendet den Einkommensteuertarif für 2026 und berechnet die zusätzliche Tarifsteuer aus deinem Musik-Anteil gegenüber dem übrigen Jahreseinkommen.</p>
+            </div>
+          </div>
+          <div id="musicTaxSummary" class="mapping-list"></div>
+        </article>
+      </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Musik-Einnahmen und -Ausgaben im geöffneten Monat</h2>
+            <p class="section-copy">So siehst du sofort, welche musiknahen Einnahmen und Ausgaben im aktuellen Monat enthalten sind.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <div class="subcard">
+            <h3 class="subhead">Musik-Einnahmen</h3>
+            <div id="musicIncomeEntries" class="mapping-list"></div>
+          </div>
+          <div class="subcard">
+            <h3 class="subhead">Musik-Ausgaben</h3>
+            <div id="musicExpenseEntries" class="mapping-list"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="imports" class="tab-panel">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Import-Monat</p>
+            <h2 id="importsCurrentMonthLabel">-</h2>
+            <p class="section-copy">Hier liegt alles, was direkt mit importierten Zeilen und Korrekturen zu tun hat: Quellzeilen, Herkunftsnotizen und Mapping-Anpassungen.</p>
+          </div>
+        </div>
+      </article>
+      <div class="grid two">
+        <article class="card">
+          <h2>Importierte Einnahmen</h2>
+          <div id="importsIncomeList" class="mapping-list"></div>
+        </article>
+        <article class="card">
+          <h2>Importierte Ausgaben</h2>
+          <div id="importsExpenseList" class="mapping-list"></div>
+        </article>
+      </div>
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Import-Korrekturen</h2>
+            <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen. Die Herkunftsnotiz unter jedem Eintrag bleibt hier bewusst sichtbar.</p>
+          </div>
+        </div>
+        <div class="grid two reconciliation-grid">
+          <div>
+            <h3 class="subhead">Einnahmen-Mappings</h3>
+            <div id="incomeMappingRows" class="mapping-list"></div>
+          </div>
+          <div>
+            <h3 class="subhead">Ausgaben-Mappings</h3>
+            <div id="expenseMappingRows" class="mapping-list"></div>
+          </div>
+        </div>
+        <div class="reconciliation-footer">
+          <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
+          <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
         </div>
       </article>
     </section>

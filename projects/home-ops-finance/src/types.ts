@@ -112,6 +112,8 @@ export interface ForecastWealthAnchor {
   sourceSheet: string;
   sourceRowNumber: number;
   isManualAnchor: boolean;
+  snapshotDate?: string;
+  notes?: string;
 }
 
 export interface DebtAccount {

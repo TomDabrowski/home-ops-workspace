@@ -39,10 +39,17 @@ export interface MonthlyPlanRow {
   salaryAllocationToSafetyAmount: number;
   salaryAllocationToInvestmentAmount: number;
   safetyBucketStartAmount?: number;
+  safetyBucketCalculatedEndAmount?: number;
+  safetyBucketAnchorAmount?: number;
   safetyBucketEndAmount?: number;
   investmentBucketStartAmount?: number;
+  investmentBucketCalculatedEndAmount?: number;
+  investmentBucketAnchorAmount?: number;
   investmentBucketEndAmount?: number;
+  projectedWealthCalculatedEndAmount?: number;
+  projectedWealthAnchorAmount?: number;
   projectedWealthEndAmount?: number;
+  wealthAnchorApplied?: boolean;
   importedExpenseAmount: number;
   netAfterImportedFlows: number;
   consistencySignals: MonthlyConsistencySignal[];
@@ -423,48 +430,41 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       Math.max(baselineAvailableAmount, variableAmount),
     );
     const salaryAllocationToSafetyAmount = roundCurrency(
-      Math.max(0, baselineAvailableAmount - importedExpenseAmount),
+      Math.max(0, baseline.netSalaryAmount - fixedAmount - variableAmount - plannedSavingsAmount),
     );
-    const salaryAllocationToInvestmentAmount = roundCurrency(
-      Math.max(0, baselineAvailableAmount + plannedSavingsAmount - importedExpenseAmount),
-    );
+    const salaryAllocationToInvestmentAmount = roundCurrency(plannedSavingsAmount);
     const useForecastRouting = firstPlannedMonthKey ? compareMonthKeys(monthKey, firstPlannedMonthKey) >= 0 : false;
     const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
     const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
     const explicitWealthAnchor = wealthAnchorForMonth(draft, monthKey);
-    const musicAllocationToSafetyAmount = roundCurrency(
-      !useForecastRouting
-        ? 0
-        : (safetyBucketStartAmount ?? 0) < musicThreshold
-          ? musicIncomeAmount
-          : musicIncomeAmount * musicSafetyShare,
-    );
-    const musicAllocationToInvestmentAmount = roundCurrency(
-      !useForecastRouting
-        ? 0
-        : (safetyBucketStartAmount ?? 0) >= musicThreshold
-          ? musicIncomeAmount * musicInvestmentShare
-          : 0,
-    );
+    const musicAllocationToSafetyAmount = roundCurrency(!useForecastRouting ? 0 : importedIncomeAvailableAmount);
+    const musicAllocationToInvestmentAmount = 0;
     const safetyBucketProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
-            ((safetyBucketStartAmount ?? 0) < safetyThreshold ? salaryAllocationToSafetyAmount : 0) +
+            salaryAllocationToSafetyAmount +
             musicAllocationToSafetyAmount,
         )
       : undefined;
     const investmentBucketProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           (investmentBucketStartAmount ?? 0) * (1 + investmentMonthlyReturn) +
-            plannedSavingsAmount +
-            ((safetyBucketStartAmount ?? 0) >= safetyThreshold ? salaryAllocationToInvestmentAmount : 0) +
+            salaryAllocationToInvestmentAmount +
             musicAllocationToInvestmentAmount,
         )
       : undefined;
-    const safetyBucketResolvedEndAmount =
-      explicitWealthAnchor?.safetyBucketAmount ?? safetyBucketProjectedEndAmount;
-    const investmentBucketResolvedEndAmount =
-      explicitWealthAnchor?.investmentBucketAmount ?? investmentBucketProjectedEndAmount;
+    const projectedWealthCalculatedEndAmount =
+      safetyBucketProjectedEndAmount !== undefined && investmentBucketProjectedEndAmount !== undefined
+        ? roundCurrency(safetyBucketProjectedEndAmount + investmentBucketProjectedEndAmount)
+        : undefined;
+    const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
+    const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
+    const projectedWealthAnchorAmount =
+      safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
+        ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
+        : explicitWealthAnchor?.totalWealthAmount;
+    const safetyBucketResolvedEndAmount = safetyBucketAnchorAmount ?? safetyBucketProjectedEndAmount;
+    const investmentBucketResolvedEndAmount = investmentBucketAnchorAmount ?? investmentBucketProjectedEndAmount;
     const projectedWealthEndAmount =
       safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
         ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
@@ -518,10 +518,17 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
       safetyBucketStartAmount,
+      safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
+      safetyBucketAnchorAmount,
       safetyBucketEndAmount: safetyBucketResolvedEndAmount,
       investmentBucketStartAmount,
+      investmentBucketCalculatedEndAmount: investmentBucketProjectedEndAmount,
+      investmentBucketAnchorAmount,
       investmentBucketEndAmount: investmentBucketResolvedEndAmount,
+      projectedWealthCalculatedEndAmount,
+      projectedWealthAnchorAmount,
       projectedWealthEndAmount,
+      wealthAnchorApplied: Boolean(explicitWealthAnchor),
       importedExpenseAmount,
       netAfterImportedFlows,
       consistencySignals,
