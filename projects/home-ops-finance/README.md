@@ -40,6 +40,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 ## Current Project Files
 
 - `docs/data-model.md`: first draft of the core entities
+- `docs/architecture-guidelines.md`: target architecture for keeping the project business-system-first instead of frontend-first
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
 - `docs/import-mapping.md`: sheet-to-table migration plan
 - `data/sample-finance.json`: starter shape for real data later
@@ -146,3 +147,4 @@ The current local app also keeps private finance artifacts outside the repositor
 - Turn the spreadsheet categories into the first real data model.
 - Add deeper workbook consistency checks against known anchor values and suspicious month totals.
 - Expand the review UI from inspection into the first editable finance workflow.
+- Split the project more clearly into domain core, adapters, and thin UI surfaces as described in `docs/architecture-guidelines.md`.

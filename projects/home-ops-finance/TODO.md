@@ -2,17 +2,19 @@
 
 ## Now
 
-- Work through the highest-impact `2026+` months in the month workspace and turn the bootstrapped default mappings into reviewed decisions.
-- Validate a few more workbook wealth checkpoints after the explicit `2026-02` anchor using the new end-of-month month review.
-- Tighten the longer-range planning model by adding a true post-target drawdown phase after the target month instead of stopping at the nest-egg target.
-- Continue the German text cleanup so the visible app copy is consistently natural and no longer mixed between placeholder spellings and proper umlauts.
-- Continue the calmer Apple-like UI pass, but avoid fragile interactive controls; prioritize stability over flashy inputs.
-- Split conservative cost growth into more explicit buckets where useful, especially insurance/other fixed costs.
-- Decide whether imported historical entries should become directly editable in the month workspace or remain review-only with overrides.
+- Split the finance logic more clearly into `core`, `adapters`, and `ui` responsibilities.
+- Start by carving the biggest logic seams out of `src/monthly-engine.ts` without changing behavior.
+- Reduce duplicated business logic between `src/monthly-engine.ts` and `app/app.js`.
+- Add schema validation at persistence and import boundaries before the saved JSON shapes grow further.
+- Keep the UI thin: render and trigger actions, but avoid putting new finance rules into browser-only code.
+- Continue tightening layout stability, especially tooltips, sticky bars, and wide tables in developer mode.
+- Keep the retirement and projection assumptions visible anywhere projected values are shown.
 
 ## Next
 
-- Recreate the forecast engine from assumptions plus monthly inputs.
+- Add a real post-target drawdown phase after the retirement target month instead of stopping at the nest-egg checkpoint.
+- Split conservative cost growth into more explicit buckets where useful, especially insurance and other fixed costs.
+- Decide whether imported historical entries should become directly editable in the month workspace or remain review-only with overrides.
 - Add stronger workbook-vs-app comparison checks for wealth buckets and monthly handoff points.
 - Add lightweight charts for wealth path, safety vs. investment, and long-range target progress.
 
@@ -20,3 +22,4 @@
 
 - Add account balance history.
 - Add smarter categorization helpers.
+- Revisit whether the local JSON persistence should stay file-based or move to a stricter small local store once the domain model stabilizes.

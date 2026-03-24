@@ -60,10 +60,11 @@ Interactive Planning App
 - The long-range planning view now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target age` show an in-app error box instead of breaking the page.
 - The heavier long-range calculations are now lazy-initialized only when the planning tab is opened, which improves the perceived performance of the main app shell and month workflow.
 - Home Ops Finance can now resolve its private workbook and generated JSON data from a local-only external path via `config.local.json` or env vars, so sensitive finance artifacts can live on iCloud or a NAS instead of inside the repo checkout.
+- A first explicit architecture guideline now exists for keeping the project business-system-first: domain core, adapters, and thin UI surfaces are now the intended direction for future refactors and AI-assisted changes.
 
 ## Immediate Next Step
 
-Use the improved month workspace to review and refine the first important `2026+` months, then tighten the longer-range planning model further by separating the working phase from later drawdown behavior after the target month.
+Use `docs/architecture-guidelines.md` and `TODO.md` as the working contract for the next refactor phase: stabilize boundaries, split the largest engine responsibilities, and reduce duplicated logic between the UI and the calculation core.
 
 ## Notes
 
