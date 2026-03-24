@@ -8,6 +8,14 @@
 </head>
 <body>
   <div id="appStatusBar" class="app-status" hidden></div>
+  <div class="floating-controls">
+    <button class="pill" id="developerModeButton" type="button">
+      Entwicklermodus aus
+    </button>
+    <button class="pill" id="formulaTooltipButton" type="button">
+      Erklaerungs-Tooltips an
+    </button>
+  </div>
   <main class="shell">
     <section class="hero card">
       <div>
@@ -20,9 +28,6 @@
           <span>Report-Stand</span>
           <strong id="generatedAt">-</strong>
         </div>
-        <button class="pill" id="developerModeButton" type="button">
-          Entwicklermodus aus
-        </button>
         <button class="pill pill-danger hero-quit" id="shutdownAppButton" type="button">
           App beenden
         </button>
@@ -157,7 +162,7 @@
                   <option value="savings">Geplantes Investment</option>
                 </select>
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span id="fixedCostAmountLabel">Betrag pro Monat</span>
                 <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
@@ -196,11 +201,11 @@
           <div class="subcard">
             <h3 class="subhead">Schwellen anpassen</h3>
             <div class="planner-inputs">
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Cash-Ziel</span>
                 <input id="forecastSafetyThreshold" type="number" min="0" step="0.01" placeholder="10000">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Musik-Schwelle</span>
                 <input id="forecastMusicThreshold" type="number" min="0" step="0.01" placeholder="10000">
               </label>
@@ -231,7 +236,7 @@
           <div class="subcard">
             <h3 class="subhead">Gehaltsstand anlegen</h3>
             <div class="planner-inputs">
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Nettogehalt pro Monat</span>
                 <input id="salaryAmount" type="number" min="0" step="0.01" placeholder="2706">
               </label>
@@ -251,6 +256,7 @@
           </div>
           <div class="subcard" data-dev-only="true">
             <h3 class="subhead">Gehaltsverlauf</h3>
+            <p class="section-copy" id="salaryHistorySummary">Noch keine Gehaltsänderung gespeichert.</p>
             <div id="salaryList" class="mapping-list"></div>
           </div>
         </div>
@@ -270,21 +276,25 @@
                 <span>Datum</span>
                 <input id="wealthSnapshotDate" type="date">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>CHECK24 aktuell</span>
                 <input id="wealthSnapshotCashGiroAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Trade Republic Cash aktuell</span>
                 <input id="wealthSnapshotCashTradeRepublicAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Scalable aktuell</span>
                 <input id="wealthSnapshotCashScalableAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Investment aktuell</span>
                 <input id="wealthSnapshotInvestmentAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap currency-wrap">
+                <span>Cash gesamt</span>
+                <input id="wealthSnapshotCashTotal" type="text" readonly tabindex="-1">
               </label>
               <label class="select-wrap planner-span-two">
                 <span>Notiz</span>
@@ -298,9 +308,19 @@
           </div>
           <div class="subcard" data-dev-only="true">
             <h3 class="subhead">Gespeicherte Ist-Stände</h3>
+            <p class="section-copy" id="wealthSnapshotHistorySummary">Noch kein manueller Vermögensstand gespeichert.</p>
             <div id="wealthSnapshotList" class="mapping-list"></div>
           </div>
         </div>
+      </article>
+      <article class="card" data-dev-only="true">
+        <div class="section-head">
+          <div>
+            <h2>Änderungs-Historie</h2>
+            <p class="section-copy">Hier siehst du gesammelt, wann wichtige Werte zuletzt geändert wurden und ab wann sie gelten.</p>
+          </div>
+        </div>
+        <div id="workflowHistoryList" class="mapping-list"></div>
       </article>
     </section>
 
@@ -319,20 +339,20 @@
             <div class="section-head">
               <div>
                 <h2>Monat auf einen Blick</h2>
-                <p class="section-copy">Hier siehst du klar getrennt, womit du in den Monat startest, was als Monatsblock gerechnet wird und wo du am Monatsende landest. Die App rechnet monatlich gesammelt, nicht nach einzelnen Tagen innerhalb des Monats.</p>
+            <p class="section-copy">Hier siehst du klar getrennt den Stand zu Beginn des geöffneten Monats, die Bewegungen innerhalb genau dieses Monats und den Stand am Ende genau dieses Monats. Monatsende heißt hier: nach dem Gehalt und nach allen Monatsbewegungen des geöffneten Monats, nicht nach dem Folgemonat.</p>
               </div>
             </div>
             <div class="grid three">
               <div class="subcard">
-                <h3 class="subhead">Start in den Monat</h3>
+                <h3 class="subhead">Beginn des geöffneten Monats</h3>
                 <dl class="detail-list compact-details" id="monthReviewStartSummary"></dl>
               </div>
               <div class="subcard">
-                <h3 class="subhead">Im Monat</h3>
+                <h3 class="subhead">Bewegungen im geöffneten Monat</h3>
                 <dl class="detail-list compact-details" id="monthReviewFlowSummary"></dl>
               </div>
               <div class="subcard">
-                <h3 class="subhead">Ende des Monats</h3>
+                <h3 class="subhead">Ende des geöffneten Monats</h3>
                 <dl class="detail-list compact-details" id="monthReviewEndSummary"></dl>
               </div>
             </div>
@@ -382,7 +402,7 @@
                 <span>Beschreibung</span>
                 <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Betrag</span>
                 <input id="monthlyExpenseAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
@@ -519,7 +539,7 @@
             <div class="subcard">
               <h3 class="subhead">Ist-Wert speichern</h3>
               <div class="planner-inputs">
-                <label class="select-wrap">
+                <label class="select-wrap currency-wrap">
                   <span>Musik brutto</span>
                   <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
                 </label>
@@ -557,7 +577,7 @@
             </div>
           </div>
           <div class="planner-inputs">
-            <label class="select-wrap">
+            <label class="select-wrap currency-wrap">
               <span>Betrag pro Quartal</span>
               <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
             </label>
@@ -680,7 +700,7 @@
                 <option value="music">Musik-Equipment</option>
               </select>
             </label>
-            <label class="select-wrap">
+            <label class="select-wrap currency-wrap">
               <span>Wert</span>
               <input id="householdItemValue" type="number" min="0" step="0.01" placeholder="0">
             </label>
@@ -703,7 +723,7 @@
             </div>
           </div>
           <div class="planner-inputs">
-            <label class="select-wrap">
+            <label class="select-wrap currency-wrap">
               <span>Versicherungssumme</span>
               <input id="householdCoverageAmount" type="number" min="0" step="0.01" placeholder="0">
             </label>
@@ -749,7 +769,7 @@
                 <span>Zielalter Rente</span>
                 <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap currency-wrap">
                 <span>Bedarf pro Monat in Rente</span>
                 <input id="plannerRetirementSpend" type="number" min="0" step="50">
               </label>

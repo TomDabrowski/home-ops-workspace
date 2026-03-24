@@ -20,6 +20,7 @@ const activeTabStorageKey = "home-ops-finance-active-tab-v1";
 const monthReviewStorageKey = "home-ops-finance-month-review-v1";
 const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
 const developerModeStorageKey = "home-ops-finance-developer-mode-v1";
+const formulaTooltipStorageKey = "home-ops-finance-formula-tooltips-v1";
 const clientSessionStorageKey = "home-ops-finance-client-session-v1";
 const clientHeartbeatMs = 15000;
 const fallbackAccountOptions = [
@@ -119,11 +120,29 @@ function writeDeveloperMode(enabled) {
   window.localStorage.setItem(developerModeStorageKey, enabled ? "true" : "false");
 }
 
+function readFormulaTooltipsEnabled() {
+  const stored = window.localStorage.getItem(formulaTooltipStorageKey);
+  return stored === null ? true : stored === "true";
+}
+
+function writeFormulaTooltipsEnabled(enabled) {
+  window.localStorage.setItem(formulaTooltipStorageKey, enabled ? "true" : "false");
+}
+
 function applyDeveloperModeUi(enabled) {
   const button = document.getElementById("developerModeButton");
   if (button) {
     button.textContent = enabled ? "Entwicklermodus an" : "Entwicklermodus aus";
     button.classList.toggle("is-active", enabled);
+  }
+
+  const tooltipButton = document.getElementById("formulaTooltipButton");
+  if (tooltipButton) {
+    const tooltipEnabled = enabled && readFormulaTooltipsEnabled();
+    tooltipButton.hidden = !enabled;
+    tooltipButton.disabled = !enabled;
+    tooltipButton.textContent = tooltipEnabled ? "Erklaerungs-Tooltips an" : "Erklaerungs-Tooltips aus";
+    tooltipButton.classList.toggle("is-active", tooltipEnabled);
   }
 
   for (const element of document.querySelectorAll("[data-dev-only=\"true\"]")) {
@@ -160,6 +179,7 @@ function rerenderSelectedMonthContext() {
   renderSalaryPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderMonthReview(importDraft, monthlyPlan, monthKey);
+  renderWorkflowHistory(importDraft);
 }
 
 function renderBaselineSummaryForMonth(importDraft, monthKey) {
@@ -182,19 +202,19 @@ function renderBaselineSummaryForMonth(importDraft, monthKey) {
     ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
     ["Jahreskostenblock", euro.format(baseline.annualReserveAmount)],
     ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
-    [
-      "Übrig nach Fixkosten",
-      euro.format(baseline.netSalaryAmount - baseline.fixedExpensesAmount),
-    ],
-    [
-      "Übrig nach allen Monatsblöcken",
-      euro.format(baseline.computedAvailableFromParts),
-    ],
+    {
+      label: "Übrig nach Fixkosten",
+      value: euro.format(baseline.netSalaryAmount - baseline.fixedExpensesAmount),
+      formula: `${euro.format(baseline.netSalaryAmount)} - ${euro.format(baseline.fixedExpensesAmount)} = ${euro.format(baseline.netSalaryAmount - baseline.fixedExpensesAmount)}`,
+    },
+    {
+      label: "Übrig nach allen Monatsblöcken",
+      value: euro.format(baseline.computedAvailableFromParts),
+      formula: `${euro.format(baseline.netSalaryAmount)} - ${euro.format(baseline.fixedExpensesAmount)} - ${euro.format(baseline.baselineVariableAmount)} - ${euro.format(baseline.annualReserveAmount)} - ${euro.format(baseline.plannedSavingsAmount)} = ${euro.format(baseline.computedAvailableFromParts)}`,
+    },
   ];
 
-  baselineSummary.innerHTML = entries
-    .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-    .join("");
+  baselineSummary.innerHTML = renderDetailEntries(entries);
 }
 
 function renderSelectedMonthSharedUi(importDraft, monthKey) {
@@ -597,6 +617,14 @@ function sumIncomeAvailableForMonth(entries, monthKey) {
   );
 }
 
+function sumIncomeAvailableAfterDate(entries, monthKey, snapshotDate) {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey && String(entry.entryDate) > snapshotDate)
+      .reduce((sum, entry) => sum + Number(entry.availableAmount ?? (entry.amount ?? 0) - (entry.reserveAmount ?? 0)), 0),
+  );
+}
+
 function sumMusicIncomeForMonth(entries, monthKey) {
   return roundCurrency(
     entries
@@ -609,6 +637,14 @@ function sumExpensesForMonth(entries, monthKey) {
   return roundCurrency(
     entries
       .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+}
+
+function sumExpensesAfterDate(entries, monthKey, snapshotDate) {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey && String(entry.entryDate) > snapshotDate)
       .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
   );
 }
@@ -910,19 +946,30 @@ function monthlyPlanFromImportDraft(importDraft, basePlan) {
     const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
     const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
     const explicitWealthAnchor = wealthAnchorForMonth(importDraft, monthKey);
-    const currentSafetyAmount = safetyBucketStartAmount ?? 0;
+    const snapshotDate = explicitWealthAnchor?.snapshotDate;
+    const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
+    const incomeAvailableForProjection = anchorAppliesWithinMonth
+      ? sumIncomeAvailableAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
+      : importedIncomeAvailableAmount;
+    const expenseAmountForProjection = anchorAppliesWithinMonth
+      ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
+      : importedExpenseAmount;
+    const currentSafetyAmount = anchorAppliesWithinMonth
+      ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
+      : (safetyBucketStartAmount ?? 0);
     const musicSafetyGapAmount = Math.max(0, musicThreshold - currentSafetyAmount);
     const musicAllocationToSafetyAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.min(importedIncomeAvailableAmount, musicSafetyGapAmount),
+      !useForecastRouting ? 0 : Math.min(incomeAvailableForProjection, musicSafetyGapAmount),
     );
     const musicAllocationToInvestmentAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.max(0, importedIncomeAvailableAmount - musicAllocationToSafetyAmount),
+      !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicAllocationToSafetyAmount),
     );
     const safetyBucketProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
             salaryAllocationToSafetyAmount +
-            musicAllocationToSafetyAmount,
+            musicAllocationToSafetyAmount -
+            expenseAmountForProjection,
         )
       : undefined;
     const investmentBucketProjectedEndAmount = useForecastRouting
@@ -938,12 +985,26 @@ function monthlyPlanFromImportDraft(importDraft, basePlan) {
         : undefined;
     const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
     const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
+    const anchoredSafetyEndAmount =
+      anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
+        ? roundCurrency(safetyBucketAnchorAmount + musicAllocationToSafetyAmount - expenseAmountForProjection)
+        : undefined;
+    const anchoredInvestmentEndAmount =
+      anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
+        ? roundCurrency(investmentBucketAnchorAmount + musicAllocationToInvestmentAmount)
+        : undefined;
     const projectedWealthAnchorAmount =
       safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
         ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
         : explicitWealthAnchor?.totalWealthAmount;
-    const safetyBucketResolvedEndAmount = safetyBucketAnchorAmount ?? safetyBucketProjectedEndAmount;
-    const investmentBucketResolvedEndAmount = investmentBucketAnchorAmount ?? investmentBucketProjectedEndAmount;
+    const safetyBucketResolvedEndAmount =
+      anchoredSafetyEndAmount ??
+      safetyBucketAnchorAmount ??
+      safetyBucketProjectedEndAmount;
+    const investmentBucketResolvedEndAmount =
+      anchoredInvestmentEndAmount ??
+      investmentBucketAnchorAmount ??
+      investmentBucketProjectedEndAmount;
     const projectedWealthEndAmount =
       safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
         ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
@@ -1107,8 +1168,35 @@ function buildLocalSalaryBaselines(importDraft) {
     .filter(Boolean);
 }
 
+function buildLocalBaselineLineItems(importDraft) {
+  const overrides = readBaselineOverrides()
+    .filter((entry) => entry.isActive !== false)
+    .map((entry) => ({
+      ...entry,
+      amount: Number(entry.amount ?? 0),
+      category: entry.category ?? "fixed",
+    }));
+
+  if (overrides.length === 0) {
+    return importDraft.baselineLineItems ?? [];
+  }
+
+  return [
+    ...(importDraft.baselineLineItems ?? []),
+    ...overrides,
+  ];
+}
+
 function mergeClientWorkflowIntoImportDraft(importDraft) {
   let nextDraft = importDraft;
+
+  const baselineLineItems = buildLocalBaselineLineItems(nextDraft);
+  if (baselineLineItems.length > 0) {
+    nextDraft = {
+      ...nextDraft,
+      baselineLineItems,
+    };
+  }
 
   const salaryBaselines = buildLocalSalaryBaselines(nextDraft);
   if (salaryBaselines.length > 0) {
@@ -1246,6 +1334,115 @@ function renderRows(targetId, rows, mapper) {
   const target = document.getElementById(targetId);
   if (!target) return;
   target.innerHTML = rows.map(mapper).join("");
+}
+
+function renderDetailEntries(entries) {
+  const showFormula = readDeveloperMode();
+  const showTooltip = showFormula && readFormulaTooltipsEnabled();
+  return entries
+    .map((entry) => {
+      const label = Array.isArray(entry) ? entry[0] : entry.label;
+      const value = Array.isArray(entry) ? entry[1] : entry.value;
+      const formula = Array.isArray(entry) ? "" : (entry.formula ?? "");
+      const valueMarkup = showTooltip && formula
+        ? `<span class="detail-value has-tooltip" data-tooltip="${escapeHtml(formula)}">${value}</span>`
+        : `<span class="detail-value">${value}</span>`;
+      return `<div><dt>${label}</dt><dd>${valueMarkup}${showFormula && formula ? `<p class="detail-formula">${formula}</p>` : ""}</dd></div>`;
+    })
+    .join("");
+}
+
+function formatHistoryTimestamp(value) {
+  if (!value) return "unbekannt";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function renderWorkflowHistory(importDraft) {
+  const target = document.getElementById("workflowHistoryList");
+  if (!target) return;
+
+  const entries = [];
+
+  for (const entry of readSalarySettings().filter((item) => item.isActive !== false)) {
+    entries.push({
+      area: "Hauptgehalt",
+      title: `${euro.format(entry.netSalaryAmount)} netto`,
+      detail: `Gilt ab ${entry.effectiveFrom}`,
+      updatedAt: entry.updatedAt ?? null,
+      notes: entry.notes ?? "",
+    });
+  }
+
+  for (const entry of readWealthSnapshots().filter((item) => item.isActive !== false)) {
+    entries.push({
+      area: "Depot- & Cash-Stand",
+      title: `${entry.snapshotDate}`,
+      detail: `Cash ${euro.format(wealthSnapshotCashTotal(entry))} · Investment ${euro.format(Number(entry.investmentAmount ?? 0))}`,
+      updatedAt: entry.updatedAt ?? null,
+      notes: entry.notes ?? "",
+    });
+  }
+
+  for (const entry of readBaselineOverrides().filter((item) => item.isActive !== false)) {
+    entries.push({
+      area: "Kostenblöcke",
+      title: `${entry.label}`,
+      detail: `Ab ${entry.effectiveFrom} · ${baselineCategoryLabel(entry.category ?? "fixed")} · ${Number(entry.amount) > 0 ? euro.format(Number(entry.amount ?? 0)) : "beendet"}`,
+      updatedAt: entry.updatedAt ?? null,
+      notes: entry.notes ?? "",
+    });
+  }
+
+  const forecast = readForecastSettings();
+  if (forecast?.isActive !== false && forecast?.updatedAt) {
+    entries.push({
+      area: "Schwellen",
+      title: `Cash-Ziel ${euro.format(Number(forecast.safetyThreshold ?? assumptionNumber(importDraft, "safety_threshold", 10000)))}`,
+      detail: `Musik-Schwelle ${euro.format(Number(forecast.musicThreshold ?? assumptionNumber(importDraft, "music_threshold", 10000)))}`,
+      updatedAt: forecast.updatedAt,
+      notes: forecast.notes ?? "",
+    });
+  }
+
+  for (const entry of readMonthlyMusicIncomeOverrides().filter((item) => item.isActive !== false)) {
+    entries.push({
+      area: "Musik-Istwert",
+      title: `${entry.monthKey}`,
+      detail: `${euro.format(Number(entry.amount ?? 0))} brutto`,
+      updatedAt: entry.updatedAt ?? null,
+      notes: entry.notes ?? "",
+    });
+  }
+
+  if (entries.length === 0) {
+    target.innerHTML = `<p class="empty-state">Noch keine Änderungen mit Historie vorhanden.</p>`;
+    return;
+  }
+
+  target.innerHTML = entries
+    .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))
+    .map((entry) => `
+      <article class="mapping-card">
+        <div class="mapping-card-head">
+          <div>
+            <strong>${entry.area} · ${entry.title}</strong>
+            <p>${entry.detail}</p>
+          </div>
+        </div>
+        <p class="section-copy">Zuletzt geändert: ${formatHistoryTimestamp(entry.updatedAt)}${entry.notes ? ` · ${escapeHtml(entry.notes)}` : ""}</p>
+      </article>
+    `)
+    .join("");
 }
 
 function renderEmptyRow(targetId, colspan, message) {
@@ -2751,10 +2948,19 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
 }
 
 function renderMonthSourceStats(review) {
+  const manualExpenseAmount = roundCurrency(
+    review.expenseEntries
+      .filter((entry) => isManualExpenseEntry(entry))
+      .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+  const importedExpenseAmount = roundCurrency(
+    Math.max(0, Number(review.row.importedExpenseAmount ?? 0) - manualExpenseAmount),
+  );
   renderRows("monthReviewSourceStats", [
     ["Übrig aus Hauptgehalt", euro.format(review.row.baselineAvailableAmount)],
     ["Zusätzliche Einnahmen", euro.format(review.row.importedIncomeAvailableAmount)],
-    ["Ausgaben im Monat", euro.format(review.row.importedExpenseAmount)],
+    ["Importierte Ausgaben im Monat", euro.format(importedExpenseAmount)],
+    ["Manuelle Ausgaben im Monat", euro.format(manualExpenseAmount)],
     ["Übrig nach allem", euro.format(review.row.netAfterImportedFlows)],
   ], ([label, value]) => `
     <tr>
@@ -2795,7 +3001,7 @@ function renderMonthIncomeList(importDraft, review) {
           isManual
             ? `
               <div class="mapping-fields month-inline-form">
-                <label class="select-wrap">
+                <label class="select-wrap currency-wrap">
                   <span>Musik brutto</span>
                   <input type="number" min="0" step="0.01" data-month-income-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
                 </label>
@@ -2923,7 +3129,7 @@ function renderMonthExpenseList(importDraft, review) {
                   <span>Beschreibung</span>
                   <input type="text" data-month-expense-description="${entry.id}" value="${escapeHtml(entry.description)}">
                 </label>
-                <label class="select-wrap">
+                <label class="select-wrap currency-wrap">
                   <span>Betrag</span>
                   <input type="number" min="0" step="0.01" data-month-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
                 </label>
@@ -3318,11 +3524,19 @@ function renderMusicWorkspace(importDraft, monthlyPlan, monthKey) {
     const entries = [
       ["Musik-Einnahmen im Monat", euro.format(data.selectedMonth.gross)],
       ["Musik-Ausgaben im Monat", euro.format(data.selectedMonth.expenses)],
-      ["Steuer im Monat", euro.format(data.selectedMonth.estimatedTax)],
-      ["Nach Steuer im Monat", euro.format(data.selectedMonth.afterTaxAmount)],
+      {
+        label: "Steuer im Monat",
+        value: euro.format(data.selectedMonth.estimatedTax),
+        formula: `${formatPercent(data.effectiveRate)} von ${euro.format(data.selectedMonth.gross)} = ${euro.format(data.selectedMonth.estimatedTax)}`,
+      },
+      {
+        label: "Nach Steuer im Monat",
+        value: euro.format(data.selectedMonth.afterTaxAmount),
+        formula: `${euro.format(data.selectedMonth.gross)} - ${euro.format(data.selectedMonth.estimatedTax)} = ${euro.format(data.selectedMonth.afterTaxAmount)}`,
+      },
       ["Steuersatz aktuell", formatPercent(data.effectiveRate)],
     ];
-    summary.innerHTML = entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+    summary.innerHTML = renderDetailEntries(entries);
   }
 
   if (yearSummary) {
@@ -3416,57 +3630,71 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const startSummary = document.getElementById("monthReviewStartSummary");
   const flowSummary = document.getElementById("monthReviewFlowSummary");
   const endSummary = document.getElementById("monthReviewEndSummary");
+  const manualExpenseAmount = roundCurrency(
+    review.expenseEntries
+      .filter((entry) => isManualExpenseEntry(entry))
+      .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+  const importedExpenseAmount = roundCurrency(
+    Math.max(0, Number(review.row.importedExpenseAmount ?? 0) - manualExpenseAmount),
+  );
   const startWealthAmount =
     Number(review.row.safetyBucketStartAmount ?? 0) + Number(review.row.investmentBucketStartAmount ?? 0);
 
   if (startSummary) {
     const entries = [
       [
-        "Cash am Monatsanfang",
+        "Cash zu Beginn des geöffneten Monats",
         review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-",
       ],
       [
-        "Investment am Monatsanfang",
+        "Investment zu Beginn des geöffneten Monats",
         review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-",
       ],
       [
-        "Gesamtvermögen am Monatsanfang",
+        "Gesamtvermögen zu Beginn des geöffneten Monats",
         review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
           ? euro.format(startWealthAmount)
           : "-",
       ],
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
     ];
-    startSummary.innerHTML = entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+    startSummary.innerHTML = renderDetailEntries(entries);
   }
 
   if (flowSummary) {
     const fixedMonthlyCosts = Number(review.row.baselineFixedAmount ?? 0) + Number(review.row.baselineVariableAmount ?? 0);
     const entries = [
-      ["Fixkosten im Monat", euro.format(fixedMonthlyCosts)],
+      {
+        label: "Fixkosten im Monat",
+        value: euro.format(fixedMonthlyCosts),
+        formula: `${euro.format(review.row.baselineFixedAmount ?? 0)} + ${euro.format(review.row.baselineVariableAmount ?? 0)} = ${euro.format(fixedMonthlyCosts)}`,
+      },
       ["Basis-Investment", euro.format(review.row.plannedSavingsAmount ?? 0)],
       ["Musik brutto", euro.format(review.row.musicIncomeAmount ?? 0)],
-      ["Zusätzliche Ausgaben außerhalb Grundplan", euro.format(review.row.importedExpenseAmount ?? 0)],
+      ["Importierte Zusatz-Ausgaben", euro.format(importedExpenseAmount)],
+      ["Manuelle Zusatz-Ausgaben", euro.format(manualExpenseAmount)],
     ];
-    flowSummary.innerHTML = entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+    flowSummary.innerHTML = renderDetailEntries(entries);
   }
 
   if (endSummary) {
     const entries = [
       [
-        "Cash am Monatsende",
+        "Cash am Ende des geöffneten Monats",
         review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-",
       ],
       [
-        "Investment am Monatsende",
+        "Investment am Ende des geöffneten Monats",
         review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
       ],
       [
-        "Gesamtvermögen am Monatsende",
+        "Gesamtvermögen am Ende des geöffneten Monats",
         review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-",
       ],
+      ["Ist-Stand für diesen Monat", review.row.wealthAnchorApplied ? "Aktiv" : "Nein"],
     ];
-    endSummary.innerHTML = entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
+    endSummary.innerHTML = renderDetailEntries(entries);
   }
 
   renderMonthAllocationGuidance(review);
@@ -3558,7 +3786,7 @@ function renderReconciliation(row) {
 
   const persistenceLabel = reconciliationPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = reconciliation.updatedAt
-    ? `Zuletzt gespeichert: ${new Date(reconciliation.updatedAt).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    ? `Zuletzt gespeichert: ${formatHistoryTimestamp(reconciliation.updatedAt)} · Speicherort: ${persistenceLabel}`
     : `Noch nicht gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
@@ -3695,7 +3923,7 @@ function renderEntryMappings(importDraft, review) {
 
   const persistenceLabel = mappingPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = latestUpdate
-    ? `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · zuletzt gespeichert: ${new Date(latestUpdate).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    ? `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · Zuletzt gespeichert: ${formatHistoryTimestamp(latestUpdate)} · Speicherort: ${persistenceLabel}`
     : `${reviewedCount}/${monthEntryIds.length} Zeilen geprüft · noch keine Mapping-Korrekturen gespeichert · Speicherort: ${persistenceLabel}`;
 
   saveButton.onclick = async () => {
@@ -4035,7 +4263,7 @@ function renderForecastPlanner(importDraft) {
 
   const persistenceLabel = forecastPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = stored?.updatedAt
-    ? `Zuletzt gespeichert: ${new Date(stored.updatedAt).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    ? `Zuletzt gespeichert: ${formatHistoryTimestamp(stored.updatedAt)} · Speicherort: ${persistenceLabel}`
     : `Noch keine eigene Schwelle gespeichert · Speicherort: ${persistenceLabel}`;
 
   summaryTarget.innerHTML = [
@@ -4079,6 +4307,7 @@ function renderSalaryPlanner(importDraft) {
   const notesField = document.getElementById("salaryNotes");
   const metaTarget = document.getElementById("salaryMeta");
   const listTarget = document.getElementById("salaryList");
+  const historySummaryTarget = document.getElementById("salaryHistorySummary");
   const saveButton = document.getElementById("saveSalaryButton");
 
   if (!amountField || !effectiveFromField || !notesField || !metaTarget || !listTarget || !saveButton) {
@@ -4134,6 +4363,13 @@ function renderSalaryPlanner(importDraft) {
   metaTarget.textContent = settings.length > 0
     ? `${settings.length} Gehaltsstände gespeichert · Speicherort: ${persistenceLabel}`
     : `Noch keine Gehaltsänderung gespeichert · Speicherort: ${persistenceLabel}`;
+  if (historySummaryTarget) {
+    const latestEntry = [...settings]
+      .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
+    historySummaryTarget.textContent = latestEntry
+      ? `Zuletzt geändert: ${formatHistoryTimestamp(latestEntry.updatedAt)} · ${euro.format(latestEntry.netSalaryAmount)} ab ${latestEntry.effectiveFrom}`
+      : "Noch keine Gehaltsänderung gespeichert.";
+  }
 
   for (const button of listTarget.querySelectorAll("[data-salary-edit]")) {
     button.addEventListener("click", () => {
@@ -4221,12 +4457,14 @@ function renderWealthSnapshotPlanner(importDraft) {
   const tradeRepublicField = document.getElementById("wealthSnapshotCashTradeRepublicAmount");
   const scalableField = document.getElementById("wealthSnapshotCashScalableAmount");
   const investmentField = document.getElementById("wealthSnapshotInvestmentAmount");
+  const cashTotalField = document.getElementById("wealthSnapshotCashTotal");
   const notesField = document.getElementById("wealthSnapshotNotes");
   const metaTarget = document.getElementById("wealthSnapshotMeta");
   const listTarget = document.getElementById("wealthSnapshotList");
+  const historySummaryTarget = document.getElementById("wealthSnapshotHistorySummary");
   const saveButton = document.getElementById("saveWealthSnapshotButton");
 
-  if (!dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField || !notesField || !metaTarget || !listTarget || !saveButton) {
+  if (!dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField || !cashTotalField || !notesField || !metaTarget || !listTarget || !saveButton) {
     return;
   }
 
@@ -4273,6 +4511,19 @@ function renderWealthSnapshotPlanner(importDraft) {
     tradeRepublicField.value = String(suggested.cashAccounts.cash);
     scalableField.value = String(suggested.cashAccounts.savings);
     investmentField.value = String(suggested.investmentAmount);
+    updateCashTotalField();
+  }
+
+  function updateCashTotalField() {
+    const giroAmount = Number(giroField.value);
+    const tradeRepublicAmount = Number(tradeRepublicField.value);
+    const scalableAmount = Number(scalableField.value);
+    const cashAmount = roundCurrency(
+      (Number.isFinite(giroAmount) ? giroAmount : 0) +
+      (Number.isFinite(tradeRepublicAmount) ? tradeRepublicAmount : 0) +
+      (Number.isFinite(scalableAmount) ? scalableAmount : 0),
+    );
+    cashTotalField.value = euro.format(cashAmount);
   }
 
   function resetForm() {
@@ -4309,6 +4560,7 @@ function renderWealthSnapshotPlanner(importDraft) {
               </button>
             </div>
           </div>
+          <p class="section-copy">Zuletzt geändert: ${formatHistoryTimestamp(entry.updatedAt)}</p>
           <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
         </div>
       `)
@@ -4319,6 +4571,13 @@ function renderWealthSnapshotPlanner(importDraft) {
   metaTarget.textContent = snapshots.length > 0
     ? `${snapshots.length} Ist-Stand(e) gespeichert · Speicherort: ${persistenceLabel}`
     : `Noch kein manueller Vermögensstand gespeichert · Speicherort: ${persistenceLabel}`;
+  if (historySummaryTarget) {
+    const latestEntry = [...snapshots]
+      .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
+    historySummaryTarget.textContent = latestEntry
+      ? `Zuletzt geändert: ${formatHistoryTimestamp(latestEntry.updatedAt)} · Snapshot ${latestEntry.snapshotDate}`
+      : "Noch kein manueller Vermögensstand gespeichert.";
+  }
 
   for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-edit]")) {
     button.addEventListener("click", () => {
@@ -4334,6 +4593,7 @@ function renderWealthSnapshotPlanner(importDraft) {
       notesField.value = entry.notes || "";
       saveButton.dataset.editingId = entry.id;
       saveButton.textContent = "Ist-Stand aktualisieren";
+      updateCashTotalField();
     });
   }
 
@@ -4344,6 +4604,10 @@ function renderWealthSnapshotPlanner(importDraft) {
 
     applySuggestedSnapshotValues(dateField.value || fallbackDate);
   };
+
+  giroField.oninput = updateCashTotalField;
+  tradeRepublicField.oninput = updateCashTotalField;
+  scalableField.oninput = updateCashTotalField;
 
   for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-toggle]")) {
     button.addEventListener("click", async () => {
@@ -4445,7 +4709,7 @@ function renderMusicTaxPlanner(importDraft) {
 
   const persistenceLabel = musicTaxPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = stored?.updatedAt
-    ? `Zuletzt gespeichert: ${new Date(stored.updatedAt).toLocaleString("de-DE")} · Speicherort: ${persistenceLabel}`
+    ? `Zuletzt gespeichert: ${formatHistoryTimestamp(stored.updatedAt)} · Speicherort: ${persistenceLabel}`
     : `Noch keine eigene Steuer-Vorauszahlung gespeichert · Speicherort: ${persistenceLabel}`;
 
   const quarterMonths = currentMonthlyPlan()?.rows
@@ -4984,18 +5248,24 @@ function renderGoals(importDraft, monthlyPlan) {
     assumptionsTarget.textContent =
       `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
 
-    summaryTarget.innerHTML = [
+    summaryTarget.innerHTML = renderDetailEntries([
       ["Startvermögen", euro.format(currentWealth)],
       ["Zielmonat Rente", formatMonthLabel(targetMonthKey)],
-      ["Bedarf in Zieljahren", euro.format(retirementSpendAtTarget)],
-      ["Nest Egg noetig", euro.format(requiredNestEgg)],
+      {
+        label: "Bedarf in Zieljahren",
+        value: euro.format(retirementSpendAtTarget),
+        formula: `${euro.format(settings.retirementSpend)} * Inflation bis Zielalter = ${euro.format(retirementSpendAtTarget)}`,
+      },
+      {
+        label: "Nest Egg noetig",
+        value: euro.format(requiredNestEgg),
+        formula: `(${euro.format(retirementSpendAtTarget)} * 12) / ${settings.withdrawalRate.toFixed(1)} % = ${euro.format(requiredNestEgg)}`,
+      },
       ["Vermögen im Zielmonat", euro.format(latestProjectedWealth)],
       ["Musik konstant nötig", euro.format(constantMusicNeeded)],
       ["Musik brutto im Zielpfad", euro.format(targetPathAverageGross)],
       ["Musik netto im Zielpfad", euro.format(targetPathAverageNet)],
-    ]
-      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-      .join("");
+    ]);
 
     milestonesTarget.innerHTML = milestoneRows
       .map((item) => `
@@ -5054,7 +5324,7 @@ function renderGoals(importDraft, monthlyPlan) {
 
     retirementTarget.innerHTML = `<ul class="signal-list">${retirementItems.join("")}</ul>`;
 
-    retirementSummaryTarget.innerHTML = [
+    retirementSummaryTarget.innerHTML = renderDetailEntries([
       ["Heute", `${settings.currentAge.toFixed(0)} Jahre`],
       ["Zielalter", `${settings.targetAge.toFixed(0)} Jahre`],
       ["Zielmonat", formatMonthLabel(targetMonthKey)],
@@ -5062,9 +5332,7 @@ function renderGoals(importDraft, monthlyPlan) {
       ["Steuer auf Musik", `${settings.musicTaxRate.toFixed(1)} %`],
       ["Cash im ersten Zieljahr", euro.format(yearBreakdown[0]?.cashEndAmount ?? 0)],
       ["Vermögen im ersten Zieljahr", euro.format(yearBreakdown[0]?.wealthEndAmount ?? 0)],
-    ]
-      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-      .join("");
+    ]);
 
     const signalItems = [];
     signalItems.push({
@@ -5147,6 +5415,7 @@ function bindTabs(tabHooks = {}) {
 
 function bindDeveloperModeToggle() {
   const button = document.getElementById("developerModeButton");
+  const tooltipButton = document.getElementById("formulaTooltipButton");
   if (!button) {
     return;
   }
@@ -5156,7 +5425,17 @@ function bindDeveloperModeToggle() {
     const next = !readDeveloperMode();
     writeDeveloperMode(next);
     applyDeveloperModeUi(next);
+    rerenderSelectedMonthContext();
   };
+
+  if (tooltipButton) {
+    tooltipButton.onclick = () => {
+      const next = !readFormulaTooltipsEnabled();
+      writeFormulaTooltipsEnabled(next);
+      applyDeveloperModeUi(readDeveloperMode());
+      rerenderSelectedMonthContext();
+    };
+  }
 }
 
 function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewState = {}) {

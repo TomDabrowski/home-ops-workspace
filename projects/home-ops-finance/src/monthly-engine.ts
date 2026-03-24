@@ -221,6 +221,14 @@ export function sumIncomeAvailableForMonth(entries: IncomeEntry[], monthKey: str
   );
 }
 
+export function sumIncomeAvailableAfterDate(entries: IncomeEntry[], monthKey: string, snapshotDate: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey && String(entry.entryDate) > snapshotDate)
+      .reduce((sum, entry) => sum + (entry.availableAmount ?? entry.amount - (entry.reserveAmount ?? 0)), 0),
+  );
+}
+
 export function sumMusicIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
@@ -254,6 +262,14 @@ export function sumExpensesForMonth(entries: ExpenseEntry[], monthKey: string): 
   return roundCurrency(
     entries
       .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+}
+
+export function sumExpensesAfterDate(entries: ExpenseEntry[], monthKey: string, snapshotDate: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => monthFromDate(entry.entryDate) === monthKey && String(entry.entryDate) > snapshotDate)
       .reduce((sum, entry) => sum + entry.amount, 0),
   );
 }
@@ -435,19 +451,30 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
     const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
     const explicitWealthAnchor = wealthAnchorForMonth(draft, monthKey);
-    const currentSafetyAmount = safetyBucketStartAmount ?? 0;
+    const snapshotDate = explicitWealthAnchor?.snapshotDate;
+    const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
+    const incomeAvailableForProjection = anchorAppliesWithinMonth
+      ? sumIncomeAvailableAfterDate(draft.incomeEntries, monthKey, snapshotDate!)
+      : importedIncomeAvailableAmount;
+    const expenseAmountForProjection = anchorAppliesWithinMonth
+      ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
+      : importedExpenseAmount;
+    const currentSafetyAmount = anchorAppliesWithinMonth
+      ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
+      : (safetyBucketStartAmount ?? 0);
     const musicSafetyGapAmount = Math.max(0, musicThreshold - currentSafetyAmount);
     const musicAllocationToSafetyAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.min(importedIncomeAvailableAmount, musicSafetyGapAmount),
+      !useForecastRouting ? 0 : Math.min(incomeAvailableForProjection, musicSafetyGapAmount),
     );
     const musicAllocationToInvestmentAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.max(0, importedIncomeAvailableAmount - musicAllocationToSafetyAmount),
+      !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicAllocationToSafetyAmount),
     );
     const safetyBucketProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
             salaryAllocationToSafetyAmount +
-            musicAllocationToSafetyAmount,
+            musicAllocationToSafetyAmount -
+            expenseAmountForProjection,
         )
       : undefined;
     const investmentBucketProjectedEndAmount = useForecastRouting
@@ -463,12 +490,26 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
         : undefined;
     const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
     const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
+    const anchoredSafetyEndAmount =
+      anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
+        ? roundCurrency(safetyBucketAnchorAmount + musicAllocationToSafetyAmount - expenseAmountForProjection)
+        : undefined;
+    const anchoredInvestmentEndAmount =
+      anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
+        ? roundCurrency(investmentBucketAnchorAmount + musicAllocationToInvestmentAmount)
+        : undefined;
     const projectedWealthAnchorAmount =
       safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
         ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
         : explicitWealthAnchor?.totalWealthAmount;
-    const safetyBucketResolvedEndAmount = safetyBucketAnchorAmount ?? safetyBucketProjectedEndAmount;
-    const investmentBucketResolvedEndAmount = investmentBucketAnchorAmount ?? investmentBucketProjectedEndAmount;
+    const safetyBucketResolvedEndAmount =
+      anchoredSafetyEndAmount ??
+      safetyBucketAnchorAmount ??
+      safetyBucketProjectedEndAmount;
+    const investmentBucketResolvedEndAmount =
+      anchoredInvestmentEndAmount ??
+      investmentBucketAnchorAmount ??
+      investmentBucketProjectedEndAmount;
     const projectedWealthEndAmount =
       safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
         ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)

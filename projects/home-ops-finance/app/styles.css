@@ -58,10 +58,38 @@ body {
   color: var(--muted);
   line-height: 1.45;
 }
+.floating-controls {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  width: min(34rem, calc(100vw - 28px));
+  pointer-events: none;
+}
+.floating-controls .pill {
+  pointer-events: auto;
+  box-shadow: var(--shadow-soft);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.floating-controls .pill[hidden] {
+  display: none;
+}
+.floating-controls .pill:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
 .shell {
   max-width: 1520px;
   margin: 0 auto;
-  padding: 24px 20px 56px;
+  padding: 88px 20px 56px;
 }
 .card {
   background: var(--card);
@@ -199,6 +227,7 @@ h2 {
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  position: relative;
 }
 .select-wrap select {
   min-width: 180px;
@@ -217,6 +246,25 @@ h2 {
   color: var(--ink);
   font: inherit;
   padding: 12px 14px;
+}
+.select-wrap.currency-wrap::after {
+  content: "€";
+  position: absolute;
+  right: 14px;
+  bottom: 13px;
+  color: var(--muted);
+  font-size: 0.96rem;
+  pointer-events: none;
+}
+.select-wrap.currency-wrap input,
+.select-wrap.currency-wrap select,
+.select-wrap.currency-wrap textarea {
+  padding-right: 34px;
+}
+.select-wrap input[readonly] {
+  background: rgba(17, 17, 19, 0.04);
+  color: var(--muted);
+  cursor: default;
 }
 .select-wrap textarea {
   min-width: 100%;
@@ -255,6 +303,21 @@ h2 {
 .hero-quit {
   justify-self: start;
   padding-inline: 16px;
+}
+@media (max-width: 720px) {
+  .floating-controls {
+    top: 12px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+    justify-content: stretch;
+  }
+  .floating-controls .pill {
+    flex: 1 1 0;
+  }
+  .shell {
+    padding-top: 110px;
+  }
 }
 table {
   width: 100%;
@@ -322,6 +385,67 @@ th {
 .detail-list dd {
   margin: 0;
   font-weight: 600;
+}
+.detail-value {
+  display: inline-block;
+}
+.detail-value.has-tooltip {
+  position: relative;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(17, 17, 19, 0.24);
+  text-underline-offset: 0.18em;
+}
+.detail-value.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  width: min(28rem, 70vw);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(17, 17, 19, 0.96);
+  color: white;
+  box-shadow: var(--shadow);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.detail-value.has-tooltip::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: calc(100% + 4px);
+  z-index: 21;
+  border: 6px solid transparent;
+  border-top-color: rgba(17, 17, 19, 0.96);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.detail-value.has-tooltip:hover::after,
+.detail-value.has-tooltip:hover::before,
+.detail-value.has-tooltip:focus-visible::after,
+.detail-value.has-tooltip:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+.detail-formula {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
 }
 .signal-list {
   margin: 0;
