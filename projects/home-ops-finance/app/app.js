@@ -4238,6 +4238,16 @@ function renderWealthSnapshotPlanner(importDraft) {
   function suggestedSnapshotValues(snapshotDate) {
     const monthKey = String(snapshotDate ?? "").slice(0, 7) || currentSelectedMonthKey();
     const row = monthReviewRowForMonth(monthKey);
+    const exactSnapshot = [...readWealthSnapshots()]
+      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") === String(snapshotDate ?? ""))
+      .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
+    if (exactSnapshot) {
+      return {
+        cashAccounts: wealthSnapshotCashAccounts(exactSnapshot),
+        investmentAmount: Number(exactSnapshot.investmentAmount ?? 0),
+      };
+    }
+
     const latestSnapshot = [...readWealthSnapshots()]
       .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") <= String(snapshotDate ?? ""))
       .sort((left, right) => String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")))[0];
