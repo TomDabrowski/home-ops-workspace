@@ -2,8 +2,8 @@
 
 ## Now
 
-- Split the finance logic more clearly into `core`, `adapters`, and `ui` responsibilities.
-- Start by carving the biggest logic seams out of `src/monthly-engine.ts` without changing behavior.
+- Continue splitting the finance logic more clearly into `core`, `adapters`, and `ui` responsibilities.
+- After the new `app/projection-tools.js` extraction, continue carving month-planning helpers out of `src/monthly-engine.ts` without changing behavior.
 - Reduce duplicated business logic between `src/monthly-engine.ts` and `app/app.js`.
 - Add schema validation at persistence and import boundaries before the saved JSON shapes grow further.
 - Keep the UI thin: render and trigger actions, but avoid putting new finance rules into browser-only code.

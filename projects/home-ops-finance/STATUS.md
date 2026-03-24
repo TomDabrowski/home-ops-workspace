@@ -61,10 +61,11 @@ Interactive Planning App
 - The heavier long-range calculations are now lazy-initialized only when the planning tab is opened, which improves the perceived performance of the main app shell and month workflow.
 - Home Ops Finance can now resolve its private workbook and generated JSON data from a local-only external path via `config.local.json` or env vars, so sensitive finance artifacts can live on iCloud or a NAS instead of inside the repo checkout.
 - A first explicit architecture guideline now exists for keeping the project business-system-first: domain core, adapters, and thin UI surfaces are now the intended direction for future refactors and AI-assisted changes.
+- The first projection/refactoring step from that plan is now in place: the browser-side retirement and forecast helpers have been pulled out of `app/app.js` into a dedicated `app/projection-tools.js` module so the UI surface is no longer carrying that full block inline.
 
 ## Immediate Next Step
 
-Use `docs/architecture-guidelines.md` and `TODO.md` as the working contract for the next refactor phase: stabilize boundaries, split the largest engine responsibilities, and reduce duplicated logic between the UI and the calculation core.
+Use `docs/architecture-guidelines.md` and `TODO.md` as the working contract for the next refactor phase: keep shrinking `app/app.js`, then start splitting the biggest month-planning responsibilities out of `src/monthly-engine.ts` while keeping the outputs stable.
 
 ## Notes
 
