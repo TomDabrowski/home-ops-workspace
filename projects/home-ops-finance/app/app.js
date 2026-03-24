@@ -76,6 +76,19 @@ function currentSelectedMonthKey() {
   return viewStateMonthValue(monthSelect) ?? window.localStorage.getItem(monthReviewStorageKey) ?? null;
 }
 
+function monthReviewRowForMonth(monthKey) {
+  if (!monthKey) {
+    return null;
+  }
+
+  const monthlyPlan = currentMonthlyPlan();
+  if (!monthlyPlan || !Array.isArray(monthlyPlan.rows)) {
+    return null;
+  }
+
+  return monthlyPlan.rows.find((row) => row.monthKey === monthKey) ?? null;
+}
+
 function readDeveloperMode() {
   return window.localStorage.getItem(developerModeStorageKey) === "true";
 }
@@ -4198,10 +4211,24 @@ function renderWealthSnapshotPlanner(importDraft) {
   );
   const fallbackDate = todayIsoDate();
 
+  function suggestedSnapshotValues(snapshotDate) {
+    const monthKey = String(snapshotDate ?? "").slice(0, 7) || currentSelectedMonthKey();
+    const row = monthReviewRowForMonth(monthKey);
+    return {
+      cashAmount: Number(row?.safetyBucketEndAmount ?? 0),
+      investmentAmount: Number(row?.investmentBucketEndAmount ?? 0),
+    };
+  }
+
+  function applySuggestedSnapshotValues(snapshotDate) {
+    const suggested = suggestedSnapshotValues(snapshotDate);
+    cashField.value = String(suggested.cashAmount);
+    investmentField.value = String(suggested.investmentAmount);
+  }
+
   function resetForm() {
     dateField.value = fallbackDate;
-    cashField.value = "";
-    investmentField.value = "";
+    applySuggestedSnapshotValues(fallbackDate);
     notesField.value = "";
     saveButton.dataset.editingId = "";
     saveButton.textContent = "Ist-Stand speichern";
@@ -4209,6 +4236,10 @@ function renderWealthSnapshotPlanner(importDraft) {
 
   if (!dateField.value) {
     dateField.value = fallbackDate;
+  }
+
+  if (!saveButton.dataset.editingId) {
+    applySuggestedSnapshotValues(dateField.value || fallbackDate);
   }
 
   if (snapshots.length === 0) {
@@ -4253,6 +4284,14 @@ function renderWealthSnapshotPlanner(importDraft) {
       saveButton.textContent = "Ist-Stand aktualisieren";
     });
   }
+
+  dateField.onchange = () => {
+    if (saveButton.dataset.editingId) {
+      return;
+    }
+
+    applySuggestedSnapshotValues(dateField.value || fallbackDate);
+  };
 
   for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-toggle]")) {
     button.addEventListener("click", async () => {
