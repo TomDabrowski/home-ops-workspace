@@ -31,16 +31,11 @@
 
     <nav class="tabs">
       <button class="tab is-active" data-tab="months">Monate</button>
-<<<<<<< HEAD
-      <button class="tab" data-tab="overview">Einordnung</button>
-      <button class="tab" data-tab="baseline">Grundplan</button>
-=======
       <button class="tab" data-tab="music">Musik</button>
       <button class="tab" data-tab="imports" data-dev-only="true">Importe</button>
       <button class="tab" data-tab="overview" data-dev-only="true">Einordnung</button>
       <button class="tab" data-tab="baseline">Fixe & variable Kosten</button>
       <button class="tab" data-tab="household">Hausrat</button>
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
       <button class="tab" data-tab="retirement">Rente</button>
     </nav>
 
@@ -263,42 +258,32 @@
       <article class="card">
         <div class="section-head">
           <div>
-<<<<<<< HEAD
-            <h2>Musik & Steuer</h2>
-            <p class="section-copy">Hier steuerst du die geplante quartalsweise Steuer-Vorauszahlung für Musik. Zusätzliche echte Nachzahlungen kannst du weiter als normale Monatsausgabe eintragen.</p>
-=======
             <h2>Depot- & Cash-Stand</h2>
             <p class="section-copy">Hier kannst du bei größeren Schwankungen einen echten Ist-Stand mit Datum setzen. Der gespeicherte Stand gilt dann für den zugehörigen Monat.</p>
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
           </div>
         </div>
         <div class="grid two">
           <div class="subcard">
-            <h3 class="subhead">Quartals-Vorauszahlung</h3>
+            <h3 class="subhead">Ist-Stand speichern</h3>
             <div class="planner-inputs">
               <label class="select-wrap">
-                <span>Betrag pro Quartal</span>
-                <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
+                <span>Datum</span>
+                <input id="wealthSnapshotDate" type="date">
               </label>
               <label class="select-wrap">
-                <span>Gültig ab</span>
-                <input id="musicTaxEffectiveFrom" type="month">
+                <span>Cash aktuell</span>
+                <input id="wealthSnapshotCashAmount" type="number" min="0" step="0.01" placeholder="0">
               </label>
               <label class="select-wrap">
+                <span>Investment aktuell</span>
+                <input id="wealthSnapshotInvestmentAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap planner-span-two">
                 <span>Notiz</span>
-                <input id="musicTaxNotes" type="text" placeholder="optional">
+                <input id="wealthSnapshotNotes" type="text" placeholder="z. B. nach starkem Marktmove aktualisiert">
               </label>
             </div>
             <div class="reconciliation-footer">
-<<<<<<< HEAD
-              <p class="section-copy" id="musicTaxMeta">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
-              <button class="pill is-active" id="saveMusicTaxButton" type="button">Steuer-Plan speichern</button>
-            </div>
-          </div>
-          <div class="subcard">
-            <h3 class="subhead">So wirkt es</h3>
-            <div id="musicTaxSummary" class="mapping-list"></div>
-=======
               <p class="section-copy" id="wealthSnapshotMeta" data-dev-only="true">Noch kein manueller Vermögensstand gespeichert.</p>
               <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
             </div>
@@ -306,7 +291,6 @@
           <div class="subcard" data-dev-only="true">
             <h3 class="subhead">Gespeicherte Ist-Stände</h3>
             <div id="wealthSnapshotList" class="mapping-list"></div>
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
           </div>
         </div>
       </article>
@@ -323,34 +307,6 @@
       </article>
       <div class="month-workbench">
         <div class="month-main">
-<<<<<<< HEAD
-          <div class="grid two month-summary-grid">
-            <article class="card">
-              <h2>Monat auf einen Blick</h2>
-              <p class="section-copy">Hier stehen nur die Kernwerte für den Monatsstand zum Monatsende.</p>
-              <dl class="detail-list compact-details" id="monthReviewSummary"></dl>
-            </article>
-            <article class="card">
-              <h2>Monatshinweise</h2>
-              <ul class="signal-list" id="monthReviewSignals"></ul>
-            </article>
-          </div>
-          <div class="grid two">
-            <article class="card">
-              <h2>Importierte Ausgaben des Monats</h2>
-              <div class="table-wrap table-wrap--month">
-                <table>
-                  <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
-                  <tbody id="monthReviewExpenseRows"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="card">
-              <h2>Manuelle variable Ausgaben</h2>
-              <div id="monthlyExpenseList" class="mapping-list"></div>
-            </article>
-          </div>
-=======
           <article class="card">
             <div class="section-head">
               <div>
@@ -406,12 +362,11 @@
             <h2>Monatshinweise</h2>
             <ul class="signal-list" id="monthReviewSignals"></ul>
           </article>
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
           <article class="card">
             <div class="section-head">
               <div>
-                <h2>Monatsausgabe anlegen</h2>
-                <p class="section-copy">Hier erfasst du zusätzliche Monatsausgaben, die im Workbook-Import fehlen oder bewusst manuell ergänzt werden sollen.</p>
+                <h2>Neue Ausgabe erfassen</h2>
+                <p class="section-copy">Neue Ausgaben landen direkt in der Monatsansicht. Vor dem Speichern prüft die App auf Auffälligkeiten und doppelte oder ungewöhnliche Einträge.</p>
               </div>
             </div>
             <div class="planner-inputs">
@@ -440,70 +395,16 @@
                 <input id="monthlyExpenseNotes" type="text" placeholder="optional">
               </label>
             </div>
+            <div id="monthlyExpenseWarnings" class="signal-inline"></div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Monatsausgabe gespeichert.</p>
               <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Monatsausgabe speichern</button>
             </div>
           </article>
-<<<<<<< HEAD
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Musik-Istwert pflegen</h2>
-                <p class="section-copy">Sobald die echte Musik-Einnahme da ist, kannst du hier den Forecast für genau diesen Monat ersetzen.</p>
-              </div>
-            </div>
-            <div class="grid two">
-              <div class="subcard">
-                <h3 class="subhead">Ist-Wert speichern</h3>
-                <div class="planner-inputs">
-                  <label class="select-wrap">
-                    <span>Musik brutto</span>
-                    <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
-                  </label>
-                  <label class="select-wrap">
-                    <span>Monat</span>
-                    <input id="musicIncomeActualDate" type="month">
-                  </label>
-                  <label class="select-wrap planner-span-two">
-                    <span>Notiz</span>
-                    <input id="musicIncomeActualNotes" type="text" placeholder="optional">
-                  </label>
-                </div>
-                <div class="reconciliation-footer">
-                  <p class="section-copy" id="musicIncomeActualMeta">Noch kein Musik-Istwert gespeichert.</p>
-                  <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
-                </div>
-              </div>
-              <div class="subcard">
-                <h3 class="subhead">Wirkung im Monat</h3>
-                <div id="musicIncomeActualSummary" class="mapping-list"></div>
-              </div>
-            </div>
-            <div class="subcard">
-              <h3 class="subhead">Gespeicherte Ist-Werte</h3>
-              <div id="musicIncomeActualList" class="mapping-list"></div>
-            </div>
-          </article>
-        </div>
-        <aside class="month-side">
-          <article class="card">
-            <h2>Importierte Einnahmen</h2>
-            <div class="table-wrap table-wrap--side">
-              <table>
-                <thead><tr><th>Datum</th><th>Quelle</th><th>Betrag</th></tr></thead>
-                <tbody id="monthReviewIncomeRows"></tbody>
-              </table>
-            </div>
-          </article>
-          <article class="card">
-            <h2>Aktive Grundplan-Posten</h2>
-=======
         </div>
         <aside class="month-side">
           <article class="card">
             <h2>Aktive Kostenblöcke</h2>
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
             <div class="table-wrap table-wrap--side">
               <table>
                 <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
@@ -512,8 +413,6 @@
             </div>
           </article>
           <article class="card">
-<<<<<<< HEAD
-=======
             <h2>Monatsüberblick</h2>
             <div class="table-wrap table-wrap--side">
               <table>
@@ -523,7 +422,6 @@
             </div>
           </article>
           <article class="card" data-dev-only="true">
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
             <div class="section-head">
               <div>
                 <h2>Reconciliation</h2>
@@ -551,28 +449,6 @@
               <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
             </div>
           </article>
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Import-Korrekturen</h2>
-                <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen. Die Herkunftsnotiz unter jedem Eintrag hilft bei der Nachvollziehbarkeit.</p>
-              </div>
-            </div>
-            <div class="grid two reconciliation-grid">
-              <div>
-                <h3 class="subhead">Einnahmen-Mappings</h3>
-                <div id="incomeMappingRows" class="mapping-list"></div>
-              </div>
-              <div>
-                <h3 class="subhead">Ausgaben-Mappings</h3>
-                <div id="expenseMappingRows" class="mapping-list"></div>
-              </div>
-            </div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
-              <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
-            </div>
-          </article>
         </aside>
       </div>
       <article class="card">
@@ -598,8 +474,6 @@
       </article>
     </section>
 
-<<<<<<< HEAD
-=======
     <section id="music" class="tab-panel">
       <article class="card">
         <div class="section-head">
@@ -848,7 +722,6 @@
       </article>
     </section>
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
     <section id="retirement" class="tab-panel">
       <article class="card">
         <div class="section-head">

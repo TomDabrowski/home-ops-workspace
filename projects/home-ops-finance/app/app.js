@@ -14,11 +14,8 @@ const monthlyMusicIncomeOverridesStorageKey = "home-ops-finance-monthly-music-in
 const musicTaxSettingsStorageKey = "home-ops-finance-music-tax-settings-v1";
 const forecastSettingsStorageKey = "home-ops-finance-forecast-settings-v1";
 const salarySettingsStorageKey = "home-ops-finance-salary-settings-v1";
-<<<<<<< HEAD
-=======
 const wealthSnapshotsStorageKey = "home-ops-finance-wealth-snapshots-v1";
 const householdItemsStorageKey = "home-ops-finance-household-items-v1";
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 const activeTabStorageKey = "home-ops-finance-active-tab-v1";
 const monthReviewStorageKey = "home-ops-finance-month-review-v1";
 const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
@@ -47,24 +44,20 @@ let monthlyMusicIncomePersistence = "browser";
 let musicTaxPersistence = "browser";
 let forecastPersistence = "browser";
 let salaryPersistence = "browser";
-<<<<<<< HEAD
-=======
 let wealthSnapshotsPersistence = "browser";
 let householdPersistence = "browser";
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 let accountOptions = fallbackAccountOptions;
 let statusHideTimer = null;
 let musicTaxSettingsCache = null;
 let forecastSettingsCache = null;
 let salarySettingsCache = [];
-<<<<<<< HEAD
-=======
 let wealthSnapshotsCache = [];
 let householdStateCache = { items: [], insuranceCoverageAmount: 0, insuranceCoverageLabel: "" };
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 let clientSessionId = null;
 let clientHeartbeatTimer = null;
 let closeSignalSent = false;
+let expandedMonthExpenseId = null;
+let expandedMonthIncomeId = null;
 
 function financeState() {
   return window.__financeState ?? null;
@@ -78,8 +71,6 @@ function currentMonthlyPlan() {
   return financeState()?.monthlyPlan ?? null;
 }
 
-<<<<<<< HEAD
-=======
 function currentSelectedMonthKey() {
   const monthSelect = document.getElementById("monthReviewSelect");
   return viewStateMonthValue(monthSelect) ?? window.localStorage.getItem(monthReviewStorageKey) ?? null;
@@ -195,7 +186,6 @@ function renderSelectedMonthSharedUi(importDraft, monthKey) {
   `);
 }
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 function statusDetailForMode(mode) {
   return mode === "project"
     ? "Die Änderung wurde in den Projektdateien gespeichert."
@@ -219,6 +209,28 @@ function quarterLabel(monthKey) {
 
 function roundCurrency(value) {
   return Math.round(value * 100) / 100;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;");
+}
+
+function focusAndSelectField(field) {
+  if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    field.focus();
+    if (typeof field.setSelectionRange === "function") {
+      const end = field.value.length;
+      field.setSelectionRange(end, end);
+    }
+  });
 }
 
 function showStatus(title, detail = "", tone = "success") {
@@ -425,26 +437,27 @@ function confirmAction(message) {
 }
 
 async function fetchFinanceData() {
-  const importDraftPromise = fetch("/data/import-draft-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/import-draft.json").then((fallback) => fallback.json()),
-  );
-  const draftReportPromise = fetch("/data/draft-report-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/draft-report.json").then((fallback) => fallback.json()),
-  );
-  const monthlyPlanPromise = fetch("/data/monthly-plan-reviewed.json").then((response) =>
-    response.ok ? response.json() : fetch("/data/monthly-plan.json").then((fallback) => fallback.json()),
-  );
+  const fetchJson = (path) => fetch(path, { cache: "no-store" }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Failed to load ${path}`);
+    }
+
+    return response.json();
+  });
+  const fetchJsonWithFallback = (preferredPath, fallbackPath) =>
+    fetchJson(preferredPath).catch(() => fetchJson(fallbackPath));
+
+  const importDraftPromise = fetchJsonWithFallback("/data/import-draft-reviewed.json", "/data/import-draft.json");
+  const draftReportPromise = fetchJsonWithFallback("/data/draft-report-reviewed.json", "/data/draft-report.json");
+  const monthlyPlanPromise = fetchJsonWithFallback("/data/monthly-plan-reviewed.json", "/data/monthly-plan.json");
 
   const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
     draftReportPromise,
     monthlyPlanPromise,
     importDraftPromise,
-    fetch("/data/accounts.json").then((response) => response.ok ? response.json() : []),
+    fetch("/data/accounts.json", { cache: "no-store" }).then((response) => response.ok ? response.json() : []),
   ]);
 
-<<<<<<< HEAD
-  return { draftReport, monthlyPlan, importDraft, accounts };
-=======
   return applyLocalWorkflowState({ draftReport, monthlyPlan, importDraft, accounts });
 }
 
@@ -1122,7 +1135,6 @@ function applyLocalWorkflowState(state) {
     draftReport,
     monthlyPlan,
   };
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 }
 
 async function refreshFinanceView(status = null) {
@@ -1607,8 +1619,6 @@ function writeSalarySettings(state) {
   window.localStorage.setItem(salarySettingsStorageKey, JSON.stringify(state ?? []));
 }
 
-<<<<<<< HEAD
-=======
 function readWealthSnapshots() {
   return wealthSnapshotsCache;
 }
@@ -1644,7 +1654,6 @@ function writeHouseholdState(state) {
   window.localStorage.setItem(householdItemsStorageKey, JSON.stringify(householdStateCache));
 }
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 async function loadStateFromApi(path, storageKey) {
   const response = await fetch(path);
   if (!response.ok) {
@@ -1749,8 +1758,6 @@ async function initializeWorkflowState() {
     salarySettingsCache = Array.isArray(fallback) ? fallback : [];
     salaryPersistence = "browser";
   }
-<<<<<<< HEAD
-=======
 
   try {
     const payload = await loadStateFromApi("/api/wealth-snapshots", wealthSnapshotsStorageKey);
@@ -1778,7 +1785,6 @@ async function initializeWorkflowState() {
       householdPersistence = "browser";
     }
   }
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 }
 
 async function persistState(path, storageKey, state, modeSetter) {
@@ -2455,7 +2461,8 @@ function activeBaselineLineItemsForMonth(importDraft, monthKey) {
 }
 
 function buildMonthReviewData(importDraft, monthlyPlan, monthKey) {
-  const row = monthlyPlan.rows.find((item) => item.monthKey === monthKey);
+  const resolvedPlan = monthlyPlanFromImportDraft(importDraft, monthlyPlan);
+  const row = resolvedPlan.rows.find((item) => item.monthKey === monthKey);
   if (!row) return null;
 
   return {
@@ -2512,6 +2519,103 @@ function musicIncomeProfileForMonth(importDraft, monthKey) {
   };
 }
 
+function isManualExpenseEntry(entry) {
+  return readMonthlyExpenseOverrides().some((item) => item.id === entry.id && item.isActive !== false);
+}
+
+function isManualMusicIncomeEntry(entry) {
+  return readMonthlyMusicIncomeOverrides().some((item) => item.id === entry.id && item.isActive !== false);
+}
+
+function unifiedEntrySourceLabel(entry, kind) {
+  if (kind === "income") {
+    return isManualMusicIncomeEntry(entry) ? "Istwert" : "Import";
+  }
+
+  return isManualExpenseEntry(entry) ? "Manuell" : "Import";
+}
+
+function renderSignalInline(target, warnings) {
+  if (!target) {
+    return;
+  }
+
+  if (!warnings || warnings.length === 0) {
+    target.innerHTML = "";
+    return;
+  }
+
+  target.innerHTML = warnings
+    .map((warning) => `
+      <div class="signal-inline-item ${warning.severity}">
+        <strong>${warning.title}</strong>
+        <p>${warning.detail}</p>
+      </div>
+    `)
+    .join("");
+}
+
+function expenseWarningsForInput(importDraft, monthKey, draftValue, editingId = "") {
+  const warnings = [];
+  const description = draftValue.description.trim();
+  const amount = Number(draftValue.amount);
+  const entryMonthKey = monthFromDate(draftValue.entryDate || `${monthKey}-01`);
+  const normalizedDescription = description.toLowerCase();
+  const review = buildMonthReviewData(importDraft, currentMonthlyPlan(), monthKey);
+  const allMonthExpenses = review?.expenseEntries ?? [];
+
+  if (!description || !Number.isFinite(amount) || amount <= 0) {
+    return warnings;
+  }
+
+  const duplicates = allMonthExpenses.filter((entry) =>
+    entry.id !== editingId &&
+    entry.description.trim().toLowerCase() === normalizedDescription &&
+    Math.abs(Number(entry.amount) - amount) < 0.01,
+  );
+  if (duplicates.length > 0) {
+    warnings.push({
+      severity: "warn",
+      title: "Sieht nach doppeltem Eintrag aus",
+      detail: `Im Monat gibt es bereits ${duplicates.length} ähnliche Ausgabe(n) mit gleicher Beschreibung und gleichem Betrag.`,
+    });
+  }
+
+  if (entryMonthKey !== monthKey) {
+    warnings.push({
+      severity: "info",
+      title: "Datum liegt in einem anderen Monat",
+      detail: `Die Ausgabe wird unter ${entryMonthKey} gespeichert, nicht unter ${monthKey}.`,
+    });
+  }
+
+  if ((review?.row?.baselineAvailableAmount ?? 0) > 0 && amount > (review?.row?.baselineAvailableAmount ?? 0)) {
+    warnings.push({
+      severity: "warn",
+      title: "Ausgabe liegt über der freien Monatsbasis",
+      detail: `Der Betrag ${euro.format(amount)} ist größer als die freie Basis von ${euro.format(review?.row?.baselineAvailableAmount ?? 0)}.`,
+    });
+  }
+
+  if (/(musik|mix|master|spotify|distro|cover|gvl|gema|instrument|equipment|gear)/i.test(description) && draftValue.categoryId !== "gear") {
+    warnings.push({
+      severity: "info",
+      title: "Klingt nach musiknaher Ausgabe",
+      detail: "Prüf kurz, ob die Kategorie `Gear` oder das Business-Konto besser passt. Dann taucht die Ausgabe sauber im Musik-Reiter auf.",
+    });
+  }
+
+  if (/steuer|vorauszahlung|finanzamt/i.test(description) && draftValue.categoryId !== "tax") {
+    warnings.push({
+      severity: "info",
+      title: "Klingt nach Steuerzahlung",
+      detail: "Wenn das eine Musik-Steuervorauszahlung ist, passt die Kategorie `Steuern` besser in die Musik-Auswertung.",
+    });
+  }
+
+  return warnings;
+}
+
 function renderMonthlyExpenseEditor(importDraft, monthKey) {
   const descriptionField = document.getElementById("monthlyExpenseDescription");
   const amountField = document.getElementById("monthlyExpenseAmount");
@@ -2520,8 +2624,8 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
   const accountField = document.getElementById("monthlyExpenseAccount");
   const notesField = document.getElementById("monthlyExpenseNotes");
   const metaTarget = document.getElementById("monthlyExpenseMeta");
+  const warningsTarget = document.getElementById("monthlyExpenseWarnings");
   const saveButton = document.getElementById("saveMonthlyExpenseButton");
-  const listTarget = document.getElementById("monthlyExpenseList");
 
   if (
     !descriptionField ||
@@ -2531,8 +2635,7 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
     !accountField ||
     !notesField ||
     !metaTarget ||
-    !saveButton ||
-    !listTarget
+    !saveButton
   ) {
     return;
   }
@@ -2544,32 +2647,27 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
     dateField.value = monthKey;
   }
 
-  if (items.length === 0) {
-    listTarget.innerHTML = `<p class="empty-state">Noch keine manuellen Ausgaben für diesen Monat.</p>`;
-  } else {
-    listTarget.innerHTML = items
-      .map((entry) => `
-        <div class="mapping-card">
-          <div class="mapping-card-head">
-            <div>
-              <strong>${entry.description}</strong>
-              <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
-            </div>
-            <div class="filter-group">
-              <button class="pill" type="button" data-monthly-expense-edit="${entry.id}">Bearbeiten</button>
-              <button class="pill" type="button" data-monthly-expense-delete="${entry.id}">Löschen</button>
-            </div>
-          </div>
-          <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
-        </div>
-      `)
-      .join("");
-  }
-
   const persistenceLabel = monthlyExpensePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = items.length > 0
     ? `${items.length} manuelle Ausgaben im Monat · Speicherort: ${persistenceLabel}`
     : `Noch keine manuelle Monatsausgabe gespeichert · Speicherort: ${persistenceLabel}`;
+
+  const updateWarnings = () => {
+    renderSignalInline(warningsTarget, expenseWarningsForInput(importDraft, monthKey, {
+      description: descriptionField.value,
+      amount: amountField.value,
+      entryDate: dateField.value,
+      categoryId: categoryField.value,
+      accountId: accountField.value,
+    }));
+  };
+
+  descriptionField.oninput = updateWarnings;
+  amountField.oninput = updateWarnings;
+  dateField.oninput = updateWarnings;
+  categoryField.onchange = updateWarnings;
+  accountField.onchange = updateWarnings;
+  updateWarnings();
 
   saveButton.onclick = async () => {
     const editingId = saveButton.dataset.editingId ?? "";
@@ -2615,10 +2713,8 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
       tone: result.mode === "project" ? "success" : "warn",
     });
   };
+}
 
-<<<<<<< HEAD
-  for (const button of listTarget.querySelectorAll("[data-monthly-expense-edit]")) {
-=======
 function renderMonthSourceStats(review) {
   renderRows("monthReviewSourceStats", [
     ["Übrig aus Hauptgehalt", euro.format(review.row.baselineAvailableAmount)],
@@ -2689,35 +2785,204 @@ function renderMonthIncomeList(importDraft, review) {
   }).join("");
 
   for (const button of target.querySelectorAll("[data-month-income-toggle]")) {
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
     button.addEventListener("click", () => {
-      const id = button.getAttribute("data-monthly-expense-edit");
-      const entry = readMonthlyExpenseOverrides().find((item) => item.id === id);
-      if (!entry) return;
-      saveButton.dataset.editingId = entry.id;
-      saveButton.textContent = "Monatsausgabe aktualisieren";
-      descriptionField.value = entry.description;
-      amountField.value = String(entry.amount);
-      dateField.value = entry.entryDate;
-      categoryField.value = entry.expenseCategoryId || "other";
-      accountField.value = entry.accountId || "giro";
-      notesField.value = entry.notes || "";
-      metaTarget.textContent = `Bearbeitungsmodus aktiv für ${entry.description}`;
+      const id = button.getAttribute("data-month-income-toggle");
+      expandedMonthIncomeId = expandedMonthIncomeId === id ? null : id;
+      rerenderSelectedMonthContext();
     });
   }
 
-  for (const button of listTarget.querySelectorAll("[data-monthly-expense-delete]")) {
+  for (const button of target.querySelectorAll("[data-month-income-save]")) {
     button.addEventListener("click", async () => {
-      const id = button.getAttribute("data-monthly-expense-delete");
-      if (!id) return;
-      const entry = readMonthlyExpenseOverrides().find((item) => item.id === id);
-      if (!entry || !confirmAction(`Monatsausgabe "${entry.description}" vom ${entry.entryDate} wirklich löschen?`)) {
+      const id = button.getAttribute("data-month-income-save");
+      const source = readMonthlyMusicIncomeOverrides().find((item) => item.id === id);
+      if (!source) {
         return;
       }
-      const nextState = readMonthlyExpenseOverrides().map((entry) =>
-        entry.id === id ? { ...entry, isActive: false, updatedAt: new Date().toISOString() } : entry,
+
+      const amount = Number(target.querySelector(`[data-month-income-amount="${id}"]`)?.value);
+      const selectedMonthKey = target.querySelector(`[data-month-income-date="${id}"]`)?.value || review.row.monthKey;
+      const notes = target.querySelector(`[data-month-income-notes="${id}"]`)?.value?.trim() ?? "";
+      if (!Number.isFinite(amount) || amount < 0) {
+        showStatus("Musik-Istwert unvollständig", "Bitte einen gültigen Betrag eintragen.", "warn");
+        return;
+      }
+
+      const profile = musicIncomeProfileForMonth(importDraft, selectedMonthKey);
+      const reserveAmount = profile.reserveAmountForGross(amount);
+      const availableAmount = roundCurrency(amount - reserveAmount);
+      const nextEntry = {
+        ...source,
+        monthKey: selectedMonthKey,
+        entryDate: `${selectedMonthKey}-01`,
+        amount,
+        reserveAmount,
+        availableAmount,
+        notes,
+        updatedAt: new Date().toISOString(),
+      };
+      const nextState = readMonthlyMusicIncomeOverrides().map((item) => (item.id === id ? nextEntry : item));
+      const result = await saveMonthlyMusicIncomeOverrides(nextState);
+      expandedMonthIncomeId = null;
+      await refreshFinanceView({
+        title: "Musik-Istwert aktualisiert",
+        detail: `${statusDetailForMode(result.mode)} Reserve ${euro.format(reserveAmount)}, frei ${euro.format(availableAmount)}.`,
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  for (const button of target.querySelectorAll("[data-month-income-delete]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-month-income-delete");
+      const source = readMonthlyMusicIncomeOverrides().find((item) => item.id === id);
+      if (!source || !confirmAction(`Musik-Istwert ${euro.format(source.amount)} für ${source.monthKey} wirklich löschen?`)) {
+        return;
+      }
+
+      const nextState = readMonthlyMusicIncomeOverrides().map((item) =>
+        item.id === id ? { ...item, isActive: false, updatedAt: new Date().toISOString() } : item,
+      );
+      const result = await saveMonthlyMusicIncomeOverrides(nextState);
+      expandedMonthIncomeId = null;
+      await refreshFinanceView({
+        title: "Musik-Istwert gelöscht",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+}
+
+function renderMonthExpenseList(importDraft, review) {
+  const target = document.getElementById("monthUnifiedExpenseList");
+  if (!target) {
+    return;
+  }
+
+  const entries = [...review.expenseEntries].sort((left, right) => String(left.entryDate).localeCompare(String(right.entryDate)));
+  if (entries.length === 0) {
+    target.innerHTML = `<p class="empty-state">Keine Ausgaben für diesen Monat.</p>`;
+    return;
+  }
+
+  target.innerHTML = entries.map((entry) => {
+    const isManual = isManualExpenseEntry(entry);
+    const expanded = expandedMonthExpenseId === entry.id;
+    return `
+      <article class="mapping-card ${expanded ? "is-expanded" : ""}">
+        <div class="mapping-card-head">
+          <div>
+            <strong>${entry.description}</strong>
+            <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${expenseCategoryLabel(importDraft, entry.expenseCategoryId)} · ${unifiedEntrySourceLabel(entry, "expense")}</p>
+          </div>
+          <div class="filter-group">
+            <button class="pill" type="button" data-month-expense-toggle="${entry.id}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Details"}</button>
+          </div>
+        </div>
+        ${expanded ? (
+          isManual
+            ? `
+              <div class="mapping-fields month-inline-form">
+                <label class="select-wrap">
+                  <span>Beschreibung</span>
+                  <input type="text" data-month-expense-description="${entry.id}" value="${escapeHtml(entry.description)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Betrag</span>
+                  <input type="number" min="0" step="0.01" data-month-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Datum</span>
+                  <input type="date" data-month-expense-date="${entry.id}" value="${escapeHtml(entry.entryDate)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Kategorie</span>
+                  <select data-month-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</select>
+                </label>
+                <label class="select-wrap">
+                  <span>Konto</span>
+                  <select data-month-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                </label>
+                <label class="select-wrap">
+                  <span>Notiz</span>
+                  <input type="text" data-month-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}">
+                </label>
+              </div>
+              <div class="filter-group">
+                <button class="pill is-active" type="button" data-month-expense-save="${entry.id}">Speichern</button>
+                <button class="pill pill-danger" type="button" data-month-expense-delete="${entry.id}">Löschen</button>
+              </div>
+            `
+            : `<p class="mapping-source">${sourcePreview(entry.notes)}</p>`
+        ) : ""}
+      </article>
+    `;
+  }).join("");
+
+  for (const button of target.querySelectorAll("[data-month-expense-toggle]")) {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-month-expense-toggle");
+      expandedMonthExpenseId = expandedMonthExpenseId === id ? null : id;
+      rerenderSelectedMonthContext();
+    });
+  }
+
+  for (const button of target.querySelectorAll("[data-month-expense-save]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-month-expense-save");
+      const source = readMonthlyExpenseOverrides().find((item) => item.id === id);
+      if (!source) {
+        return;
+      }
+
+      const description = target.querySelector(`[data-month-expense-description="${id}"]`)?.value?.trim() ?? "";
+      const amount = Number(target.querySelector(`[data-month-expense-amount="${id}"]`)?.value);
+      const entryDate = target.querySelector(`[data-month-expense-date="${id}"]`)?.value || source.entryDate;
+      const categoryId = target.querySelector(`[data-month-expense-category="${id}"]`)?.value || "other";
+      const accountId = target.querySelector(`[data-month-expense-account="${id}"]`)?.value || "giro";
+      const notes = target.querySelector(`[data-month-expense-notes="${id}"]`)?.value?.trim() ?? "";
+      if (!description || !Number.isFinite(amount) || amount <= 0) {
+        showStatus("Monatsausgabe unvollständig", "Bitte Beschreibung und positiven Betrag eintragen.", "warn");
+        return;
+      }
+
+      const nextEntry = {
+        ...source,
+        monthKey: monthFromDate(entryDate),
+        entryDate,
+        description,
+        amount,
+        expenseCategoryId: categoryId,
+        accountId,
+        notes,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const nextState = readMonthlyExpenseOverrides().map((item) => (item.id === id ? nextEntry : item));
+      const result = await saveMonthlyExpenseOverrides(nextState);
+      expandedMonthExpenseId = null;
+      await refreshFinanceView({
+        title: "Monatsausgabe aktualisiert",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  for (const button of target.querySelectorAll("[data-month-expense-delete]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-month-expense-delete");
+      const source = readMonthlyExpenseOverrides().find((item) => item.id === id);
+      if (!source || !confirmAction(`Monatsausgabe "${source.description}" vom ${source.entryDate} wirklich löschen?`)) {
+        return;
+      }
+
+      const nextState = readMonthlyExpenseOverrides().map((item) =>
+        item.id === id ? { ...item, isActive: false, updatedAt: new Date().toISOString() } : item,
       );
       const result = await saveMonthlyExpenseOverrides(nextState);
+      expandedMonthExpenseId = null;
       await refreshFinanceView({
         title: "Monatsausgabe gelöscht",
         detail: statusDetailForMode(result.mode),
@@ -2747,13 +3012,8 @@ function renderMonthlyMusicIncomeEditor(importDraft, monthKey) {
   const referenceFree = Number(profile.source?.availableAmount ?? roundCurrency(referenceGross - referenceReserve));
   const reserveRateLabel = formatPercent(profile.reserveRate ?? 0);
 
-<<<<<<< HEAD
-  if (!dateField.value) {
-    dateField.value = `${monthKey}-01`;
-=======
   if (!(saveButton.dataset.editingId ?? "")) {
     dateField.value = monthKey;
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
   }
 
   summaryTarget.innerHTML = [
@@ -2797,9 +3057,11 @@ function renderMonthlyMusicIncomeEditor(importDraft, monthKey) {
       saveButton.dataset.editingId = entry.id;
       saveButton.textContent = "Musik-Istwert aktualisieren";
       amountField.value = String(entry.amount);
-      dateField.value = entry.monthKey;
+      dateField.value = entry.entryDate;
       notesField.value = entry.notes || "";
       metaTarget.textContent = `Bearbeitungsmodus aktiv für ${euro.format(entry.amount)} brutto`;
+      amountField.scrollIntoView({ behavior: "smooth", block: "center" });
+      focusAndSelectField(amountField);
     });
   }
 
@@ -2876,8 +3138,6 @@ function renderMonthlyMusicIncomeEditor(importDraft, monthKey) {
   };
 }
 
-<<<<<<< HEAD
-=======
 function isMusicTaxPrepayment(entry) {
   return entry.expenseCategoryId === "tax" || /steuer|finanzamt|vorauszahlung/i.test(`${entry.description} ${entry.notes ?? ""}`);
 }
@@ -3114,30 +3374,10 @@ function renderImportsWorkspace(importDraft, review) {
   renderEntryMappings(importDraft, review);
 }
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const review = buildMonthReviewData(importDraft, monthlyPlan, monthKey);
   if (!review) return;
 
-<<<<<<< HEAD
-  const summary = document.getElementById("monthReviewSummary");
-  if (summary) {
-    const variableExpensesTotal = roundCurrency(
-      (review.row.baselineVariableAmount ?? 0) + (review.row.importedExpenseAmount ?? 0),
-    );
-    const entries = [
-      ["Monat", `${review.row.monthKey} · Stand Monatsende`],
-      ["Fixe Ausgaben", euro.format(review.row.baselineFixedAmount)],
-      ["Variable Ausgaben", euro.format(variableExpensesTotal)],
-      ["Cash-Rücklage Ende", review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-"],
-      ["Investment Ende", review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-"],
-      ["Gesamtvermögen Ende", review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-"],
-    ];
-
-    summary.innerHTML = entries
-      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-      .join("");
-=======
   const startSummary = document.getElementById("monthReviewStartSummary");
   const flowSummary = document.getElementById("monthReviewFlowSummary");
   const endSummary = document.getElementById("monthReviewEndSummary");
@@ -3192,7 +3432,6 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       ],
     ];
     endSummary.innerHTML = entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("");
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
   }
 
   renderMonthAllocationGuidance(review);
@@ -3203,30 +3442,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       <td>${baselineAmountLabel(item, importDraft)}</td>
     </tr>
   `);
-
-  if (review.incomeEntries.length > 0) {
-    renderRows("monthReviewIncomeRows", review.incomeEntries, (entry) => `
-      <tr>
-        <td>${entry.entryDate}</td>
-        <td>${incomeStreamLabel(importDraft, entry.incomeStreamId)}</td>
-        <td>${euro.format(entry.amount)}</td>
-      </tr>
-    `);
-  } else {
-    renderEmptyRow("monthReviewIncomeRows", 3, "Keine importierten Einnahmen für diesen Monat.");
-  }
-
-  if (review.expenseEntries.length > 0) {
-    renderRows("monthReviewExpenseRows", review.expenseEntries, (entry) => `
-      <tr>
-        <td>${entry.entryDate}</td>
-        <td>${entry.description}</td>
-        <td>${euro.format(entry.amount)}</td>
-      </tr>
-    `);
-  } else {
-    renderEmptyRow("monthReviewExpenseRows", 3, "Keine importierten Ausgaben für diesen Monat.");
-  }
+  renderMonthSourceStats(review);
+  renderMonthIncomeList(importDraft, review);
+  renderMonthExpenseList(importDraft, review);
 
   const signalsTarget = document.getElementById("monthReviewSignals");
   if (signalsTarget && readDeveloperMode()) {
@@ -3238,16 +3456,11 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     signalsTarget.innerHTML = "";
   }
 
-<<<<<<< HEAD
-  renderReconciliation(review.row);
-  renderEntryMappings(importDraft, review);
-=======
   if (readDeveloperMode()) {
     renderReconciliation(review.row);
     renderImportsWorkspace(importDraft, review);
   }
   renderMusicWorkspace(importDraft, monthlyPlan, monthKey);
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
   renderMonthlyExpenseEditor(importDraft, monthKey);
   renderMonthlyMusicIncomeEditor(importDraft, monthKey);
 }
@@ -3545,8 +3758,6 @@ async function saveSalarySettings(state) {
   });
 }
 
-<<<<<<< HEAD
-=======
 async function saveWealthSnapshots(state) {
   writeWealthSnapshots(state);
   return persistState("/api/wealth-snapshots", wealthSnapshotsStorageKey, state, (mode) => {
@@ -3761,7 +3972,6 @@ function renderHouseholdWorkspace() {
   };
 }
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 function renderForecastPlanner(importDraft) {
   const safetyField = document.getElementById("forecastSafetyThreshold");
   const musicField = document.getElementById("forecastMusicThreshold");
@@ -3970,8 +4180,6 @@ function renderSalaryPlanner(importDraft) {
   };
 }
 
-<<<<<<< HEAD
-=======
 function renderWealthSnapshotPlanner(importDraft) {
   const dateField = document.getElementById("wealthSnapshotDate");
   const cashField = document.getElementById("wealthSnapshotCashAmount");
@@ -4105,7 +4313,6 @@ function renderWealthSnapshotPlanner(importDraft) {
   };
 }
 
->>>>>>> be4aabc (Refine finance workspace and add household inventory)
 function renderMusicTaxPlanner(importDraft) {
   const amountField = document.getElementById("musicTaxQuarterlyAmount");
   const effectiveFromField = document.getElementById("musicTaxEffectiveFrom");
@@ -4896,6 +5103,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   );
   renderForecastPlanner(importDraft);
   renderSalaryPlanner(importDraft);
+  renderWealthSnapshotPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderHouseholdWorkspace();
 
