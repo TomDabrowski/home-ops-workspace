@@ -38,6 +38,9 @@ export interface MonthlyPlanRow {
   musicAllocationToInvestmentAmount: number;
   salaryAllocationToSafetyAmount: number;
   salaryAllocationToInvestmentAmount: number;
+  anchorAppliesWithinMonth?: boolean;
+  projectionIncomeAvailableAmount?: number;
+  projectionExpenseAmount?: number;
   safetyBucketStartAmount?: number;
   safetyBucketCalculatedEndAmount?: number;
   safetyBucketAnchorAmount?: number;
@@ -562,6 +565,9 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       musicAllocationToInvestmentAmount,
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
+      anchorAppliesWithinMonth,
+      projectionIncomeAvailableAmount: incomeAvailableForProjection,
+      projectionExpenseAmount: expenseAmountForProjection,
       safetyBucketStartAmount,
       safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
       safetyBucketAnchorAmount,

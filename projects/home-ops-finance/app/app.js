@@ -1042,6 +1042,9 @@ function monthlyPlanFromImportDraft(importDraft, basePlan) {
       musicAllocationToInvestmentAmount,
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
+      anchorAppliesWithinMonth,
+      projectionIncomeAvailableAmount: incomeAvailableForProjection,
+      projectionExpenseAmount: expenseAmountForProjection,
       safetyBucketStartAmount,
       safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
       safetyBucketAnchorAmount,
@@ -1560,8 +1563,8 @@ function simulateForecast(importDraft, monthlyPlan, options = {}) {
   const startMonthKey = options.startMonthKey ?? firstRow.monthKey;
   const safetyThreshold = assumptionNumber(importDraft, "safety_threshold", 10000);
   const musicThreshold = assumptionNumber(importDraft, "music_threshold", safetyThreshold);
-  const safetyAnnualReturn = assumptionNumber(importDraft, "savings_interest_annual", 0.02);
-  const investmentAnnualReturn = assumptionNumber(importDraft, "investment_return_annual", 0.05);
+  const safetyAnnualReturn = options.safetyAnnualReturn ?? assumptionNumber(importDraft, "savings_interest_annual", 0.02);
+  const investmentAnnualReturn = options.investmentAnnualReturn ?? assumptionNumber(importDraft, "investment_return_annual", 0.05);
   const safetyMonthlyReturn = safetyAnnualReturn / 12;
   const investmentMonthlyReturn = Math.pow(1 + investmentAnnualReturn, 1 / 12) - 1;
   const inflationRate = options.inflationRate ?? 0;
@@ -1608,18 +1611,23 @@ function simulateForecast(importDraft, monthlyPlan, options = {}) {
       typeof constantMusicGrossPerMonth === "number"
         ? Math.max(0, constantMusicGrossPerMonth)
         : Math.max(forecastMusicGross, minimumMusicGrossPerMonth);
+    const musicTaxAmount = musicGross * (musicTaxRate / 100);
     const musicNetAvailable = musicGross * (1 - musicTaxRate / 100);
     const salaryToSafety = Math.max(0, baselineAvailableAmount - importedExpenseAmount);
     const salaryToInvestment = Math.max(0, plannedSavingsAmount);
     const musicSafetyGapAmount = Math.max(0, musicThreshold - safetyStartAmount);
     const musicToSafety = Math.min(musicNetAvailable, musicSafetyGapAmount);
     const musicToInvestment = Math.max(0, musicNetAvailable - musicToSafety);
+    const safetyGrowthAmount = safetyStartAmount * safetyMonthlyReturn;
+    const investmentGrowthAmount = investmentStartAmount * investmentMonthlyReturn;
     const safetyEndAmount =
-      safetyStartAmount * (1 + safetyMonthlyReturn) +
+      safetyStartAmount +
+      safetyGrowthAmount +
       (safetyStartAmount < safetyThreshold ? salaryToSafety : 0) +
       musicToSafety;
     const investmentEndAmount =
-      investmentStartAmount * (1 + investmentMonthlyReturn) +
+      investmentStartAmount +
+      investmentGrowthAmount +
       plannedSavingsAmount +
       (safetyStartAmount >= safetyThreshold ? salaryToInvestment : 0) +
       musicToInvestment;
@@ -1636,7 +1644,10 @@ function simulateForecast(importDraft, monthlyPlan, options = {}) {
       baseMusicGross,
       forecastMusicGross,
       musicGross,
+      musicTaxAmount,
       musicNetAvailable,
+      safetyGrowthAmount,
+      investmentGrowthAmount,
       safetyStartAmount,
       investmentStartAmount,
       safetyEndAmount,
@@ -1649,6 +1660,131 @@ function simulateForecast(importDraft, monthlyPlan, options = {}) {
   }
 
   return results;
+}
+
+function buildActualMusicYearMap(importDraft, monthlyPlan) {
+  const yearKeys = uniqueMonthKeys(importDraft.incomeEntries, importDraft.expenseEntries)
+    .map((monthKey) => Number(monthKey.slice(0, 4)))
+    .filter((year, index, all) => all.indexOf(year) === index)
+    .sort((left, right) => left - right);
+
+  const result = new Map();
+  for (const year of yearKeys) {
+    const data = buildMusicYearData(importDraft, monthlyPlan, `${year}-01`);
+    result.set(year, {
+      year,
+      kind: year < Number(currentMonthKey().slice(0, 4)) ? "Ist" : "Berechnet",
+      musicGross: data.yearlyMusicGross,
+      musicTax: data.estimatedTaxAnnual,
+      musicExpenses: data.yearlyMusicExpenses,
+      musicNetAmount: roundCurrency(data.yearlyMusicGross - data.estimatedTaxAnnual - data.yearlyMusicExpenses),
+    });
+  }
+  return result;
+}
+
+function buildMusicWealthYearOverview(importDraft, monthlyPlan, selectedMonthKey) {
+  const plannerSettings = readPlannerSettings(monthlyPlan);
+  const plannerAssumptions = {
+    inflationRate: plannerSettings.inflationRate,
+    salaryGrowthRate: plannerSettings.salaryGrowthRate,
+    rentGrowthRate: plannerSettings.rentGrowthRate,
+    expenseGrowthRate: plannerSettings.expenseGrowthRate,
+    musicGrowthRate: plannerSettings.musicGrowthRate,
+    musicTaxRate: plannerSettings.musicTaxRate,
+    investmentAnnualReturn: 0.06,
+  };
+  const currentYear = Number(currentMonthKey().slice(0, 4));
+  const actualMusicByYear = buildActualMusicYearMap(importDraft, monthlyPlan);
+  const firstForecastMonthKey = futureForecastRows(monthlyPlan)[0]?.monthKey ?? `${currentYear}-03`;
+  const targetMonthKey = targetMonthFromAges(
+    plannerSettings.currentAge,
+    plannerSettings.targetAge,
+    firstForecastMonthKey,
+  );
+  const months = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
+  const simulation = simulateForecast(importDraft, monthlyPlan, {
+    months,
+    ...plannerAssumptions,
+  });
+  const currentYearMusicExpensesBase =
+    actualMusicByYear.get(currentYear)?.musicExpenses ??
+    actualMusicByYear.get(Number(selectedMonthKey.slice(0, 4)))?.musicExpenses ??
+    0;
+  const grouped = new Map();
+
+  for (const row of simulation) {
+    const year = Number(row.monthKey.slice(0, 4));
+    const entry = grouped.get(year) ?? {
+      year,
+      kind: year <= currentYear ? "Berechnet" : "Prognostiziert",
+      musicGross: 0,
+      musicTax: 0,
+      investmentReturn: 0,
+      cashEndAmount: 0,
+      investmentEndAmount: 0,
+      wealthEndAmount: 0,
+    };
+    entry.musicGross = roundCurrency(entry.musicGross + Number(row.musicGross ?? 0));
+    entry.musicTax = roundCurrency(entry.musicTax + Number(row.musicTaxAmount ?? 0));
+    entry.investmentReturn = roundCurrency(entry.investmentReturn + Number(row.investmentGrowthAmount ?? 0));
+    entry.cashEndAmount = Number(row.safetyEndAmount ?? 0);
+    entry.investmentEndAmount = Number(row.investmentEndAmount ?? 0);
+    entry.wealthEndAmount = Number(row.wealthEndAmount ?? 0);
+    grouped.set(year, entry);
+  }
+
+  const years = new Set([
+    ...actualMusicByYear.keys(),
+    ...grouped.keys(),
+  ]);
+
+  const rows = [...years]
+    .sort((left, right) => left - right)
+    .map((year) => {
+      const actual = actualMusicByYear.get(year);
+      const projected = grouped.get(year);
+      const yearDeltaFromCurrent = Math.max(0, year - currentYear);
+      const projectedExpenses = roundCurrency(
+        currentYearMusicExpensesBase * Math.pow(1 + plannerSettings.expenseGrowthRate / 100, yearDeltaFromCurrent),
+      );
+      if (actual && year <= currentYear) {
+        return {
+          year,
+          kind: actual.kind,
+          musicGross: actual.musicGross,
+          musicTax: actual.musicTax,
+          musicExpenses: actual.musicExpenses,
+          musicNetAmount: actual.musicNetAmount,
+          investmentReturn: Number(projected?.investmentReturn ?? 0),
+          cashEndAmount: Number(projected?.cashEndAmount ?? 0),
+          investmentEndAmount: Number(projected?.investmentEndAmount ?? 0),
+          wealthEndAmount: Number(projected?.wealthEndAmount ?? 0),
+        };
+      }
+      return {
+        year,
+        kind: projected?.kind ?? "Prognostiziert",
+        musicGross: Number(projected?.musicGross ?? 0),
+        musicTax: Number(projected?.musicTax ?? 0),
+        musicExpenses: projectedExpenses,
+        musicNetAmount: roundCurrency(
+          Number(projected?.musicGross ?? 0) - Number(projected?.musicTax ?? 0) - projectedExpenses,
+        ),
+        investmentReturn: Number(projected?.investmentReturn ?? 0),
+        cashEndAmount: Number(projected?.cashEndAmount ?? 0),
+        investmentEndAmount: Number(projected?.investmentEndAmount ?? 0),
+        wealthEndAmount: Number(projected?.wealthEndAmount ?? 0),
+      };
+    });
+
+  const selectedYear = Number(selectedMonthKey.slice(0, 4));
+  const selectedYearRow = rows.find((row) => row.year === selectedYear) ?? rows[0] ?? null;
+  return {
+    rows,
+    selectedYearRow,
+    investmentReturnAssumptionLabel: "6,0 % p.a.",
+  };
 }
 
 function wealthMilestones(simulation, requiredNestEgg) {
@@ -3640,6 +3776,16 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   );
   const startWealthAmount =
     Number(review.row.safetyBucketStartAmount ?? 0) + Number(review.row.investmentBucketStartAmount ?? 0);
+  const endWealthAmount =
+    Number(review.row.safetyBucketEndAmount ?? 0) + Number(review.row.investmentBucketEndAmount ?? 0);
+  const startSafetyAmount = Number(review.row.safetyBucketStartAmount ?? 0);
+  const startInvestmentAmount = Number(review.row.investmentBucketStartAmount ?? 0);
+  const endSafetyAmount = Number(review.row.safetyBucketEndAmount ?? 0);
+  const endInvestmentAmount = Number(review.row.investmentBucketEndAmount ?? 0);
+  const safetyAnchorAmount = Number(review.row.safetyBucketAnchorAmount ?? 0);
+  const investmentAnchorAmount = Number(review.row.investmentBucketAnchorAmount ?? 0);
+  const projectionExpenseAmount = Number(review.row.projectionExpenseAmount ?? review.row.importedExpenseAmount ?? 0);
+  const monthValueType = compareMonthKeys(monthKey, currentMonthKey()) > 0 ? "Prognostiziert" : "Berechnet";
 
   if (startSummary) {
     const entries = [
@@ -3651,12 +3797,17 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         "Investment zu Beginn des geöffneten Monats",
         review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-",
       ],
-      [
-        "Gesamtvermögen zu Beginn des geöffneten Monats",
-        review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
-          ? euro.format(startWealthAmount)
-          : "-",
-      ],
+      {
+        label: "Gesamtvermögen zu Beginn des geöffneten Monats",
+        value:
+          review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
+            ? euro.format(startWealthAmount)
+            : "-",
+        formula:
+          review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
+            ? `${euro.format(startSafetyAmount)} + ${euro.format(startInvestmentAmount)} = ${euro.format(startWealthAmount)}`
+            : "",
+      },
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
     ];
     startSummary.innerHTML = renderDetailEntries(entries);
@@ -3680,18 +3831,39 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   if (endSummary) {
     const entries = [
-      [
-        "Cash am Ende des geöffneten Monats",
-        review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-",
-      ],
-      [
-        "Investment am Ende des geöffneten Monats",
-        review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
-      ],
-      [
-        "Gesamtvermögen am Ende des geöffneten Monats",
-        review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-",
-      ],
+      {
+        label: "Cash am Ende des geöffneten Monats",
+        value: review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-",
+        formula:
+          review.row.safetyBucketEndAmount !== undefined
+            ? (
+              review.row.anchorAppliesWithinMonth && review.row.safetyBucketAnchorAmount !== undefined
+                ? `${euro.format(safetyAnchorAmount)} Ist-Stand + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben nach dem Stichtag = ${euro.format(endSafetyAmount)}`
+                : `${euro.format(startSafetyAmount)} Start-Cash + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben = ${euro.format(endSafetyAmount)}`
+            )
+            : "",
+      },
+      {
+        label: "Investment am Ende des geöffneten Monats",
+        value: review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
+        formula:
+          review.row.investmentBucketEndAmount !== undefined
+            ? (
+              review.row.anchorAppliesWithinMonth && review.row.investmentBucketAnchorAmount !== undefined
+                ? `${euro.format(investmentAnchorAmount)} Ist-Stand + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
+                : `${euro.format(startInvestmentAmount)} Start-Investment + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
+            )
+            : "",
+      },
+      {
+        label: "Gesamtvermögen am Ende des geöffneten Monats",
+        value: review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-",
+        formula:
+          review.row.projectedWealthEndAmount !== undefined
+            ? `${euro.format(endSafetyAmount)} Cash am Ende + ${euro.format(endInvestmentAmount)} Investment am Ende = ${euro.format(endWealthAmount)}`
+            : "",
+      },
+      ["Werttyp", monthValueType],
       ["Ist-Stand für diesen Monat", review.row.wealthAnchorApplied ? "Aktiv" : "Nein"],
     ];
     endSummary.innerHTML = renderDetailEntries(entries);
@@ -5072,6 +5244,9 @@ function renderGoals(importDraft, monthlyPlan) {
   const retirementSummaryTarget = document.getElementById("retirementSummary");
   const retirementSignalsTarget = document.getElementById("retirementSignals");
   const retirementYearRowsTarget = document.getElementById("retirementYearRows");
+  const retirementProjectionMetaTarget = document.getElementById("retirementProjectionMeta");
+  const musicYearSummaryTarget = document.getElementById("musicYearSummary");
+  const musicYearRowsTarget = document.getElementById("musicYearRows");
 
   if (
     !currentAgeInput ||
@@ -5092,7 +5267,10 @@ function renderGoals(importDraft, monthlyPlan) {
     !retirementTarget ||
     !retirementSummaryTarget ||
     !retirementSignalsTarget ||
-    !retirementYearRowsTarget
+    !retirementYearRowsTarget ||
+    !retirementProjectionMetaTarget ||
+    !musicYearSummaryTarget ||
+    !musicYearRowsTarget
   ) {
     return;
   }
@@ -5244,9 +5422,12 @@ function renderGoals(importDraft, monthlyPlan) {
       plannerAssumptions,
       targetMonthKey,
     );
+    const musicYearOverview = buildMusicWealthYearOverview(importDraft, monthlyPlan, currentSelectedMonthKey() ?? firstForecastMonthKey);
 
     assumptionsTarget.textContent =
       `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
+    retirementProjectionMetaTarget.textContent =
+      `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} % und Investment-Ertrag 6,0 % p.a.`;
 
     summaryTarget.innerHTML = renderDetailEntries([
       ["Startvermögen", euro.format(currentWealth)],
@@ -5362,6 +5543,33 @@ function renderGoals(importDraft, monthlyPlan) {
           <strong>${item.title}</strong>
           <p>${item.body}</p>
         </li>
+      `)
+      .join("");
+
+    const selectedYearRow = musicYearOverview.selectedYearRow;
+    musicYearSummaryTarget.innerHTML = selectedYearRow
+      ? [
+        `<article class="stat"><span>Musik brutto im Jahr</span><strong>${euro.format(selectedYearRow.musicGross)}</strong></article>`,
+        `<article class="stat"><span>Musik netto im Jahr</span><strong>${euro.format(selectedYearRow.musicNetAmount)}</strong></article>`,
+        `<article class="stat"><span>Investment-Ertrag im Jahr</span><strong>${euro.format(selectedYearRow.investmentReturn)}</strong></article>`,
+        `<article class="stat"><span>Jahresendvermögen</span><strong>${euro.format(selectedYearRow.wealthEndAmount)}</strong></article>`,
+      ].join("")
+      : "";
+
+    musicYearRowsTarget.innerHTML = musicYearOverview.rows
+      .map((row) => `
+        <tr>
+          <td>${row.year}</td>
+          <td>${row.kind}</td>
+          <td>${euro.format(row.musicGross)}</td>
+          <td>${euro.format(row.musicTax)}</td>
+          <td>${euro.format(row.musicExpenses)}</td>
+          <td>${euro.format(row.musicNetAmount)}</td>
+          <td>${euro.format(row.investmentReturn)}</td>
+          <td>${euro.format(row.cashEndAmount)}</td>
+          <td>${euro.format(row.investmentEndAmount)}</td>
+          <td>${euro.format(row.wealthEndAmount)}</td>
+        </tr>
       `)
       .join("");
 
