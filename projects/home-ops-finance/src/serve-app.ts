@@ -18,6 +18,7 @@ const monthlyMusicIncomeOverridesPath = financeDataPath("monthly-music-income-ov
 const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
 const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
+const householdItemsPath = financeDataPath("household-items.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 5000;
 const staleClientSessionMs = 45000;
@@ -508,6 +509,29 @@ const server = createServer(async (req, res) => {
           fehler: error instanceof Error ? error.message : String(error),
         });
         return sendJson(res, 500, { ok: false, error: "salary_settings_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/household-items") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(householdItemsPath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = await readRequestJson(req);
+        writeJsonFile(householdItemsPath, payload);
+        appendActivityLog("hausrat gespeichert", {
+          datei: householdItemsPath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("hausrat fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, { ok: false, error: "household_items_save_failed" });
       }
     }
   }

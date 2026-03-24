@@ -50,6 +50,11 @@ Interactive Planning App
 - The local app server now serves HTML/CSS/JS/JSON with no-cache headers to reduce stale-browser issues while iterating on the app locally.
 - The app copy is being cleaned up toward production-quality German text, including real umlauts in the visible UI instead of `ae/oe/ue` placeholders.
 - The app surface has started moving toward a cleaner Apple-like UI direction: brighter palette, lighter cards, calmer typography, and a less tool-heavy overall layout.
+- The default app surface is now significantly less technical: migration-heavy tabs and stored-change diagnostics are hidden behind a developer mode instead of always being visible.
+- Month selection is now shared across the month-scoped workflows instead of resetting independently in each tab.
+- The month workspace now focuses on a simpler mental model with separated `start of month`, `in month`, and `end of month` summaries.
+- Annual reserve items now show their recurring charge day when that can be derived from existing imported bookings.
+- A first dedicated household-inventory workspace now exists, including a total-value summary, separate household/music sections, editable insured sum, and CRUD support backed by the external private data directory.
 - The long-range planning UI no longer uses sliders; it now relies on plain numeric inputs because the slider-based interactions were unstable in real use.
 - The long-range planning view no longer recalculates live on every keystroke. Users now adjust values and explicitly apply them with a `Werte übernehmen` button.
 - The long-range planning view now includes visible validation and exception handling in the UI. Invalid combinations such as `current age > target age` show an in-app error box instead of breaking the page.

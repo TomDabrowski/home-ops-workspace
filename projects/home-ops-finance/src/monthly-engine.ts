@@ -358,8 +358,6 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   const monthKeys = uniqueMonthKeys(draft.incomeEntries, draft.expenseEntries);
   const safetyThreshold = assumptionNumber(draft, "safety_threshold", 10000);
   const musicThreshold = assumptionNumber(draft, "music_threshold", safetyThreshold);
-  const musicInvestmentShare = assumptionNumber(draft, "music_investment_share_after_threshold", 0.6);
-  const musicSafetyShare = assumptionNumber(draft, "music_safety_share_after_threshold", 0.4);
   const safetyStartDefault = wealthBucket(draft, "safety")?.currentAmount ?? 0;
   const investmentStartDefault = wealthBucket(draft, "investment")?.currentAmount ?? 0;
   const safetyMonthlyReturn = monthlyReturnFromAnnualRate(
@@ -432,6 +430,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
     const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
     const explicitWealthAnchor = wealthAnchorForMonth(draft, monthKey);
+<<<<<<< HEAD
     const musicAllocationToSafetyAmount = roundCurrency(
       !useForecastRouting
         ? 0
@@ -445,6 +444,15 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
         : (safetyBucketStartAmount ?? 0) >= musicThreshold
           ? musicIncomeAmount * musicInvestmentShare
           : 0,
+=======
+    const currentSafetyAmount = safetyBucketStartAmount ?? 0;
+    const musicSafetyGapAmount = Math.max(0, musicThreshold - currentSafetyAmount);
+    const musicAllocationToSafetyAmount = roundCurrency(
+      !useForecastRouting ? 0 : Math.min(importedIncomeAvailableAmount, musicSafetyGapAmount),
+    );
+    const musicAllocationToInvestmentAmount = roundCurrency(
+      !useForecastRouting ? 0 : Math.max(0, importedIncomeAvailableAmount - musicAllocationToSafetyAmount),
+>>>>>>> be4aabc (Refine finance workspace and add household inventory)
     );
     const safetyBucketProjectedEndAmount = useForecastRouting
       ? roundCurrency(

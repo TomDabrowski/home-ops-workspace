@@ -123,14 +123,23 @@ The local app shell currently serves:
 
 The browser review currently supports:
 
+- a calmer default UI with a separate developer mode for migration-heavy or technical controls
 - validation signals for likely mismatches or risky months
 - month filters for deficits and future forecast rows
-- a month-by-month review with active baseline items and imported flows
+- a month-by-month review with a shared month selector across month-scoped tabs
+- a month-by-month review with active baseline items, imported flows, and a clearer start/in-month/end structure
 - local reconciliation and import-correction persistence into project JSON files
 - a first reviewed-draft pipeline that can reapply saved corrections once `data/import-draft.json` exists
 - bootstrapped default category/account mappings for imported entries
 - automatic regeneration of reviewed report, reviewed month plan, and reviewed dashboard after saves in the local app
 - a first goals view for milestone tracking and longer-range planning assumptions
+- a separate household-inventory workspace with total value, split between general household goods and music equipment, and editable insured sum
+
+The current local app also keeps private finance artifacts outside the repository:
+
+- reviewed drafts and month plans stay in the configured external `dataDir`
+- household inventory persistence also lives in that private external data directory
+- documentation and preview assets inside the repo remain sanitized and example-only
 
 ## Next Steps
 
