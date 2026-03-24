@@ -63,6 +63,7 @@ Interactive Planning App
 - A first explicit architecture guideline now exists for keeping the project business-system-first: domain core, adapters, and thin UI surfaces are now the intended direction for future refactors and AI-assisted changes.
 - The first projection/refactoring step from that plan is now in place: the browser-side retirement and forecast helpers have been pulled out of `app/app.js` into a dedicated `app/projection-tools.js` module so the UI surface is no longer carrying that full block inline.
 - The first `src/monthly-engine.ts` split is now also done: reusable month-selection, baseline-selection, and aggregation helpers have been moved into `src/monthly-planning-helpers.ts`, reducing the amount of low-level data plumbing that still lives inside the engine file.
+- The consistency and warning rules are now also separated from the engine flow itself: `src/monthly-consistency-signals.ts` now owns the month warning generation so `src/monthly-engine.ts` can focus more tightly on calculation and routing.
 
 ## Immediate Next Step
 
