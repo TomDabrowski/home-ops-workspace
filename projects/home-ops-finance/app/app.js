@@ -89,6 +89,28 @@ function monthReviewRowForMonth(monthKey) {
   return monthlyPlan.rows.find((row) => row.monthKey === monthKey) ?? null;
 }
 
+function wealthSnapshotCashAccounts(entry) {
+  const accounts = entry?.cashAccounts;
+  if (accounts && typeof accounts === "object") {
+    return {
+      giro: Number(accounts.giro ?? 0),
+      cash: Number(accounts.cash ?? 0),
+      savings: Number(accounts.savings ?? 0),
+    };
+  }
+
+  return {
+    giro: Number(entry?.cashAmount ?? 0),
+    cash: 0,
+    savings: 0,
+  };
+}
+
+function wealthSnapshotCashTotal(entry) {
+  const accounts = wealthSnapshotCashAccounts(entry);
+  return roundCurrency(accounts.giro + accounts.cash + accounts.savings);
+}
+
 function readDeveloperMode() {
   return window.localStorage.getItem(developerModeStorageKey) === "true";
 }
@@ -1042,9 +1064,9 @@ function buildLocalWealthSnapshotAnchors() {
     .sort((left, right) => String(left.snapshotDate).localeCompare(String(right.snapshotDate)))
     .map((entry) => ({
       monthKey: String(entry.snapshotDate).slice(0, 7),
-      safetyBucketAmount: Number(entry.cashAmount ?? 0),
+      safetyBucketAmount: wealthSnapshotCashTotal(entry),
       investmentBucketAmount: Number(entry.investmentAmount ?? 0),
-      totalWealthAmount: roundCurrency(Number(entry.cashAmount ?? 0) + Number(entry.investmentAmount ?? 0)),
+      totalWealthAmount: roundCurrency(wealthSnapshotCashTotal(entry) + Number(entry.investmentAmount ?? 0)),
       sourceSheet: "manual_snapshot",
       sourceRowNumber: 0,
       isManualAnchor: true,
@@ -4195,14 +4217,16 @@ function renderSalaryPlanner(importDraft) {
 
 function renderWealthSnapshotPlanner(importDraft) {
   const dateField = document.getElementById("wealthSnapshotDate");
-  const cashField = document.getElementById("wealthSnapshotCashAmount");
+  const giroField = document.getElementById("wealthSnapshotCashGiroAmount");
+  const tradeRepublicField = document.getElementById("wealthSnapshotCashTradeRepublicAmount");
+  const scalableField = document.getElementById("wealthSnapshotCashScalableAmount");
   const investmentField = document.getElementById("wealthSnapshotInvestmentAmount");
   const notesField = document.getElementById("wealthSnapshotNotes");
   const metaTarget = document.getElementById("wealthSnapshotMeta");
   const listTarget = document.getElementById("wealthSnapshotList");
   const saveButton = document.getElementById("saveWealthSnapshotButton");
 
-  if (!dateField || !cashField || !investmentField || !notesField || !metaTarget || !listTarget || !saveButton) {
+  if (!dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField || !notesField || !metaTarget || !listTarget || !saveButton) {
     return;
   }
 
@@ -4214,15 +4238,30 @@ function renderWealthSnapshotPlanner(importDraft) {
   function suggestedSnapshotValues(snapshotDate) {
     const monthKey = String(snapshotDate ?? "").slice(0, 7) || currentSelectedMonthKey();
     const row = monthReviewRowForMonth(monthKey);
+    const latestSnapshot = [...readWealthSnapshots()]
+      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") <= String(snapshotDate ?? ""))
+      .sort((left, right) => String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")))[0];
+    const latestAccounts = wealthSnapshotCashAccounts(latestSnapshot);
+    const suggestedCashTotal = Number(row?.safetyBucketEndAmount ?? 0);
+    const latestCashTotal = wealthSnapshotCashTotal(latestSnapshot);
+    const giroAdjustedAmount = latestSnapshot
+      ? roundCurrency(latestAccounts.giro + (suggestedCashTotal - latestCashTotal))
+      : suggestedCashTotal;
     return {
-      cashAmount: Number(row?.safetyBucketEndAmount ?? 0),
+      cashAccounts: {
+        giro: Math.max(0, giroAdjustedAmount),
+        cash: latestAccounts.cash,
+        savings: latestAccounts.savings,
+      },
       investmentAmount: Number(row?.investmentBucketEndAmount ?? 0),
     };
   }
 
   function applySuggestedSnapshotValues(snapshotDate) {
     const suggested = suggestedSnapshotValues(snapshotDate);
-    cashField.value = String(suggested.cashAmount);
+    giroField.value = String(suggested.cashAccounts.giro);
+    tradeRepublicField.value = String(suggested.cashAccounts.cash);
+    scalableField.value = String(suggested.cashAccounts.savings);
     investmentField.value = String(suggested.investmentAmount);
   }
 
@@ -4251,7 +4290,7 @@ function renderWealthSnapshotPlanner(importDraft) {
           <div class="mapping-card-head">
             <div>
               <strong>${entry.snapshotDate}</strong>
-              <p>Cash ${euro.format(entry.cashAmount)} · Investment ${euro.format(entry.investmentAmount)} · Monat ${String(entry.snapshotDate).slice(0, 7)}</p>
+              <p>CHECK24 ${euro.format(wealthSnapshotCashAccounts(entry).giro)} · TR Cash ${euro.format(wealthSnapshotCashAccounts(entry).cash)} · Scalable ${euro.format(wealthSnapshotCashAccounts(entry).savings)} · Investment ${euro.format(entry.investmentAmount)} · Monat ${String(entry.snapshotDate).slice(0, 7)}</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-wealth-snapshot-edit="${entry.id}">Bearbeiten</button>
@@ -4276,8 +4315,11 @@ function renderWealthSnapshotPlanner(importDraft) {
       const id = button.getAttribute("data-wealth-snapshot-edit");
       const entry = readWealthSnapshots().find((item) => item.id === id);
       if (!entry) return;
+      const cashAccounts = wealthSnapshotCashAccounts(entry);
       dateField.value = entry.snapshotDate || fallbackDate;
-      cashField.value = String(entry.cashAmount ?? 0);
+      giroField.value = String(cashAccounts.giro);
+      tradeRepublicField.value = String(cashAccounts.cash);
+      scalableField.value = String(cashAccounts.savings);
       investmentField.value = String(entry.investmentAmount ?? 0);
       notesField.value = entry.notes || "";
       saveButton.dataset.editingId = entry.id;
@@ -4312,11 +4354,20 @@ function renderWealthSnapshotPlanner(importDraft) {
   saveButton.onclick = async () => {
     const editingId = saveButton.dataset.editingId ?? "";
     const snapshotDate = dateField.value || fallbackDate;
-    const cashAmount = Number(cashField.value);
+    const giroAmount = Number(giroField.value);
+    const tradeRepublicAmount = Number(tradeRepublicField.value);
+    const scalableAmount = Number(scalableField.value);
     const investmentAmount = Number(investmentField.value);
     const notes = notesField.value.trim();
+    const cashAmount = roundCurrency(giroAmount + tradeRepublicAmount + scalableAmount);
 
-    if (!snapshotDate || !Number.isFinite(cashAmount) || cashAmount < 0 || !Number.isFinite(investmentAmount) || investmentAmount < 0) {
+    if (
+      !snapshotDate ||
+      !Number.isFinite(giroAmount) || giroAmount < 0 ||
+      !Number.isFinite(tradeRepublicAmount) || tradeRepublicAmount < 0 ||
+      !Number.isFinite(scalableAmount) || scalableAmount < 0 ||
+      !Number.isFinite(investmentAmount) || investmentAmount < 0
+    ) {
       metaTarget.textContent = "Bitte Datum sowie gültige Cash- und Investment-Werte eintragen.";
       return;
     }
@@ -4333,6 +4384,11 @@ function renderWealthSnapshotPlanner(importDraft) {
     const nextEntry = {
       id: editingId || `wealth-snapshot-${Date.now()}`,
       snapshotDate,
+      cashAccounts: {
+        giro: giroAmount,
+        cash: tradeRepublicAmount,
+        savings: scalableAmount,
+      },
       cashAmount,
       investmentAmount,
       notes,
