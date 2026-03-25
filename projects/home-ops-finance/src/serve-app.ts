@@ -37,10 +37,12 @@ const wealthSnapshotsPath = financeDataPath("wealth-snapshots.json");
 const allocationActionStatePath = financeDataPath("allocation-action-state.json");
 const householdItemsPath = financeDataPath("household-items.json");
 const activityLogPath = financeDataPath("activity-log.log");
-const autoShutdownGraceMs = 5000;
+const autoShutdownGraceMs = 15000;
+const startupNoClientGraceMs = 120000;
 const staleClientSessionMs = 45000;
 const staleClientSweepMs = 15000;
 const activeClientSessions = new Map<string, number>();
+let firstClientSessionSeen = false;
 
 let idleShutdownTimer: NodeJS.Timeout | null = null;
 let shutdownRequested = false;
@@ -167,6 +169,25 @@ function cancelIdleShutdown(reason: string): void {
   clearTimeout(idleShutdownTimer);
   idleShutdownTimer = null;
   appendActivityLog("server-shutdown abgebrochen", { grund: reason, aktive_tabs: clientSessionCount() });
+}
+
+function scheduleInitialStartupShutdown(): void {
+  if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0 || firstClientSessionSeen) {
+    return;
+  }
+
+  appendActivityLog("server-shutdown geplant", {
+    grund: "kein tab nach start verbunden",
+    warte_ms: startupNoClientGraceMs,
+  });
+
+  idleShutdownTimer = setTimeout(() => {
+    idleShutdownTimer = null;
+    if (clientSessionCount() === 0 && !firstClientSessionSeen) {
+      performShutdown("kein tab nach start verbunden");
+    }
+  }, startupNoClientGraceMs);
+  idleShutdownTimer.unref();
 }
 
 function performShutdown(reason: string): void {
@@ -316,6 +337,7 @@ const server = createServer(async (req, res) => {
 
       if (action === "open" || action === "heartbeat") {
         activeClientSessions.set(clientId, Date.now());
+        firstClientSessionSeen = true;
         cancelIdleShutdown(action === "open" ? "tab wieder geöffnet" : "heartbeat empfangen");
         if (action === "open") {
           appendActivityLog("tab verbunden", {
@@ -680,4 +702,5 @@ const server = createServer(async (req, res) => {
 server.listen(port, () => {
   appendActivityLog("server gestartet", { url: `http://localhost:${port}` });
   console.log(`Home Ops Finance app available at http://localhost:${port}`);
+  scheduleInitialStartupShutdown();
 });

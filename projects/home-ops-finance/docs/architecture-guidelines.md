@@ -285,6 +285,7 @@ Why this matters:
 - review-state defaults and mapping persistence are no longer hidden in the main app shell
 - browser app-state access and refresh plumbing are no longer hidden in the main app shell
 - browser event binding and bootstrap wiring are no longer hidden in the main app shell
+- startup and idle-shutdown behavior are now more tolerant of slow browser attachment, so the local app server does not disappear too aggressively during launch
 - retirement planner localStorage behavior is no longer mixed into the app shell
 - month-scoped review data shaping is no longer embedded only inside the app shell
 - browser orchestration concerns are no longer mixed directly into the main app shell
