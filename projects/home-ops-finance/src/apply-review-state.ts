@@ -4,107 +4,32 @@ import { pathToFileURL } from "node:url";
 
 import type { ImportDraft, MonthlyBaseline } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
+import {
+  assertImportDraft,
+  parseBaselineOverrideCollection,
+  parseForecastSettings,
+  parseMappingState,
+  parseMonthlyExpenseOverrideCollection,
+  parseMonthlyMusicIncomeOverrideCollection,
+  parseMusicTaxSetting,
+  parseReconciliationState,
+  parseSalarySettingCollection,
+  type BaselineOverrideCollection,
+  type ForecastSettings,
+  type MappingState,
+  type MonthlyExpenseOverrideCollection,
+  type MonthlyMusicIncomeOverrideCollection,
+  type MusicTaxSetting,
+  type ReconciliationState,
+  type SalarySettingCollection,
+  type SalarySettingState,
+} from "./persistence-validation.ts";
 
-interface EntryMappingState {
-  categoryId?: string;
-  accountId?: string;
-  reviewed?: boolean;
-  updatedAt?: string;
-}
-
-interface ReconciliationActionState {
-  code: string;
-  label: string;
-  done: boolean;
-  suggestion?: string;
-}
-
-interface ReconciliationMonthState {
-  status?: "open" | "in_progress" | "resolved";
-  note?: string;
-  actions?: ReconciliationActionState[];
-  updatedAt?: string;
-}
-
-interface BaselineOverrideState {
-  id: string;
-  label: string;
-  amount: number;
-  effectiveFrom: string;
-  sourceLineItemId?: string;
-  category?: "fixed" | "variable" | "annual_reserve" | "savings";
-  cadence?: "monthly";
-  isActive?: boolean;
-  notes?: string;
-  updatedAt?: string;
-}
-
-interface MonthlyExpenseOverrideState {
-  id: string;
-  monthKey: string;
-  entryDate: string;
-  description: string;
-  amount: number;
-  expenseCategoryId?: string;
-  accountId?: string;
-  expenseType?: "variable" | "annual_reserve" | "debt_payment";
-  isActive?: boolean;
-  notes?: string;
-  updatedAt?: string;
-}
-
-interface MonthlyMusicIncomeOverrideState {
-  id: string;
-  monthKey: string;
-  entryDate: string;
-  amount: number;
-  reserveAmount?: number;
-  availableAmount?: number;
-  accountId?: string;
-  isActive?: boolean;
-  notes?: string;
-  updatedAt?: string;
-}
-
-interface MusicTaxSettingState {
-  quarterlyPrepaymentAmount: number;
-  effectiveFrom: string;
-  notes?: string;
-  updatedAt?: string;
-  isActive?: boolean;
-}
-
-interface ForecastSettingsState {
-  safetyThreshold?: number;
-  musicThreshold?: number;
-  musicThresholdAccountId?: string;
-  notes?: string;
-  updatedAt?: string;
-  isActive?: boolean;
-}
-
-interface SalarySettingState {
-  netSalaryAmount: number;
-  effectiveFrom: string;
-  notes?: string;
-  updatedAt?: string;
-  isActive?: boolean;
-}
-
-type MappingState = Record<string, EntryMappingState>;
-type ReconciliationState = Record<string, ReconciliationMonthState>;
-type BaselineOverrideCollection = BaselineOverrideState[];
-type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
-type MonthlyMusicIncomeOverrideCollection = MonthlyMusicIncomeOverrideState[];
-type MusicTaxSetting = MusicTaxSettingState | null;
-type ForecastSettings = ForecastSettingsState | null;
-type SalarySettingCollection = SalarySettingState[];
-
-function readJsonFile<T>(path: string, fallback: T): T {
+function readJsonFile(path: string): unknown {
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as T;
+    return JSON.parse(readFileSync(path, "utf8")) as unknown;
   } catch {
-    return fallback;
+    return undefined;
   }
 }
 
@@ -509,15 +434,16 @@ function main(): void {
     return;
   }
 
-  const draft = readJsonFile<ImportDraft>(inputPath, {} as ImportDraft);
-  const mappings = readJsonFile<MappingState>(mappingPath, {});
-  const reconciliation = readJsonFile<ReconciliationState>(reconciliationPath, {});
-  const baselineOverrides = readJsonFile<BaselineOverrideCollection>(baselineOverridesPath, []);
-  const monthlyExpenseOverrides = readJsonFile<MonthlyExpenseOverrideCollection>(monthlyExpenseOverridesPath, []);
-  const monthlyMusicIncomeOverrides = readJsonFile<MonthlyMusicIncomeOverrideCollection>(monthlyMusicIncomeOverridesPath, []);
-  const musicTaxSetting = readJsonFile<MusicTaxSetting>(musicTaxSettingsPath, null);
-  const forecastSettings = readJsonFile<ForecastSettings>(forecastSettingsPath, null);
-  const salarySettings = readJsonFile<SalarySettingCollection>(salarySettingsPath, []);
+  const draft = readJsonFile(inputPath);
+  assertImportDraft(draft);
+  const mappings = parseMappingState(readJsonFile(mappingPath) ?? {});
+  const reconciliation = parseReconciliationState(readJsonFile(reconciliationPath) ?? {});
+  const baselineOverrides = parseBaselineOverrideCollection(readJsonFile(baselineOverridesPath) ?? []);
+  const monthlyExpenseOverrides = parseMonthlyExpenseOverrideCollection(readJsonFile(monthlyExpenseOverridesPath) ?? []);
+  const monthlyMusicIncomeOverrides = parseMonthlyMusicIncomeOverrideCollection(readJsonFile(monthlyMusicIncomeOverridesPath) ?? []);
+  const musicTaxSetting = parseMusicTaxSetting(readJsonFile(musicTaxSettingsPath) ?? null);
+  const forecastSettings = parseForecastSettings(readJsonFile(forecastSettingsPath) ?? null);
+  const salarySettings = parseSalarySettingCollection(readJsonFile(salarySettingsPath) ?? []);
 
   const reviewedDraft = applyReviewState(
     draft,

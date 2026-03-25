@@ -65,10 +65,14 @@ Interactive Planning App
 - The first `src/monthly-engine.ts` split is now also done: reusable month-selection, baseline-selection, and aggregation helpers have been moved into `src/monthly-planning-helpers.ts`, reducing the amount of low-level data plumbing that still lives inside the engine file.
 - The consistency and warning rules are now also separated from the engine flow itself: `src/monthly-consistency-signals.ts` now owns the month warning generation so `src/monthly-engine.ts` can focus more tightly on calculation and routing.
 - The next month-engine boundary split from the architecture guidelines is now in place: `src/monthly-forecast-routing.ts` owns the forecast wealth-routing and anchor-resolution block, and that behavior is now covered directly by focused routing tests instead of only indirectly through the larger engine tests.
+- The next adapter-boundary guideline step is now also in place: `src/persistence-validation.ts` defines the current persistence contracts for reviewed mapping/reconciliation state, forward-planning overrides, wealth snapshots, household data, and top-level import-draft shape checks.
+- `src/serve-app.ts` no longer accepts or returns these saved JSON files blindly. The local server now validates persisted files on read and validates incoming POST payloads before writing them, returning a clear 400 for malformed client payloads instead of silently saving broken state.
+- `src/apply-review-state.ts`, `src/monthly-engine.ts`, `src/draft-report.ts`, `src/bootstrap-import-mappings.ts`, and `src/workbook-importer.ts` now reuse the shared validation module so import-draft and review-state boundaries fail early when the saved shapes drift.
+- Focused validation tests now cover both accepted and rejected persistence payloads, so future refactors can tighten the contracts without losing visibility.
 
 ## Immediate Next Step
 
-Keep following `docs/architecture-guidelines.md` and `TODO.md` with small safe refactors: the next high-value step is adding schema validation at adapter boundaries, then continuing to shrink `app/app.js` so the UI consumes richer core outputs instead of mirroring calculation logic.
+Keep following `docs/architecture-guidelines.md` and `TODO.md` with small safe refactors: the next high-value step is continuing to shrink `app/app.js`, especially where browser code still mirrors import-draft merging and month-calculation behavior that now belongs more clearly in shared core or adapter modules.
 
 ## Notes
 

@@ -3,15 +3,7 @@ import { resolve } from "node:path";
 
 import type { ImportDraft, ExpenseEntry, IncomeEntry } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
-
-interface MappingStateEntry {
-  categoryId: string;
-  accountId: string;
-  reviewed: boolean;
-  updatedAt: string;
-}
-
-type MappingState = Record<string, MappingStateEntry>;
+import { assertImportDraft, parseMappingState, type MappingState } from "./persistence-validation.ts";
 
 function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
@@ -70,8 +62,9 @@ function main(): void {
   const draftPath = resolve(process.argv[2] ?? financeDataPath("import-draft.json"));
   const mappingPath = resolve(process.argv[3] ?? financeDataPath("import-mappings.json"));
 
-  const draft = readJson<ImportDraft>(draftPath);
-  const existing = readJson<MappingState>(mappingPath);
+  const draft = readJson<ImportDraft>(draftPath) as unknown;
+  assertImportDraft(draft);
+  const existing = parseMappingState(readJson<MappingState>(mappingPath));
   const merged = buildDefaultMappings(draft, existing);
 
   writeFileSync(mappingPath, JSON.stringify(merged, null, 2) + "\n", "utf8");

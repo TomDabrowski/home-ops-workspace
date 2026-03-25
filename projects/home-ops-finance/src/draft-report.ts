@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import type { DebtSnapshot, ExpenseEntry, ImportDraft, IncomeEntry } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
+import { assertImportDraft } from "./persistence-validation.ts";
 
 interface MonthlySummary {
   monthKey: string;
@@ -83,7 +84,9 @@ function resolvePaths(): {
 }
 
 function readDraft(inputPath: string): ImportDraft {
-  return JSON.parse(readFileSync(inputPath, "utf8")) as ImportDraft;
+  const draft = JSON.parse(readFileSync(inputPath, "utf8")) as unknown;
+  assertImportDraft(draft);
+  return draft;
 }
 
 function roundCurrency(value: number): number {

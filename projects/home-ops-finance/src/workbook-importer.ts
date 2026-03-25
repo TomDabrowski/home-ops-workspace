@@ -18,6 +18,7 @@ import type {
   WorkbookSheetSummary,
 } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath, financeWorkbookPath } from "./local-config.ts";
+import { assertImportDraft } from "./persistence-validation.ts";
 
 function unzipText(workbookPath: string, entry: string): string {
   return execFileSync("unzip", ["-p", workbookPath, entry], {
@@ -1026,6 +1027,7 @@ function main(): void {
   const outputPath = resolve(process.argv[3] ?? financeDataPath("import-draft.json"));
 
   const draft = createImportDraft(workbookPath);
+  assertImportDraft(draft);
   writeFileSync(outputPath, JSON.stringify(draft, null, 2) + "\n", "utf8");
 
   console.log(`Imported workbook scaffold from ${basename(workbookPath)}.`);

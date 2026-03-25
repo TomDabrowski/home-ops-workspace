@@ -12,6 +12,7 @@ import type {
   WealthBucket,
 } from "./types.js";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
+import { assertImportDraft } from "./persistence-validation.ts";
 import {
   buildConsistencySignals,
   type MonthlyConsistencySignal,
@@ -156,7 +157,9 @@ function resolvePaths(): {
 }
 
 function readDraft(inputPath: string): ImportDraft {
-  return JSON.parse(readFileSync(inputPath, "utf8")) as ImportDraft;
+  const draft = JSON.parse(readFileSync(inputPath, "utf8")) as unknown;
+  assertImportDraft(draft);
+  return draft;
 }
 
 function assumptionNumber(draft: ImportDraft, key: string, fallback: number): number {
