@@ -16,6 +16,7 @@ import {
   buildConsistencySignals,
   type MonthlyConsistencySignal,
 } from "./monthly-consistency-signals.ts";
+import { buildMonthlyForecastRouting } from "./monthly-forecast-routing.ts";
 import {
   buildBaselineForMonth,
   compareMonthKeys,
@@ -293,83 +294,48 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const expenseAmountForProjection = anchorAppliesWithinMonth
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
+    const forecastRouting = buildMonthlyForecastRouting({
+      monthKey,
+      useForecastRouting,
+      musicThreshold,
+      safetyMonthlyReturn,
+      investmentMonthlyReturn,
+      salaryAllocationToSafetyAmount,
+      salaryAllocationToInvestmentAmount,
+      importedIncomeAvailableAmount,
+      importedExpenseAmount,
+      safetyBucketStartAmount,
+      investmentBucketStartAmount,
+      explicitWealthAnchor,
+      incomeAvailableAfterAnchorAmount: incomeAvailableForProjection,
+      expenseAfterAnchorAmount: expenseAmountForProjection,
+    });
     const thresholdAccountExpenseAmount = musicThresholdAccountId
       ? anchorAppliesWithinMonth
         ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
         : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
       : expenseAmountForProjection;
-    const currentSafetyAmount = anchorAppliesWithinMonth
-      ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
-      : (safetyBucketStartAmount ?? 0);
     const currentMusicThresholdAccountAmount = musicThresholdAccountId
       ? anchorAppliesWithinMonth
-        ? anchorCashAccountAmount(explicitWealthAnchor, musicThresholdAccountId, currentSafetyAmount)
+        ? anchorCashAccountAmount(
+            explicitWealthAnchor,
+            musicThresholdAccountId,
+            Number(explicitWealthAnchor?.safetyBucketAmount ?? 0),
+          )
         : musicThresholdAccountEndAmount
-      : currentSafetyAmount;
-    const musicSafetyGapAmount = Math.max(0, musicThreshold - currentMusicThresholdAccountAmount);
-    const musicAllocationToSafetyAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.min(incomeAvailableForProjection, musicSafetyGapAmount),
-    );
-    const musicAllocationToInvestmentAmount = roundCurrency(
-      !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicAllocationToSafetyAmount),
-    );
-    const safetyBucketProjectedEndAmount = useForecastRouting
-      ? roundCurrency(
-          (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
-            salaryAllocationToSafetyAmount +
-            musicAllocationToSafetyAmount -
-            expenseAmountForProjection,
-        )
-      : undefined;
-    const investmentBucketProjectedEndAmount = useForecastRouting
-      ? roundCurrency(
-          (investmentBucketStartAmount ?? 0) * (1 + investmentMonthlyReturn) +
-            salaryAllocationToInvestmentAmount +
-            musicAllocationToInvestmentAmount,
-        )
-      : undefined;
-    const projectedWealthCalculatedEndAmount =
-      safetyBucketProjectedEndAmount !== undefined && investmentBucketProjectedEndAmount !== undefined
-        ? roundCurrency(safetyBucketProjectedEndAmount + investmentBucketProjectedEndAmount)
-        : undefined;
-    const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
-    const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
-    const anchoredSafetyEndAmount =
-      anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
-        ? roundCurrency(safetyBucketAnchorAmount + musicAllocationToSafetyAmount - expenseAmountForProjection)
-        : undefined;
-    const anchoredInvestmentEndAmount =
-      anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
-        ? roundCurrency(investmentBucketAnchorAmount + musicAllocationToInvestmentAmount)
-        : undefined;
-    const projectedWealthAnchorAmount =
-      safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
-        ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
-        : explicitWealthAnchor?.totalWealthAmount;
-    const safetyBucketResolvedEndAmount =
-      anchoredSafetyEndAmount ??
-      safetyBucketAnchorAmount ??
-      safetyBucketProjectedEndAmount;
-    const investmentBucketResolvedEndAmount =
-      anchoredInvestmentEndAmount ??
-      investmentBucketAnchorAmount ??
-      investmentBucketProjectedEndAmount;
-    const projectedWealthEndAmount =
-      safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
-        ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
-        : undefined;
+      : Number(safetyBucketStartAmount ?? 0);
     const musicThresholdAccountProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
-            musicAllocationToSafetyAmount -
+            forecastRouting.musicAllocationToSafetyAmount -
             thresholdAccountExpenseAmount,
         )
       : undefined;
-    if (safetyBucketResolvedEndAmount !== undefined) {
-      safetyBucketEndAmount = safetyBucketResolvedEndAmount;
+    if (forecastRouting.safetyBucketEndAmount !== undefined) {
+      safetyBucketEndAmount = forecastRouting.safetyBucketEndAmount;
     }
-    if (investmentBucketResolvedEndAmount !== undefined) {
-      investmentBucketEndAmount = investmentBucketResolvedEndAmount;
+    if (forecastRouting.investmentBucketEndAmount !== undefined) {
+      investmentBucketEndAmount = forecastRouting.investmentBucketEndAmount;
     }
     if (musicThresholdAccountId && musicThresholdAccountProjectedEndAmount !== undefined) {
       musicThresholdAccountEndAmount = musicThresholdAccountProjectedEndAmount;
@@ -412,25 +378,25 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       importedIncomeReserveAmount,
       importedIncomeAvailableAmount,
       musicIncomeAmount,
-      musicAllocationToSafetyAmount,
-      musicAllocationToInvestmentAmount,
+      musicAllocationToSafetyAmount: forecastRouting.musicAllocationToSafetyAmount,
+      musicAllocationToInvestmentAmount: forecastRouting.musicAllocationToInvestmentAmount,
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
-      anchorAppliesWithinMonth,
-      projectionIncomeAvailableAmount: incomeAvailableForProjection,
-      projectionExpenseAmount: expenseAmountForProjection,
+      anchorAppliesWithinMonth: forecastRouting.anchorAppliesWithinMonth,
+      projectionIncomeAvailableAmount: forecastRouting.projectionIncomeAvailableAmount,
+      projectionExpenseAmount: forecastRouting.projectionExpenseAmount,
       safetyBucketStartAmount,
-      safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
-      safetyBucketAnchorAmount,
-      safetyBucketEndAmount: safetyBucketResolvedEndAmount,
+      safetyBucketCalculatedEndAmount: forecastRouting.safetyBucketCalculatedEndAmount,
+      safetyBucketAnchorAmount: forecastRouting.safetyBucketAnchorAmount,
+      safetyBucketEndAmount: forecastRouting.safetyBucketEndAmount,
       investmentBucketStartAmount,
-      investmentBucketCalculatedEndAmount: investmentBucketProjectedEndAmount,
-      investmentBucketAnchorAmount,
-      investmentBucketEndAmount: investmentBucketResolvedEndAmount,
-      projectedWealthCalculatedEndAmount,
-      projectedWealthAnchorAmount,
-      projectedWealthEndAmount,
-      wealthAnchorApplied: Boolean(explicitWealthAnchor),
+      investmentBucketCalculatedEndAmount: forecastRouting.investmentBucketCalculatedEndAmount,
+      investmentBucketAnchorAmount: forecastRouting.investmentBucketAnchorAmount,
+      investmentBucketEndAmount: forecastRouting.investmentBucketEndAmount,
+      projectedWealthCalculatedEndAmount: forecastRouting.projectedWealthCalculatedEndAmount,
+      projectedWealthAnchorAmount: forecastRouting.projectedWealthAnchorAmount,
+      projectedWealthEndAmount: forecastRouting.projectedWealthEndAmount,
+      wealthAnchorApplied: forecastRouting.wealthAnchorApplied,
       importedExpenseAmount,
       netAfterImportedFlows,
       consistencySignals,

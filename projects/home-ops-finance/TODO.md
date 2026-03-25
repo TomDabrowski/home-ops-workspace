@@ -3,9 +3,8 @@
 ## Now
 
 - Continue splitting the finance logic more clearly into `core`, `adapters`, and `ui` responsibilities.
-- After the new `app/projection-tools.js` extraction, continue carving the heavier month calculation branches out of `src/monthly-engine.ts` now that the month-planning helpers already live in their own module.
+- After the new `src/monthly-forecast-routing.ts` extraction, continue carving the remaining heavier month calculation branches out of `src/monthly-engine.ts` now that the planning helpers, consistency rules, and forecast routing each live in their own modules.
 - Reduce duplicated business logic between `src/monthly-engine.ts` and `app/app.js`.
-- After the new signal extraction, continue splitting the actual forecast-routing block from `src/monthly-engine.ts` into its own focused module.
 - Add schema validation at persistence and import boundaries before the saved JSON shapes grow further.
 - Keep the UI thin: render and trigger actions, but avoid putting new finance rules into browser-only code.
 - Continue tightening layout stability, especially tooltips, sticky bars, and wide tables in developer mode.

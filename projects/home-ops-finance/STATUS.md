@@ -64,10 +64,11 @@ Interactive Planning App
 - The first projection/refactoring step from that plan is now in place: the browser-side retirement and forecast helpers have been pulled out of `app/app.js` into a dedicated `app/projection-tools.js` module so the UI surface is no longer carrying that full block inline.
 - The first `src/monthly-engine.ts` split is now also done: reusable month-selection, baseline-selection, and aggregation helpers have been moved into `src/monthly-planning-helpers.ts`, reducing the amount of low-level data plumbing that still lives inside the engine file.
 - The consistency and warning rules are now also separated from the engine flow itself: `src/monthly-consistency-signals.ts` now owns the month warning generation so `src/monthly-engine.ts` can focus more tightly on calculation and routing.
+- The next month-engine boundary split from the architecture guidelines is now in place: `src/monthly-forecast-routing.ts` owns the forecast wealth-routing and anchor-resolution block, and that behavior is now covered directly by focused routing tests instead of only indirectly through the larger engine tests.
 
 ## Immediate Next Step
 
-Use `docs/architecture-guidelines.md` and `TODO.md` as the working contract for the next refactor phase: keep shrinking `app/app.js`, then start splitting the biggest month-planning responsibilities out of `src/monthly-engine.ts` while keeping the outputs stable.
+Keep following `docs/architecture-guidelines.md` and `TODO.md` with small safe refactors: the next high-value step is adding schema validation at adapter boundaries, then continuing to shrink `app/app.js` so the UI consumes richer core outputs instead of mirroring calculation logic.
 
 ## Notes
 
