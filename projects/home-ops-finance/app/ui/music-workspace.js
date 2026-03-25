@@ -52,7 +52,7 @@ function incomeTaxByYear(year, zve) {
   return year <= 2025 ? incomeTaxTariff2025(zve) : incomeTaxTariff2026(zve);
 }
 
-function buildMusicYearData(importDraft, monthlyPlan, selectedMonthKey, deps) {
+export function buildMusicYearData(importDraft, monthlyPlan, selectedMonthKey, deps) {
   const { uniqueMonthKeys, compareMonthKeys, incomeMonthKey, monthFromDate, roundCurrency } = deps;
 
   const selectedYear = Number(selectedMonthKey.slice(0, 4));

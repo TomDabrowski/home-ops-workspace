@@ -61,7 +61,10 @@ import {
   renderMusicTaxPlanner as renderMusicTaxPlannerView,
   renderSalaryPlanner as renderSalaryPlannerView,
 } from "./ui/planners.js";
-import { renderMusicWorkspace as renderMusicWorkspaceView } from "./ui/music-workspace.js";
+import {
+  buildMusicYearData,
+  renderMusicWorkspace as renderMusicWorkspaceView,
+} from "./ui/music-workspace.js";
 import { renderHouseholdWorkspace as renderHouseholdWorkspaceView } from "./ui/household-workspace.js";
 import { renderFixedCostPlanner as renderFixedCostPlannerView } from "./ui/fixed-cost-workspace.js";
 import { renderGoalsWorkspace as renderGoalsWorkspaceView } from "./ui/retirement-workspace.js";
