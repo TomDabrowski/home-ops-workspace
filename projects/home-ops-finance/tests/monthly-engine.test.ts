@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import type { ImportDraft } from "../src/types.js";
 import {
   buildMonthReview,
+  buildMonthAllocationInstructions,
   buildMonthlyRows,
   selectBaselineForMonth,
   selectBaselineLineItemsForMonth,
@@ -166,14 +167,221 @@ test("builds monthly rows with historical and investing profiles", () => {
   assert.equal(investing?.baselineAvailableAmount, 283.51);
   assert.equal(investing?.importedIncomeReserveAmount, 210);
   assert.equal(investing?.importedIncomeAvailableAmount, 490);
-  assert.equal(investing?.musicAllocationToSafetyAmount, 700);
-  assert.equal(investing?.musicAllocationToInvestmentAmount, 0);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 84);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 406);
   assert.equal(investing?.netAfterImportedFlows, 473.51);
   assert.equal(investing?.consistencySignals.length, 1);
   assert.deepEqual(
     investing?.consistencySignals.map((signal) => signal.code),
     ["expense_over_baseline_available"],
   );
+});
+
+test("routes music to the configured threshold account instead of total safety cash", () => {
+  const draft = createDraft();
+  draft.forecastAssumptions = [
+    ...draft.forecastAssumptions,
+    { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+  ];
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 12000,
+      investmentBucketAmount: 9916,
+      cashAccounts: {
+        giro: 2800,
+        cash: 700,
+        savings: 8500,
+      },
+      totalWealthAmount: 21916,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-01",
+    },
+  ];
+  draft.incomeEntries = [
+    {
+      id: "music-2026-03",
+      incomeStreamId: "music-income",
+      entryDate: "2026-03-10",
+      amount: 1800,
+      reserveAmount: 576.21,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.expenseEntries = [];
+
+  const investing = buildMonthlyRows(draft).find((row) => row.monthKey === "2026-03");
+
+  assert.ok(investing);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 1223.79);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 0);
+});
+
+test("builds date-based allocation instructions for salary and music", () => {
+  const draft = createDraft();
+  draft.forecastAssumptions = [
+    ...draft.forecastAssumptions,
+    { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+  ];
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 12000,
+      investmentBucketAmount: 9916,
+      cashAccounts: {
+        giro: 2500,
+        cash: 1000,
+        savings: 9000,
+      },
+      totalWealthAmount: 21916,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-01",
+    },
+  ];
+  draft.incomeEntries = [
+    {
+      id: "music-2026-03-a",
+      incomeStreamId: "music-income",
+      entryDate: "2026-03-10",
+      amount: 1800,
+      reserveAmount: 576.21,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.expenseEntries = [
+    {
+      id: "scalable-fee",
+      entryDate: "2026-03-05",
+      description: "Cash move",
+      amount: 250,
+      expenseCategoryId: "other",
+      accountId: "savings",
+      expenseType: "variable",
+      isRecurring: false,
+      isPlanned: false,
+    },
+  ];
+
+  const instructions = buildMonthAllocationInstructions(draft, "2026-03");
+
+  assert.equal(instructions.length, 2);
+  assert.equal(instructions[0]?.kind, "salary");
+  assert.equal(instructions[0]?.toInvestmentAmount, 1050);
+  assert.equal(instructions[1]?.kind, "music");
+  assert.equal(instructions[1]?.effectiveDate, "2026-03-10");
+  assert.equal(instructions[1]?.reserveAmount, 576.21);
+  assert.equal(instructions[1]?.toCashAmount, 1223.79);
+  assert.equal(instructions[1]?.toInvestmentAmount, 0);
+});
+
+test("uses the latest prior wealth snapshot for next-month threshold instructions", () => {
+  const draft = createDraft();
+  draft.forecastAssumptions = [
+    ...draft.forecastAssumptions,
+    { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+  ];
+  draft.incomeEntries = [
+    {
+      id: "music-2026-04-a",
+      incomeStreamId: "music-income",
+      entryDate: "2026-04-01",
+      amount: 1642.65,
+      reserveAmount: 418.86,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.expenseEntries = [];
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 12000,
+      investmentBucketAmount: 9916,
+      cashAccounts: {
+        giro: 2000,
+        cash: 940.51,
+        savings: 9059.49,
+      },
+      totalWealthAmount: 21916,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-25",
+    },
+  ];
+
+  const instructions = buildMonthAllocationInstructions(draft, "2026-04");
+  const musicInstruction = instructions.find((entry) => entry.kind === "music");
+
+  assert.ok(musicInstruction);
+  assert.equal(musicInstruction?.effectiveDate, "2026-04-01");
+  assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
+  assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
+  assert.equal(musicInstruction?.toCashAmount, 940.51);
+  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+});
+
+test("keeps a planned month instruction when music was already received before month start", () => {
+  const draft = createDraft();
+  draft.forecastAssumptions = [
+    ...draft.forecastAssumptions,
+    { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+  ];
+  draft.incomeEntries = [
+    {
+      id: "music-2026-04-a",
+      incomeStreamId: "music-income",
+      monthKey: "2026-04",
+      entryDate: "2026-03-25T18:00",
+      amount: 1642.65,
+      reserveAmount: 418.86,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: false,
+    },
+  ];
+  draft.expenseEntries = [];
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 11024.39,
+      investmentBucketAmount: 9200,
+      cashAccounts: {
+        giro: 731.89,
+        cash: 292.5,
+        savings: 10000,
+      },
+      totalWealthAmount: 20224.39,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-25T20:36",
+    },
+  ];
+
+  const instructions = buildMonthAllocationInstructions(draft, "2026-04");
+  const musicInstruction = instructions.find((entry) => entry.kind === "music");
+
+  assert.ok(musicInstruction);
+  assert.equal(musicInstruction?.effectiveDate, "2026-03-25T18:00");
+  assert.equal(musicInstruction?.happenedBeforeMonthStart, true);
+  assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 10000);
+  assert.equal(musicInstruction?.thresholdGapBeforeEntry, 0);
+  assert.equal(musicInstruction?.toCashAmount, 0);
+  assert.equal(musicInstruction?.toInvestmentAmount, 1223.79);
 });
 
 test("selects imported flows for a specific month", () => {
@@ -194,7 +402,7 @@ test("builds a month review with baseline and imported flows", () => {
   assert.equal(review?.expenseEntries.length, 1);
   assert.equal(review?.row.baselineAvailableAmount, 283.51);
   assert.equal(review?.row.safetyBucketStartAmount, 9916);
-  assert.equal(review?.row.safetyBucketEndAmount, 10632.53);
+  assert.equal(review?.row.safetyBucketEndAmount, 10000.04);
   assert.deepEqual(
     review?.row.consistencySignals.map((signal) => signal.title),
     ["Importierte Ausgaben uebersteigen freie Baseline"],

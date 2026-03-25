@@ -20,6 +20,7 @@ import {
   buildBaselineForMonth,
   compareMonthKeys,
   monthFromDate,
+  incomeMonthKey,
   roundCurrency,
   selectBaselineForMonth,
   selectBaselineLineItemsForMonth,
@@ -35,11 +36,13 @@ import {
   sumMusicIncomeForMonth,
   uniqueMonthKeys,
 } from "./monthly-planning-helpers.ts";
+import { buildMonthAllocationInstructionsFromReview } from "./core/allocation/build-month-allocation-instructions.js";
 
 export {
   buildBaselineForMonth,
   compareMonthKeys,
   monthFromDate,
+  incomeMonthKey,
   roundCurrency,
   selectBaselineForMonth,
   selectBaselineLineItemsForMonth,
@@ -109,6 +112,20 @@ export interface MonthReview {
   expenseEntries: ExpenseEntry[];
 }
 
+export interface MonthAllocationInstruction {
+  kind: "salary" | "music";
+  effectiveDate: string;
+  title: string;
+  thresholdAccountId?: string | null;
+  happenedBeforeMonthStart?: boolean;
+  thresholdAmountBeforeEntry?: number;
+  thresholdGapBeforeEntry?: number;
+  reserveAmount: number;
+  toCashAmount: number;
+  toInvestmentAmount: number;
+  availableAmount: number;
+}
+
 export interface MonthlyPlanReport {
   workbookPath: string;
   generatedAt: string;
@@ -146,6 +163,11 @@ function assumptionNumber(draft: ImportDraft, key: string, fallback: number): nu
   return typeof assumption?.value === "number" ? assumption.value : fallback;
 }
 
+function assumptionString(draft: ImportDraft, key: string, fallback: string): string {
+  const assumption = draft.forecastAssumptions.find((entry) => entry.key === key);
+  return typeof assumption?.value === "string" && assumption.value.trim() ? assumption.value.trim() : fallback;
+}
+
 function wealthBucket(draft: ImportDraft, kind: WealthBucket["kind"]): WealthBucket | undefined {
   return draft.wealthBuckets.find((bucket) => bucket.kind === kind);
 }
@@ -162,6 +184,27 @@ function monthlyReturnFromAnnualRate(rate: number, mode: "simple_division" | "co
   return rate / 12;
 }
 
+function anchorCashAccountAmount(anchor: ForecastWealthAnchor | undefined, accountId: string, fallback: number): number {
+  const amount = anchor?.cashAccounts?.[accountId];
+  return typeof amount === "number" && Number.isFinite(amount) ? amount : fallback;
+}
+
+function sumExpensesForMonthAndAccount(entries: ExpenseEntry[], monthKey: string, accountId: string): number {
+  return roundCurrency(
+    selectExpenseEntriesForMonth(entries, monthKey)
+      .filter((entry) => entry.accountId === accountId)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+}
+
+function sumExpensesAfterDateAndAccount(entries: ExpenseEntry[], monthKey: string, date: string, accountId: string): number {
+  return roundCurrency(
+    selectExpenseEntriesForMonth(entries, monthKey)
+      .filter((entry) => entry.accountId === accountId && entry.entryDate >= date)
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  );
+}
+
 export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   if (draft.monthlyBaselines.length === 0) {
     return [];
@@ -170,6 +213,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
   const monthKeys = uniqueMonthKeys(draft.incomeEntries, draft.expenseEntries);
   const safetyThreshold = assumptionNumber(draft, "safety_threshold", 10000);
   const musicThreshold = assumptionNumber(draft, "music_threshold", safetyThreshold);
+  const musicThresholdAccountId = assumptionString(draft, "music_threshold_account_id", "savings");
   const safetyStartDefault = wealthBucket(draft, "safety")?.currentAmount ?? 0;
   const investmentStartDefault = wealthBucket(draft, "investment")?.currentAmount ?? 0;
   const safetyMonthlyReturn = monthlyReturnFromAnnualRate(
@@ -192,6 +236,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
 
   let safetyBucketEndAmount = safetyStartDefault;
   let investmentBucketEndAmount = investmentStartDefault;
+  let musicThresholdAccountEndAmount = safetyStartDefault;
 
   return monthKeys.map((monthKey) => {
     const selectedBaseline = selectBaselineForMonth(draft.monthlyBaselines, monthKey);
@@ -248,10 +293,20 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const expenseAmountForProjection = anchorAppliesWithinMonth
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
+    const thresholdAccountExpenseAmount = musicThresholdAccountId
+      ? anchorAppliesWithinMonth
+        ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
+        : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
+      : expenseAmountForProjection;
     const currentSafetyAmount = anchorAppliesWithinMonth
       ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
       : (safetyBucketStartAmount ?? 0);
-    const musicSafetyGapAmount = Math.max(0, musicThreshold - currentSafetyAmount);
+    const currentMusicThresholdAccountAmount = musicThresholdAccountId
+      ? anchorAppliesWithinMonth
+        ? anchorCashAccountAmount(explicitWealthAnchor, musicThresholdAccountId, currentSafetyAmount)
+        : musicThresholdAccountEndAmount
+      : currentSafetyAmount;
+    const musicSafetyGapAmount = Math.max(0, musicThreshold - currentMusicThresholdAccountAmount);
     const musicAllocationToSafetyAmount = roundCurrency(
       !useForecastRouting ? 0 : Math.min(incomeAvailableForProjection, musicSafetyGapAmount),
     );
@@ -303,11 +358,21 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
         ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
         : undefined;
+    const musicThresholdAccountProjectedEndAmount = useForecastRouting
+      ? roundCurrency(
+          currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
+            musicAllocationToSafetyAmount -
+            thresholdAccountExpenseAmount,
+        )
+      : undefined;
     if (safetyBucketResolvedEndAmount !== undefined) {
       safetyBucketEndAmount = safetyBucketResolvedEndAmount;
     }
     if (investmentBucketResolvedEndAmount !== undefined) {
       investmentBucketEndAmount = investmentBucketResolvedEndAmount;
+    }
+    if (musicThresholdAccountId && musicThresholdAccountProjectedEndAmount !== undefined) {
+      musicThresholdAccountEndAmount = musicThresholdAccountProjectedEndAmount;
     }
     const consistencySignals = buildConsistencySignals({
       monthKey,
@@ -388,6 +453,17 @@ export function buildMonthReview(draft: ImportDraft, monthKey: string): MonthRev
     incomeEntries: selectIncomeEntriesForMonth(draft.incomeEntries, monthKey),
     expenseEntries: selectExpenseEntriesForMonth(draft.expenseEntries, monthKey),
   };
+}
+
+export function buildMonthAllocationInstructions(draft: ImportDraft, monthKey: string): MonthAllocationInstruction[] {
+  const review = buildMonthReview(draft, monthKey);
+  if (!review) {
+    return [];
+  }
+
+  // Keep one rule owner for allocation guidance. The browser should render the
+  // same structured output instead of maintaining a second calculation path.
+  return buildMonthAllocationInstructionsFromReview(review, draft);
 }
 
 export function buildMarkdown(report: MonthlyPlanReport): string {

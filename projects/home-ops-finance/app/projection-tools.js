@@ -1,6 +1,7 @@
 export function createProjectionTools(deps) {
   const {
     assumptionNumber,
+    assumptionString,
     futureForecastRows,
     rowTemplateForMonth,
     addMonths,
@@ -49,6 +50,7 @@ export function createProjectionTools(deps) {
     const startMonthKey = options.startMonthKey ?? firstRow.monthKey;
     const safetyThreshold = assumptionNumber(importDraft, "safety_threshold", 10000);
     const musicThreshold = assumptionNumber(importDraft, "music_threshold", safetyThreshold);
+    const musicThresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
     const safetyAnnualReturn = options.safetyAnnualReturn ?? assumptionNumber(importDraft, "savings_interest_annual", 0.02);
     const investmentAnnualReturn = options.investmentAnnualReturn ?? assumptionNumber(importDraft, "investment_return_annual", 0.05);
     const safetyMonthlyReturn = safetyAnnualReturn / 12;
@@ -65,6 +67,11 @@ export function createProjectionTools(deps) {
 
     let safetyStartAmount = firstRow.safetyBucketStartAmount ?? 0;
     let investmentStartAmount = firstRow.investmentBucketStartAmount ?? 0;
+    let thresholdAccountStartAmount =
+      firstRow.thresholdAccountEndAmount ??
+      firstRow.thresholdAccountStartAmount ??
+      firstRow.safetyBucketStartAmount ??
+      0;
     const results = [];
 
     for (let index = 0; index < months; index += 1) {
@@ -101,16 +108,19 @@ export function createProjectionTools(deps) {
       const musicNetAvailable = musicGross * (1 - musicTaxRate / 100);
       const salaryToSafety = Math.max(0, baselineAvailableAmount - importedExpenseAmount);
       const salaryToInvestment = Math.max(0, plannedSavingsAmount);
-      const musicSafetyGapAmount = Math.max(0, musicThreshold - safetyStartAmount);
+      const currentThresholdAmount = musicThresholdAccountId ? thresholdAccountStartAmount : safetyStartAmount;
+      const musicSafetyGapAmount = Math.max(0, musicThreshold - currentThresholdAmount);
       const musicToSafety = Math.min(musicNetAvailable, musicSafetyGapAmount);
       const musicToInvestment = Math.max(0, musicNetAvailable - musicToSafety);
       const safetyGrowthAmount = safetyStartAmount * safetyMonthlyReturn;
       const investmentGrowthAmount = investmentStartAmount * investmentMonthlyReturn;
+      const thresholdAccountGrowthAmount = currentThresholdAmount * safetyMonthlyReturn;
       const safetyEndAmount =
         safetyStartAmount +
         safetyGrowthAmount +
         (safetyStartAmount < safetyThreshold ? salaryToSafety : 0) +
         musicToSafety;
+      const thresholdAccountEndAmount = currentThresholdAmount + thresholdAccountGrowthAmount + musicToSafety;
       const investmentEndAmount =
         investmentStartAmount +
         investmentGrowthAmount +
@@ -136,13 +146,19 @@ export function createProjectionTools(deps) {
         investmentGrowthAmount,
         safetyStartAmount,
         investmentStartAmount,
+        thresholdAccountId: musicThresholdAccountId || undefined,
+        thresholdAccountStartAmount: musicThresholdAccountId ? currentThresholdAmount : undefined,
         safetyEndAmount,
+        thresholdAccountEndAmount: musicThresholdAccountId ? thresholdAccountEndAmount : undefined,
         investmentEndAmount,
         wealthEndAmount: safetyEndAmount + investmentEndAmount,
       });
 
       safetyStartAmount = safetyEndAmount;
       investmentStartAmount = investmentEndAmount;
+      if (musicThresholdAccountId) {
+        thresholdAccountStartAmount = thresholdAccountEndAmount;
+      }
     }
 
     return results;

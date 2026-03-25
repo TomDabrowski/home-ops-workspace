@@ -209,6 +209,10 @@
                 <span>Musik-Schwelle</span>
                 <input id="forecastMusicThreshold" type="number" min="0" step="0.01" placeholder="10000">
               </label>
+              <label class="select-wrap">
+                <span>Musik-Schwellenkonto</span>
+                <select id="forecastMusicThresholdAccount"></select>
+              </label>
               <label class="select-wrap planner-span-two">
                 <span>Notiz</span>
                 <input id="forecastNotes" type="text" placeholder="optional">
@@ -274,7 +278,7 @@
             <div class="planner-inputs">
               <label class="select-wrap">
                 <span>Datum</span>
-                <input id="wealthSnapshotDate" type="date">
+                <input id="wealthSnapshotDate" type="datetime-local">
               </label>
               <label class="select-wrap currency-wrap">
                 <span>CHECK24 aktuell</span>
@@ -545,7 +549,7 @@
                 </label>
                 <label class="select-wrap">
                   <span>Monat</span>
-                  <input id="musicIncomeActualDate" type="month">
+                  <input id="musicIncomeActualDate" type="datetime-local">
                 </label>
                 <label class="select-wrap planner-span-two">
                   <span>Notiz</span>

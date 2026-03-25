@@ -204,6 +204,169 @@ Start with the least risky extractions:
 - let each workspace render from structured outputs
 - reduce direct business calculations inside `app/app.js`
 
+## Progress / Already Applied
+
+This section tracks architecture-relevant changes that are already in place, so the current system shape is visible across devices.
+
+### Boundary Progress
+
+- Music month ownership now supports a separate `monthKey` in addition to the real `entryDate`.
+- Wealth snapshots now support `snapshotDate` with date and time, so same-day ordering is more reliable.
+- The reviewed-state flow already persists music overrides, wealth snapshots, and allocation-action state through project JSON files instead of relying only on browser storage.
+- Server-side boundary validation now protects:
+  - `reconciliation-state.json`
+  - `import-mappings.json`
+  - `baseline-overrides.json`
+  - `monthly-expense-overrides.json`
+  - `monthly-music-income-overrides.json`
+  - `music-tax-settings.json`
+  - `forecast-settings.json`
+  - `salary-settings.json`
+  - `wealth-snapshots.json`
+  - `allocation-action-state.json`
+  - `household-items.json`
+
+Why this matters:
+
+- planning month and real cash timing are no longer forced into the same field
+- snapshot-based routing can reason more safely about end-of-day or same-day updates
+- workflow state is more portable across devices
+
+### Pure Logic Extractions Already Done
+
+- Shared month-selection and aggregation helpers were moved into `src/monthly-planning-helpers.ts`.
+- Month allocation guidance exists as explicit pure logic in `src/monthly-engine.ts` via `buildMonthAllocationInstructions(...)`.
+- The month allocation guidance now has a canonical pure owner in `src/core/allocation/build-month-allocation-instructions.js`.
+- `app/app.js` and `src/monthly-engine.ts` both consume that shared module instead of maintaining separate rule implementations.
+
+Why this matters:
+
+- the riskiest finance rules are less buried inside DOM handlers
+- behavior is easier to regression-test
+- this is a direct step toward a future `core/allocation/` split
+
+### UI / Workflow Improvements Already Done
+
+- Month guidance now has explicit completion state for salary and music actions.
+- Completed actions are persisted and rendered as done instead of staying visually open forever.
+- Guidance can now explain why money goes to the threshold account and can keep a planned month visible even when the actual music payment happened before month start.
+- The wealth-snapshot workflow and monthly music-income workflow now live in `app/ui/workflow-planners.js` instead of being embedded directly inside `app/app.js`.
+- The monthly-expense workflow now also lives in `app/ui/workflow-planners.js`.
+- The month review UI surfaces now live in `app/ui/month-review.js` instead of being embedded directly inside `app/app.js`.
+- The review workflow surfaces for reconciliation, imported entries, and mapping correction now live in `app/ui/review-workspace.js`.
+- The planner surfaces for forecast thresholds, salary settings, and music tax now live in `app/ui/planners.js`.
+- The music workspace now lives in `app/ui/music-workspace.js`.
+- The household workspace now lives in `app/ui/household-workspace.js`.
+- The fixed-cost / baseline override workspace now lives in `app/ui/fixed-cost-workspace.js`.
+- The retirement / goals workspace now lives in `app/ui/retirement-workspace.js`.
+- The overview dashboard, priority-month cards, and month-review navigation now live in `app/ui/overview-dashboard.js`.
+- Browser workflow state, cache loading, and JSON persistence fallback now live in `app/browser/workflow-state.js`.
+- Browser app-shell concerns like tab/view-state persistence, status messaging, developer-mode UI, and client-session lifecycle now live in `app/browser/app-shell.js`.
+- Browser runtime helpers for app-state access, date defaults, and data refresh now live in `app/browser/app-runtime.js`.
+- Browser bindings for shutdown, tab wiring, developer-mode toggles, and app bootstrap now live in `app/browser/app-bindings.js`.
+- Browser-owned review state for reconciliation defaults and mapping persistence now lives in `app/browser/review-state.js`.
+- Browser-owned retirement planner settings now live in `app/browser/planner-settings.js`.
+- Shared browser helpers for labels, select options, wealth-snapshot formatting, and baseline line-item shaping now live in `app/shared/finance-ui-helpers.js`.
+- Shared browser formatting and generic render helpers now live in `app/shared/ui-formatters.js`.
+- Shared month/date/forecast helpers now live in `app/shared/forecast-helpers.js`.
+- Month-review data preparation, manual-entry ownership checks, and monthly expense warnings now live in `app/shared/month-review-data.js`.
+- Local draft/report/monthly-plan derivation now lives in `app/shared/local-finance-state.js`.
+- Shared month-baseline surfaces now live in `app/ui/month-baseline.js`.
+- Workflow-history rendering now lives in `app/ui/workflow-history.js`.
+
+Why this matters:
+
+- the UI is moving toward rendering explicit outputs instead of improvising its own story
+- the month workflow is more trustworthy for real end-of-month use
+- the overview/dashboard shell is less entangled with month-review routing
+- workflow caching and persistence no longer bloat the main app shell
+- repeated browser helper logic is moving out of the app shell into explicit shared modules
+- date/forecast helper logic is no longer duplicated inline in the app shell
+- review-state defaults and mapping persistence are no longer hidden in the main app shell
+- browser app-state access and refresh plumbing are no longer hidden in the main app shell
+- browser event binding and bootstrap wiring are no longer hidden in the main app shell
+- retirement planner localStorage behavior is no longer mixed into the app shell
+- month-scoped review data shaping is no longer embedded only inside the app shell
+- browser orchestration concerns are no longer mixed directly into the main app shell
+- local workflow-to-draft merging and derived finance-state rebuilding are no longer embedded in the app shell
+
+### Tests Added For Refactor Safety
+
+- Regression tests cover routing music to the configured threshold account.
+- Regression tests cover using the latest prior wealth snapshot for threshold decisions.
+- Regression tests cover the “planned for April, received in March” case for both engine and browser-side allocation guidance.
+- Validation tests now cover accepted and rejected payloads for the main workflow and planner JSON files.
+
+Why this matters:
+
+- architecture work can continue with less fear of silently breaking month transitions
+
+## Current Transitional Compromises
+
+These are known temporary states, not desired end-state architecture.
+
+- Allocation guidance still has two call sites:
+  - `src/monthly-engine.ts`
+  - `app/app.js`
+- But the finance rule itself now lives in one canonical module:
+  - `src/core/allocation/build-month-allocation-instructions.js`
+- `app/app.js` is still too large and still owns some workflow shaping that should eventually move into dedicated UI modules or adapters.
+- `app/app.js` is thinner than before, but still acts as the central composition root for many workspaces.
+- `app/app.js` now delegates even the dashboard/month-navigation behavior, and many former local helpers now live in `app/shared/ui-formatters.js` and `app/shared/forecast-helpers.js`.
+- `app/app.js` no longer owns the workflow-state cache layer; that responsibility moved to `app/browser/workflow-state.js`.
+- `app/app.js` no longer owns the browser app-shell lifecycle and status machinery; that responsibility moved to `app/browser/app-shell.js`.
+- `app/app.js` no longer owns low-level browser runtime helpers like state access, date defaults, and finance-data refresh; that responsibility moved to `app/browser/app-runtime.js`.
+- `app/app.js` no longer owns shutdown wiring, tab binding, developer-mode toggles, or bootstrap error handling; that responsibility moved to `app/browser/app-bindings.js`.
+- `app/app.js` no longer owns reconciliation defaults, entry-mapping defaults, or mapping persistence wiring; that responsibility moved to `app/browser/review-state.js`.
+- `app/app.js` no longer owns retirement planner settings persistence; that responsibility moved to `app/browser/planner-settings.js`.
+- `app/app.js` still contains important month-review and formatting glue, but many shared helper functions were removed into `app/shared/finance-ui-helpers.js`.
+- `app/app.js` still orchestrates review rendering, but month-review data shaping now lives in `app/shared/month-review-data.js`.
+- `app/app.js` no longer owns the local draft/report/monthly-plan derivation pipeline; that responsibility moved to `app/shared/local-finance-state.js`.
+- `app/app.js` no longer owns the month-baseline summary/list surfaces; that responsibility moved to `app/ui/month-baseline.js`.
+- `app/app.js` no longer owns workflow-history rendering; that responsibility moved to `app/ui/workflow-history.js`.
+- `app/app.js` has been reduced from well above 3000 lines to under 1000 lines during this refactor pass.
+- Retirement simulation math already lives outside the UI in `app/projection-tools.js`, but planner settings and some composition glue still live in `app/app.js`.
+- Browser-side persistence and server persistence already share concepts, but they do not yet have strong schema validation at the boundary.
+- Wealth snapshot form defaults were recently simplified back toward “latest real snapshot first”, but the planner still mixes workflow concerns and financial defaults in one UI surface.
+- Validation is now in place for the persisted planner, workflow, and review JSON endpoints that the local app currently writes.
+
+## Recommended Next 3 Refactor Steps
+
+### 1. Thin `app.js` Further Into A Clear Composition Root
+
+Target:
+
+- remove more remaining orchestration-only glue from `app/app.js`
+- make imports and ownership obvious enough that a quick scan explains where logic now lives
+
+Likely destination:
+
+- `app/browser/`
+- `app/shared/`
+- `app/ui/`
+
+### 2. Tighten The Remaining Workflow Boundaries
+
+Target:
+
+- keep workflow screens thin and push any remaining shaping toward shared helpers or adapters
+- continue simplifying planner defaults and workflow state transitions where they are still mixed
+
+Why next:
+
+- the large structural split is done, so the next wins are clarity and fewer mixed responsibilities
+
+### 3. Expand Refactor-Safety Coverage
+
+Target:
+
+- add tests around the newer shared browser modules
+- protect the final composition-root changes with regression coverage where behavior is easy to drift
+
+Why next:
+
+- the risky architecture moves are mostly complete, so the next risk is accidental regression during cleanup
+
 ## Practical Definition Of Success
 
 This project is successful when:

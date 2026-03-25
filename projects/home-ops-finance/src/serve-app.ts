@@ -3,9 +3,24 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
+import {
+  validateBaselineOverridesPayload,
+  ValidationError,
+  validateForecastSettingsPayload,
+  validateHouseholdItemsPayload,
+  validateAllocationActionStatePayload,
+  validateImportMappingsPayload,
+  validateMonthlyExpenseOverridesPayload,
+  validateMonthlyMusicIncomeOverridesPayload,
+  validateMusicTaxSettingsPayload,
+  validateReconciliationStatePayload,
+  validateSalarySettingsPayload,
+  validateWealthSnapshotsPayload,
+} from "./adapters/persistence/json-boundary-validation.ts";
 
 const root = resolve(".");
 const appDir = join(root, "app");
+const srcDir = join(root, "src");
 ensureFinanceDataDir();
 const dataDir = financeDataDir();
 const distDir = join(root, "dist");
@@ -19,6 +34,7 @@ const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
 const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
 const wealthSnapshotsPath = financeDataPath("wealth-snapshots.json");
+const allocationActionStatePath = financeDataPath("allocation-action-state.json");
 const householdItemsPath = financeDataPath("household-items.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 5000;
@@ -72,6 +88,14 @@ function readJsonFile(path: string): unknown {
 
 function writeJsonFile(path: string, payload: unknown): void {
   writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
+}
+
+function invalidPayloadResponse(res: ServerResponse, errorCode: string, error: unknown): void {
+  sendJson(res, 400, {
+    ok: false,
+    error: errorCode,
+    detail: error instanceof Error ? error.message : String(error),
+  });
 }
 
 function describePayload(payload: unknown): string {
@@ -329,7 +353,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateReconciliationStatePayload(await readRequestJson(req));
         writeJsonFile(reconciliationStatePath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("reconciliation gespeichert", {
@@ -341,6 +365,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("reconciliation fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "reconciliation_state_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "reconciliation_save_failed" });
       }
     }
@@ -353,7 +380,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateImportMappingsPayload(await readRequestJson(req));
         writeJsonFile(importMappingsPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("mappings gespeichert", {
@@ -365,6 +392,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("mappings fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "import_mappings_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "mapping_save_failed" });
       }
     }
@@ -377,7 +407,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateBaselineOverridesPayload(await readRequestJson(req));
         writeJsonFile(baselineOverridesPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("fixkosten gespeichert", {
@@ -389,6 +419,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("fixkosten fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "baseline_overrides_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "baseline_save_failed" });
       }
     }
@@ -401,7 +434,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateMonthlyExpenseOverridesPayload(await readRequestJson(req));
         writeJsonFile(monthlyExpenseOverridesPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("monatsausgaben gespeichert", {
@@ -413,6 +446,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("monatsausgaben fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "monthly_expense_overrides_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "monthly_expense_save_failed" });
       }
     }
@@ -425,7 +461,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateMonthlyMusicIncomeOverridesPayload(await readRequestJson(req));
         writeJsonFile(monthlyMusicIncomeOverridesPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("musik-istwerte gespeichert", {
@@ -437,6 +473,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("musik-istwerte fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "monthly_music_income_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "monthly_music_income_save_failed" });
       }
     }
@@ -449,7 +488,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateMusicTaxSettingsPayload(await readRequestJson(req));
         writeJsonFile(musicTaxSettingsPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("musik-steuer-plan gespeichert", {
@@ -461,6 +500,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("musik-steuer-plan fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "music_tax_settings_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "music_tax_settings_save_failed" });
       }
     }
@@ -473,7 +515,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateForecastSettingsPayload(await readRequestJson(req));
         writeJsonFile(forecastSettingsPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("forecast-plan gespeichert", {
@@ -485,6 +527,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("forecast-plan fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "forecast_settings_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "forecast_settings_save_failed" });
       }
     }
@@ -497,7 +542,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateSalarySettingsPayload(await readRequestJson(req));
         writeJsonFile(salarySettingsPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("gehalt-plan gespeichert", {
@@ -509,6 +554,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("gehalt-plan fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "salary_settings_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "salary_settings_save_failed" });
       }
     }
@@ -521,7 +569,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateWealthSnapshotsPayload(await readRequestJson(req));
         writeJsonFile(wealthSnapshotsPath, payload);
         refreshReviewedArtifacts();
         appendActivityLog("vermoegens-iststaende gespeichert", {
@@ -533,7 +581,36 @@ const server = createServer(async (req, res) => {
         appendActivityLog("vermoegens-iststaende fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "wealth_snapshots_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "wealth_snapshots_save_failed" });
+      }
+    }
+  }
+
+  if (url.pathname === "/api/allocation-action-state") {
+    if (req.method === "GET") {
+      return sendJson(res, 200, readJsonFile(allocationActionStatePath));
+    }
+
+    if (req.method === "POST") {
+      try {
+        const payload = validateAllocationActionStatePayload(await readRequestJson(req));
+        writeJsonFile(allocationActionStatePath, payload);
+        appendActivityLog("anweisungs-status gespeichert", {
+          datei: allocationActionStatePath,
+          umfang: describePayload(payload),
+        });
+        return sendJson(res, 200, { ok: true });
+      } catch (error) {
+        appendActivityLog("anweisungs-status fehlgeschlagen", {
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "allocation_action_state_invalid", error);
+        }
+        return sendJson(res, 500, { ok: false, error: "allocation_action_state_save_failed" });
       }
     }
   }
@@ -545,7 +622,7 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST") {
       try {
-        const payload = await readRequestJson(req);
+        const payload = validateHouseholdItemsPayload(await readRequestJson(req));
         writeJsonFile(householdItemsPath, payload);
         appendActivityLog("hausrat gespeichert", {
           datei: householdItemsPath,
@@ -556,6 +633,9 @@ const server = createServer(async (req, res) => {
         appendActivityLog("hausrat fehlgeschlagen", {
           fehler: error instanceof Error ? error.message : String(error),
         });
+        if (error instanceof ValidationError) {
+          return invalidPayloadResponse(res, "household_items_invalid", error);
+        }
         return sendJson(res, 500, { ok: false, error: "household_items_save_failed" });
       }
     }
@@ -567,6 +647,13 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname.startsWith("/app/")) {
     const path = safeJoin(appDir, url.pathname.replace("/app/", ""));
+    if (path && existsSync(path)) {
+      return sendFile(path, res);
+    }
+  }
+
+  if (url.pathname.startsWith("/src/")) {
+    const path = safeJoin(srcDir, url.pathname.replace("/src/", ""));
     if (path && existsSync(path)) {
       return sendFile(path, res);
     }

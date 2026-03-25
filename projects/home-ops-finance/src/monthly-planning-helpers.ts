@@ -13,11 +13,15 @@ export function monthFromDate(value: string): string {
   return value.slice(0, 7);
 }
 
+export function incomeMonthKey(entry: IncomeEntry): string {
+  return entry.monthKey ?? monthFromDate(entry.entryDate);
+}
+
 export function uniqueMonthKeys(incomeEntries: IncomeEntry[], expenseEntries: ExpenseEntry[]): string[] {
   const keys = new Set<string>();
 
   for (const entry of incomeEntries) {
-    keys.add(monthFromDate(entry.entryDate));
+    keys.add(incomeMonthKey(entry));
   }
 
   for (const entry of expenseEntries) {
@@ -98,7 +102,7 @@ export function buildBaselineForMonth(anchor: MonthlyBaseline, monthKey: string)
 export function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
-      .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .filter((entry) => incomeMonthKey(entry) === monthKey)
       .reduce((sum, entry) => sum + entry.amount, 0),
   );
 }
@@ -106,7 +110,7 @@ export function sumIncomeForMonth(entries: IncomeEntry[], monthKey: string): num
 export function sumIncomeReserveForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
-      .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .filter((entry) => incomeMonthKey(entry) === monthKey)
       .reduce((sum, entry) => sum + (entry.reserveAmount ?? 0), 0),
   );
 }
@@ -114,7 +118,7 @@ export function sumIncomeReserveForMonth(entries: IncomeEntry[], monthKey: strin
 export function sumIncomeAvailableForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
-      .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
+      .filter((entry) => incomeMonthKey(entry) === monthKey)
       .reduce((sum, entry) => sum + (entry.availableAmount ?? entry.amount - (entry.reserveAmount ?? 0)), 0),
   );
 }
@@ -122,7 +126,7 @@ export function sumIncomeAvailableForMonth(entries: IncomeEntry[], monthKey: str
 export function sumIncomeAvailableAfterDate(entries: IncomeEntry[], monthKey: string, snapshotDate: string): number {
   return roundCurrency(
     entries
-      .filter((entry) => monthFromDate(entry.entryDate) === monthKey && String(entry.entryDate) > snapshotDate)
+      .filter((entry) => incomeMonthKey(entry) === monthKey && String(entry.entryDate) > snapshotDate)
       .reduce((sum, entry) => sum + (entry.availableAmount ?? entry.amount - (entry.reserveAmount ?? 0)), 0),
   );
 }
@@ -130,7 +134,7 @@ export function sumIncomeAvailableAfterDate(entries: IncomeEntry[], monthKey: st
 export function sumMusicIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries
-      .filter((entry) => entry.incomeStreamId === "music-income" && monthFromDate(entry.entryDate) === monthKey)
+      .filter((entry) => entry.incomeStreamId === "music-income" && incomeMonthKey(entry) === monthKey)
       .reduce((sum, entry) => sum + entry.amount, 0),
   );
 }
@@ -152,7 +156,7 @@ export function sumExpensesAfterDate(entries: ExpenseEntry[], monthKey: string, 
 }
 
 export function selectIncomeEntriesForMonth(entries: IncomeEntry[], monthKey: string): IncomeEntry[] {
-  return entries.filter((entry) => monthFromDate(entry.entryDate) === monthKey);
+  return entries.filter((entry) => incomeMonthKey(entry) === monthKey);
 }
 
 export function selectExpenseEntriesForMonth(entries: ExpenseEntry[], monthKey: string): ExpenseEntry[] {

@@ -50,6 +50,7 @@ export interface IncomeEntry {
   id: string;
   incomeStreamId: string;
   accountId?: string;
+  monthKey?: string;
   entryDate: string;
   amount: number;
   reserveAmount?: number;
@@ -108,6 +109,7 @@ export interface ForecastWealthAnchor {
   monthKey: string;
   safetyBucketAmount: number;
   investmentBucketAmount: number;
+  cashAccounts?: Record<string, number>;
   totalWealthAmount?: number;
   sourceSheet: string;
   sourceRowNumber: number;

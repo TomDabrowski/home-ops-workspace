@@ -77,6 +77,7 @@ interface MusicTaxSettingState {
 interface ForecastSettingsState {
   safetyThreshold?: number;
   musicThreshold?: number;
+  musicThresholdAccountId?: string;
   notes?: string;
   updatedAt?: string;
   isActive?: boolean;
@@ -223,8 +224,12 @@ function applyForecastSettings(
   if (typeof forecastSettings.musicThreshold === "number" && Number.isFinite(forecastSettings.musicThreshold)) {
     overrides.set("music_threshold", forecastSettings.musicThreshold);
   }
+  const thresholdAccountId =
+    typeof forecastSettings.musicThresholdAccountId === "string" && forecastSettings.musicThresholdAccountId.trim()
+      ? forecastSettings.musicThresholdAccountId.trim()
+      : null;
 
-  if (overrides.size === 0) {
+  if (overrides.size === 0 && !thresholdAccountId) {
     return {
       forecastAssumptions: draft.forecastAssumptions,
       wealthBuckets: draft.wealthBuckets,
@@ -256,6 +261,27 @@ function applyForecastSettings(
         forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
       ]),
     });
+  }
+
+  if (thresholdAccountId) {
+    const key = "music_threshold_account_id";
+    const existing = forecastAssumptions.find((entry) => entry.key === key);
+    if (existing) {
+      existing.value = thresholdAccountId;
+      existing.valueType = "string";
+      existing.notes = mergeNotes(existing.notes, [
+        forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
+      ]);
+    } else {
+      forecastAssumptions.push({
+        key,
+        value: thresholdAccountId,
+        valueType: "string",
+        notes: mergeNotes(forecastSettings.notes, [
+          forecastSettings.updatedAt ? `forecast setting ${forecastSettings.updatedAt}` : "forecast setting",
+        ]),
+      });
+    }
   }
 
   const wealthBuckets = draft.wealthBuckets.map((bucket) =>
@@ -320,6 +346,7 @@ export function applyReviewState(
   const activeMonthlyMusicIncomeOverrides = monthlyMusicIncomeOverrides
     .filter((entry) => entry.isActive !== false)
     .map((entry) => ({
+      monthKey: entry.monthKey,
       id: entry.id,
       incomeStreamId: "music-income",
       accountId: entry.accountId ?? "giro",
@@ -334,7 +361,7 @@ export function applyReviewState(
         entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
       ]),
     }));
-  const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.entryDate.slice(0, 7)));
+  const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.monthKey));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
   const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
     entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
