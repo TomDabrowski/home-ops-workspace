@@ -9,12 +9,35 @@
 <body>
   <div id="appStatusBar" class="app-status" hidden></div>
   <div class="floating-controls">
-    <button class="pill" id="developerModeButton" type="button">
-      Entwicklermodus aus
-    </button>
-    <button class="pill" id="formulaTooltipButton" type="button">
-      Erklaerungs-Tooltips an
-    </button>
+    <div class="settings-shell">
+      <button
+        class="pill settings-trigger"
+        id="settingsToggleButton"
+        type="button"
+        aria-expanded="false"
+        aria-controls="settingsPanel"
+      >
+        <span aria-hidden="true">⚙</span>
+        <span>Einstellungen</span>
+      </button>
+      <div class="settings-panel" id="settingsPanel" hidden>
+        <div class="settings-panel-head">
+          <p class="eyebrow">Oberfläche</p>
+          <strong>Einstellungen</strong>
+        </div>
+        <div class="settings-panel-body">
+          <button class="pill settings-option" id="themeModeButton" type="button">
+            Dark Mode aus
+          </button>
+          <button class="pill settings-option" id="developerModeButton" type="button">
+            Entwicklermodus aus
+          </button>
+          <button class="pill settings-option" id="formulaTooltipButton" type="button">
+            Erklaerungs-Tooltips an
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
   <main class="shell">
     <section class="hero card">
@@ -307,7 +330,10 @@
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="wealthSnapshotMeta" data-dev-only="true">Noch kein manueller Vermögensstand gespeichert.</p>
-              <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
+              <div class="filter-group">
+                <button class="pill" id="clearWealthSnapshotsButton" type="button" hidden>Lokale Ist-Stände löschen</button>
+                <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
+              </div>
             </div>
           </div>
           <div class="subcard" data-dev-only="true">
@@ -345,6 +371,10 @@
                 <h2>Monat auf einen Blick</h2>
             <p class="section-copy">Hier siehst du klar getrennt den Stand zu Beginn des geöffneten Monats, die Bewegungen innerhalb genau dieses Monats und den Stand am Ende genau dieses Monats. Monatsende heißt hier: nach dem Gehalt und nach allen Monatsbewegungen des geöffneten Monats, nicht nach dem Folgemonat.</p>
               </div>
+            </div>
+            <div class="month-data-status">
+              <dl class="detail-list compact-details" id="monthDataStatusSummary"></dl>
+              <div id="monthDataStatusAlert"></div>
             </div>
             <div class="grid three">
               <div class="subcard">

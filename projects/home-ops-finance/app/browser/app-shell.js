@@ -8,6 +8,7 @@ export function createAppShellTools(config) {
     monthFilterStorageKey,
     developerModeStorageKey,
     formulaTooltipStorageKey,
+    themeModeStorageKey,
     clientSessionStorageKey,
     clientHeartbeatMs,
   } = config;
@@ -32,6 +33,23 @@ export function createAppShellTools(config) {
 
   function writeFormulaTooltipsEnabled(enabled) {
     window.localStorage.setItem(formulaTooltipStorageKey, enabled ? "true" : "false");
+  }
+
+  function prefersDarkTheme() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function readThemeMode() {
+    const stored = window.localStorage.getItem(themeModeStorageKey);
+    if (stored === "dark" || stored === "light") {
+      return stored;
+    }
+
+    return prefersDarkTheme() ? "dark" : "light";
+  }
+
+  function writeThemeMode(mode) {
+    window.localStorage.setItem(themeModeStorageKey, mode === "dark" ? "dark" : "light");
   }
 
   function activeTabId() {
@@ -113,6 +131,16 @@ export function createAppShellTools(config) {
     if (!enabled && (activeTab === "imports" || activeTab === "overview")) {
       activateTab("months");
       saveViewState({ tabId: "months" });
+    }
+  }
+
+  function applyThemeUi(mode = readThemeMode()) {
+    document.documentElement.dataset.theme = mode;
+    const button = document.getElementById("themeModeButton");
+    if (button) {
+      const darkEnabled = mode === "dark";
+      button.textContent = darkEnabled ? "Dark Mode an" : "Dark Mode aus";
+      button.classList.toggle("is-active", darkEnabled);
     }
   }
 
@@ -216,6 +244,8 @@ export function createAppShellTools(config) {
     writeDeveloperMode,
     readFormulaTooltipsEnabled,
     writeFormulaTooltipsEnabled,
+    readThemeMode,
+    writeThemeMode,
     activeTabId,
     activeMonthFilter,
     viewStateMonthValue,
@@ -225,6 +255,7 @@ export function createAppShellTools(config) {
     isMonthScopedTab,
     updateMonthNavVisibility,
     applyDeveloperModeUi,
+    applyThemeUi,
     showStatus,
     confirmAction,
     startClientSessionLifecycle,

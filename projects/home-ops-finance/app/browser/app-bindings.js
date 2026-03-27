@@ -13,6 +13,9 @@ export function createAppBindingTools(deps) {
     writeDeveloperMode,
     readFormulaTooltipsEnabled,
     writeFormulaTooltipsEnabled,
+    readThemeMode,
+    writeThemeMode,
+    applyThemeUi,
     rerenderSelectedMonthContext,
     activateTab,
     activeTabStorageKey,
@@ -120,12 +123,61 @@ export function createAppBindingTools(deps) {
     }
   }
 
+  function bindSettingsPanel() {
+    const toggleButton = document.getElementById("settingsToggleButton");
+    const panel = document.getElementById("settingsPanel");
+    const themeButton = document.getElementById("themeModeButton");
+
+    if (!(toggleButton instanceof HTMLButtonElement) || !(panel instanceof HTMLElement)) {
+      return;
+    }
+
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      toggleButton.setAttribute("aria-expanded", open ? "true" : "false");
+      toggleButton.classList.toggle("is-active", open);
+    };
+
+    setOpen(false);
+    applyThemeUi(readThemeMode());
+
+    toggleButton.onclick = (event) => {
+      event.stopPropagation();
+      setOpen(panel.hidden);
+    };
+
+    if (themeButton instanceof HTMLButtonElement) {
+      themeButton.onclick = () => {
+        const nextMode = readThemeMode() === "dark" ? "light" : "dark";
+        writeThemeMode(nextMode);
+        applyThemeUi(nextMode);
+      };
+    }
+
+    document.addEventListener("click", (event) => {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+      if (!panel.hidden && !panel.contains(event.target) && !toggleButton.contains(event.target)) {
+        setOpen(false);
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    });
+  }
+
   async function load() {
+    applyThemeUi(readThemeMode());
     await startClientSessionLifecycle();
     await initializeWorkflowState();
     const state = await fetchFinanceData();
     renderApp(state);
     bindAppControls();
+    bindSettingsPanel();
   }
 
   function handleLoadError(error) {
@@ -146,6 +198,7 @@ export function createAppBindingTools(deps) {
   return {
     bindTabs,
     bindDeveloperModeToggle,
+    bindSettingsPanel,
     load,
     handleLoadError,
     activateInitialTab,

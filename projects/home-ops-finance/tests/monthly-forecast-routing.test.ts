@@ -63,9 +63,9 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.safetyBucketAnchorAmount, 6300);
   assert.equal(result.investmentBucketAnchorAmount, 12077);
   assert.equal(result.safetyBucketEndAmount, 6300);
-  assert.equal(result.investmentBucketEndAmount, 12077);
+  assert.equal(result.investmentBucketEndAmount, 13127);
   assert.equal(result.projectedWealthAnchorAmount, 18377);
-  assert.equal(result.projectedWealthEndAmount, 18377);
+  assert.equal(result.projectedWealthEndAmount, 19427);
 });
 
 test("routes against the configured threshold account when it differs from total safety cash", () => {

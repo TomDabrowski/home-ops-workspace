@@ -298,10 +298,25 @@ export function createLocalFinanceStateTools(deps) {
       .sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey));
   }
 
-  function draftReportFromImportDraft(importDraft, baseReport) {
+  function draftReportFromImportDraft(importDraft, baseReport, monthlyPlan = null) {
     const monthSummaries = summarizeMonths(importDraft.incomeEntries, importDraft.expenseEntries);
+    const latestMonthlyRow = monthlyPlan?.rows?.[monthlyPlan.rows.length - 1] ?? null;
     const baseline = importDraft.monthlyBaselines?.[importDraft.monthlyBaselines.length - 1] ?? null;
-    const baselineSummary = baseline
+    const baselineSummary = latestMonthlyRow
+      ? {
+          monthKey: latestMonthlyRow.monthKey,
+          netSalaryAmount: latestMonthlyRow.netSalaryAmount,
+          fixedExpensesAmount: latestMonthlyRow.baselineFixedAmount,
+          baselineVariableAmount: latestMonthlyRow.baselineVariableAmount,
+          annualReserveAmount: latestMonthlyRow.annualReserveAmount ?? 0,
+          plannedSavingsAmount: latestMonthlyRow.plannedSavingsAmount,
+          availableBeforeIrregulars: latestMonthlyRow.baselineAvailableAmount,
+          computedAvailableFromParts: latestMonthlyRow.baselineAvailableAmount,
+          deltaToAnchor: roundCurrency(
+            latestMonthlyRow.baselineAnchorAvailableAmount - latestMonthlyRow.baselineAvailableAmount,
+          ),
+        }
+      : baseline
       ? {
           monthKey: baseline.monthKey,
           netSalaryAmount: baseline.netSalaryAmount,
@@ -346,15 +361,25 @@ export function createLocalFinanceStateTools(deps) {
         debtSnapshotCount: (importDraft.debtSnapshots ?? []).length,
       },
       baselineSummary,
-      baselineProfiles: (importDraft.monthlyBaselines ?? []).map((item) => ({
-        monthKey: item.monthKey,
-        netSalaryAmount: item.netSalaryAmount,
-        fixedExpensesAmount: item.fixedExpensesAmount,
-        baselineVariableAmount: item.baselineVariableAmount,
-        annualReserveAmount: item.annualReserveAmount ?? 0,
-        plannedSavingsAmount: item.plannedSavingsAmount,
-        availableBeforeIrregulars: item.availableBeforeIrregulars,
-      })),
+      baselineProfiles: Array.isArray(monthlyPlan?.rows)
+        ? monthlyPlan.rows.map((row) => ({
+            monthKey: row.monthKey,
+            netSalaryAmount: row.netSalaryAmount,
+            fixedExpensesAmount: row.baselineFixedAmount,
+            baselineVariableAmount: row.baselineVariableAmount,
+            annualReserveAmount: row.annualReserveAmount ?? 0,
+            plannedSavingsAmount: row.plannedSavingsAmount,
+            availableBeforeIrregulars: row.baselineAvailableAmount,
+          }))
+        : (importDraft.monthlyBaselines ?? []).map((item) => ({
+            monthKey: item.monthKey,
+            netSalaryAmount: item.netSalaryAmount,
+            fixedExpensesAmount: item.fixedExpensesAmount,
+            baselineVariableAmount: item.baselineVariableAmount,
+            annualReserveAmount: item.annualReserveAmount ?? 0,
+            plannedSavingsAmount: item.plannedSavingsAmount,
+            availableBeforeIrregulars: item.availableBeforeIrregulars,
+          })),
       baselineLineItems: (importDraft.baselineLineItems ?? [])
         .filter((item) => Number(item.amount) > 0)
         .map((item) => ({
@@ -500,11 +525,20 @@ export function createLocalFinanceStateTools(deps) {
       const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
       const anchoredSafetyEndAmount =
         anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
-          ? roundCurrency(safetyBucketAnchorAmount + musicAllocationToSafetyAmount - expenseAmountForProjection)
+          ? roundCurrency(
+              safetyBucketAnchorAmount +
+                salaryAllocationToSafetyAmount +
+                musicAllocationToSafetyAmount -
+                expenseAmountForProjection,
+            )
           : undefined;
       const anchoredInvestmentEndAmount =
         anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
-          ? roundCurrency(investmentBucketAnchorAmount + musicAllocationToInvestmentAmount)
+          ? roundCurrency(
+              investmentBucketAnchorAmount +
+                salaryAllocationToInvestmentAmount +
+                musicAllocationToInvestmentAmount,
+            )
           : undefined;
       const projectedWealthAnchorAmount =
         safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
@@ -780,8 +814,8 @@ export function createLocalFinanceStateTools(deps) {
 
   function applyLocalWorkflowState(state) {
     const importDraft = mergeClientWorkflowIntoImportDraft(state.importDraft);
-    const draftReport = draftReportFromImportDraft(importDraft, state.draftReport);
     const monthlyPlan = monthlyPlanFromImportDraft(importDraft, state.monthlyPlan);
+    const draftReport = draftReportFromImportDraft(importDraft, state.draftReport, monthlyPlan);
 
     return {
       ...state,

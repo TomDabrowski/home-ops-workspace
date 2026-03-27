@@ -84,11 +84,20 @@ export function buildMonthlyForecastRouting(
   const investmentBucketAnchorAmount = input.explicitWealthAnchor?.investmentBucketAmount;
   const anchoredSafetyEndAmount =
     anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
-      ? roundCurrency(safetyBucketAnchorAmount + musicAllocationToSafetyAmount - projectionExpenseAmount)
+      ? roundCurrency(
+          safetyBucketAnchorAmount +
+            input.salaryAllocationToSafetyAmount +
+            musicAllocationToSafetyAmount -
+            projectionExpenseAmount,
+        )
       : undefined;
   const anchoredInvestmentEndAmount =
     anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
-      ? roundCurrency(investmentBucketAnchorAmount + musicAllocationToInvestmentAmount)
+      ? roundCurrency(
+          investmentBucketAnchorAmount +
+            input.salaryAllocationToInvestmentAmount +
+            musicAllocationToInvestmentAmount,
+        )
       : undefined;
   const projectedWealthAnchorAmount =
     safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined

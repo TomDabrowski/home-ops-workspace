@@ -307,6 +307,13 @@ export function createWorkflowStateStore(config) {
     window.localStorage.setItem(wealthSnapshotsStorageKey, JSON.stringify(state ?? []));
   }
 
+  function clearWealthSnapshotsLocal() {
+    wealthSnapshotsCache = [];
+    window.localStorage.removeItem(wealthSnapshotsStorageKey);
+    persistence.wealthSnapshots = "browser";
+    return { ok: true, mode: "browser" };
+  }
+
   function readAllocationActionState() {
     return allocationActionStateCache;
   }
@@ -406,6 +413,7 @@ export function createWorkflowStateStore(config) {
     writeSalarySettings,
     readWealthSnapshots,
     writeWealthSnapshots,
+    clearWealthSnapshotsLocal,
     readAllocationActionState,
     writeAllocationActionState,
     readHouseholdState,

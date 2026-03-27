@@ -6,6 +6,8 @@ export function createMonthReviewDataTools(deps) {
     currentMonthlyPlan,
     monthlyPlanFromImportDraft,
     activeBaselineLineItemsForMonth,
+    uniqueMonthKeys,
+    compareMonthKeys,
     incomeMonthKey,
     roundCurrency,
     readMonthlyExpenseOverrides,
@@ -72,7 +74,15 @@ export function createMonthReviewDataTools(deps) {
     const reserve = Number(source?.reserveAmount ?? 0);
     const fallbackReserveRatio = gross > 0 ? reserve / gross : 0;
     const monthlyPlan = currentMonthlyPlan();
-    const yearTaxData = monthlyPlan ? buildMusicYearData(importDraft, monthlyPlan, monthKey) : null;
+    const yearTaxData = monthlyPlan
+      ? buildMusicYearData(importDraft, monthlyPlan, monthKey, {
+          uniqueMonthKeys,
+          compareMonthKeys,
+          incomeMonthKey,
+          monthFromDate,
+          roundCurrency,
+        })
+      : null;
     const reserveRate = Number(yearTaxData?.effectiveRate ?? fallbackReserveRatio);
 
     return {

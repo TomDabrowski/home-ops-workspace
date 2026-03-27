@@ -284,6 +284,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
 export function renderWealthSnapshotPlanner(importDraft, deps) {
   const {
     readWealthSnapshots,
+    clearWealthSnapshotsLocal,
     localDateTimeInputValue,
     monthFromDate,
     currentSelectedMonthKey,
@@ -312,8 +313,9 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   const listTarget = document.getElementById("wealthSnapshotList");
   const historySummaryTarget = document.getElementById("wealthSnapshotHistorySummary");
   const saveButton = document.getElementById("saveWealthSnapshotButton");
+  const clearButton = document.getElementById("clearWealthSnapshotsButton");
 
-  if (!dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField || !cashTotalField || !notesField || !metaTarget || !listTarget || !saveButton) {
+  if (!dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField || !cashTotalField || !notesField || !metaTarget || !listTarget || !saveButton || !clearButton) {
     return;
   }
 
@@ -423,6 +425,10 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   metaTarget.textContent = snapshots.length > 0
     ? `${snapshots.length} Ist-Stand(e) gespeichert · Speicherort: ${persistenceLabel}`
     : `Noch kein manueller Vermögensstand gespeichert · Speicherort: ${persistenceLabel}`;
+  clearButton.hidden = !(wealthSnapshotsPersistence === "browser" && snapshots.length > 0);
+  if (wealthSnapshotsPersistence === "browser" && snapshots.length > 0) {
+    metaTarget.textContent += " · Achtung: lokale Browser-Daten können Projektwerte überlagern.";
+  }
   if (historySummaryTarget) {
     const latestEntry = [...snapshots]
       .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
@@ -530,6 +536,19 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       title: isEditing ? "Ist-Stand aktualisiert" : "Ist-Stand gespeichert",
       detail: `${statusDetailForMode(result.mode)} Gilt für ${snapshotDate.slice(0, 7)} als gespeicherter Ist-Stand.`,
       tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
+
+  clearButton.onclick = async () => {
+    if (!confirmAction("Lokale Browser-Ist-Stände wirklich löschen? Das entfernt nur den Browser-Fallback auf diesem Gerät.")) {
+      return;
+    }
+
+    const result = clearWealthSnapshotsLocal();
+    await refreshFinanceView({
+      title: "Lokale Ist-Stände gelöscht",
+      detail: `${statusDetailForMode(result.mode)} Der Browser-Fallback für Vermögensstände wurde geleert.`,
+      tone: "warn",
     });
   };
 }

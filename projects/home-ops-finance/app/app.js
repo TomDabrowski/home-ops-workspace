@@ -68,6 +68,7 @@ import {
 import { renderHouseholdWorkspace as renderHouseholdWorkspaceView } from "./ui/household-workspace.js";
 import { renderFixedCostPlanner as renderFixedCostPlannerView } from "./ui/fixed-cost-workspace.js";
 import { renderGoalsWorkspace as renderGoalsWorkspaceView } from "./ui/retirement-workspace.js";
+import { buildMonthDataStatus } from "./shared/month-data-status.js";
 import {
   renderBaselineSummaryForMonth as renderBaselineSummaryForMonthView,
   renderSelectedMonthSharedUi as renderSelectedMonthSharedUiView,
@@ -125,6 +126,7 @@ const monthReviewStorageKey = "home-ops-finance-month-review-v1";
 const monthFilterStorageKey = "home-ops-finance-month-filter-v1";
 const developerModeStorageKey = "home-ops-finance-developer-mode-v1";
 const formulaTooltipStorageKey = "home-ops-finance-formula-tooltips-v1";
+const themeModeStorageKey = "home-ops-finance-theme-mode-v1";
 const clientSessionStorageKey = "home-ops-finance-client-session-v1";
 const clientHeartbeatMs = 15000;
 const fallbackAccountOptions = [
@@ -146,6 +148,7 @@ const appShell = createAppShellTools({
   monthFilterStorageKey,
   developerModeStorageKey,
   formulaTooltipStorageKey,
+  themeModeStorageKey,
   clientSessionStorageKey,
   clientHeartbeatMs,
 });
@@ -155,6 +158,8 @@ const {
   writeDeveloperMode,
   readFormulaTooltipsEnabled,
   writeFormulaTooltipsEnabled,
+  readThemeMode,
+  writeThemeMode,
   activeTabId,
   activeMonthFilter,
   viewStateMonthValue,
@@ -163,6 +168,7 @@ const {
   activateTab,
   updateMonthNavVisibility,
   applyDeveloperModeUi,
+  applyThemeUi,
   showStatus,
   confirmAction,
   startClientSessionLifecycle,
@@ -195,6 +201,7 @@ const {
   readForecastSettings,
   readSalarySettings,
   readWealthSnapshots,
+  clearWealthSnapshotsLocal,
   readAllocationActionState,
   readHouseholdState,
   saveReconciliationForMonth,
@@ -246,8 +253,52 @@ function rerenderSelectedMonthContext() {
   renderWorkflowHistory(importDraft);
 }
 
+function latestActiveWealthSnapshotForMonth(monthKey) {
+  return [...readWealthSnapshots()]
+    .filter((entry) => entry.isActive !== false)
+    .filter((entry) => String(entry.snapshotDate ?? "").slice(0, 7) <= monthKey)
+    .sort((left, right) => String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")))[0] ?? null;
+}
+
+function renderMonthDataStatus(monthlyPlan, monthKey) {
+  const summaryTarget = document.getElementById("monthDataStatusSummary");
+  const alertTarget = document.getElementById("monthDataStatusAlert");
+  if (!summaryTarget || !alertTarget) {
+    return;
+  }
+
+  const monthIndex = monthlyPlan.rows.findIndex((row) => row.monthKey === monthKey);
+  const row = monthIndex >= 0 ? monthlyPlan.rows[monthIndex] : null;
+  if (!row) {
+    summaryTarget.innerHTML = "";
+    alertTarget.innerHTML = "";
+    return;
+  }
+
+  const status = buildMonthDataStatus({
+    monthKey,
+    currentMonthKey: currentMonthKey(),
+    row,
+    previousRow: monthIndex > 0 ? monthlyPlan.rows[monthIndex - 1] : null,
+    latestSnapshot: latestActiveWealthSnapshotForMonth(monthKey),
+    wealthSnapshotPersistence: workflowState.persistence.wealthSnapshots,
+    formatDisplayDate,
+  });
+
+  summaryTarget.innerHTML = renderDetailEntries(status.summaryEntries);
+  alertTarget.innerHTML = `
+    <div class="mapping-card month-data-status-card ${status.status === "Prüfen" ? "is-warn" : status.status === "Info" ? "is-info" : "is-ok"}">
+      <div class="mapping-card-head">
+        <strong>${status.status}</strong>
+      </div>
+      <p class="section-copy">${status.detail}</p>
+    </div>
+  `;
+}
+
 function renderBaselineSummaryForMonth(importDraft, monthKey) {
   renderBaselineSummaryForMonthView(importDraft, monthKey, {
+    currentMonthlyPlan,
     selectBaselineForMonth,
     buildBaselineForMonth,
     euro,
@@ -402,6 +453,8 @@ const {
   currentMonthlyPlan,
   monthlyPlanFromImportDraft,
   activeBaselineLineItemsForMonth,
+  uniqueMonthKeys,
+  compareMonthKeys,
   incomeMonthKey,
   roundCurrency,
   readMonthlyExpenseOverrides,
@@ -591,6 +644,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const investmentAnchorAmount = Number(review.row.investmentBucketAnchorAmount ?? 0);
   const projectionExpenseAmount = Number(review.row.projectionExpenseAmount ?? review.row.importedExpenseAmount ?? 0);
   const monthValueType = compareMonthKeys(monthKey, currentMonthKey()) > 0 ? "Prognostiziert" : "Berechnet";
+  const latestSnapshot = latestActiveWealthSnapshotForMonth(monthKey);
+  const wealthSourceLabel = workflowState.persistence.wealthSnapshots === "project" ? "Projektdatei" : "Browser-Fallback";
+  renderMonthDataStatus(monthlyPlan, monthKey);
 
   if (startSummary) {
     const entries = [
@@ -614,6 +670,8 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
             : "",
       },
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
+      ["Letzter Ist-Stand", latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner"],
+      ["Quelle Ist-Stand", latestSnapshot ? wealthSourceLabel : "-"],
     ];
     startSummary.innerHTML = renderDetailEntries(entries);
   }
@@ -643,7 +701,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           review.row.safetyBucketEndAmount !== undefined
             ? (
               review.row.anchorAppliesWithinMonth && review.row.safetyBucketAnchorAmount !== undefined
-                ? `${euro.format(safetyAnchorAmount)} Ist-Stand + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben nach dem Stichtag = ${euro.format(endSafetyAmount)}`
+                ? `${euro.format(safetyAnchorAmount)} Ist-Stand + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben nach dem Stichtag = ${euro.format(endSafetyAmount)}`
                 : `${euro.format(startSafetyAmount)} Start-Cash + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben = ${euro.format(endSafetyAmount)}`
             )
             : "",
@@ -655,7 +713,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           review.row.investmentBucketEndAmount !== undefined
             ? (
               review.row.anchorAppliesWithinMonth && review.row.investmentBucketAnchorAmount !== undefined
-                ? `${euro.format(investmentAnchorAmount)} Ist-Stand + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
+                ? `${euro.format(investmentAnchorAmount)} Ist-Stand + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
                 : `${euro.format(startInvestmentAmount)} Start-Investment + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
             )
             : "",
@@ -805,6 +863,7 @@ function renderSalaryPlanner(importDraft) {
 function renderWealthSnapshotPlanner(importDraft) {
   renderWealthSnapshotPlannerView(importDraft, {
     readWealthSnapshots,
+    clearWealthSnapshotsLocal,
     localDateTimeInputValue,
     monthFromDate,
     currentSelectedMonthKey,
@@ -929,10 +988,10 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
     </tr>
   `);
 
-  renderRows("baselineProfiles", draftReport.baselineProfiles, (row) => `
+  renderRows("baselineProfiles", monthlyPlan.rows, (row) => `
     <tr>
       <td>${row.monthKey}</td>
-      <td>${euro.format(row.availableBeforeIrregulars)}</td>
+      <td>${euro.format(row.baselineAvailableAmount)}</td>
       <td>${euro.format(row.plannedSavingsAmount)}</td>
     </tr>
   `);
@@ -990,10 +1049,13 @@ const {
   updateMonthNavVisibility,
   saveViewState,
   applyDeveloperModeUi,
+  applyThemeUi,
   readDeveloperMode,
   writeDeveloperMode,
   readFormulaTooltipsEnabled,
   writeFormulaTooltipsEnabled,
+  readThemeMode,
+  writeThemeMode,
   rerenderSelectedMonthContext,
   activateTab,
   activeTabStorageKey,

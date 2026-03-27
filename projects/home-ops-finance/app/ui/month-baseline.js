@@ -3,6 +3,7 @@
 
 export function renderBaselineSummaryForMonth(importDraft, monthKey, deps) {
   const {
+    currentMonthlyPlan,
     selectBaselineForMonth,
     buildBaselineForMonth,
     euro,
@@ -16,27 +17,31 @@ export function renderBaselineSummaryForMonth(importDraft, monthKey, deps) {
 
   const baselineAnchor = selectBaselineForMonth(importDraft.monthlyBaselines, monthKey);
   const baseline = baselineAnchor ? buildBaselineForMonth(baselineAnchor, monthKey) : null;
-  if (!baseline) {
+  const monthlyRow = currentMonthlyPlan()?.rows?.find((row) => row.monthKey === monthKey) ?? null;
+  if (!baseline && !monthlyRow) {
     baselineSummary.innerHTML = "";
     return;
   }
 
   const entries = [
     ["Monat", monthKey],
-    ["Nettogehalt", euro.format(baseline.netSalaryAmount)],
-    ["Fixkosten", euro.format(baseline.fixedExpensesAmount)],
-    ["Variable Basis", euro.format(baseline.baselineVariableAmount)],
-    ["Jahreskostenblock", euro.format(baseline.annualReserveAmount)],
-    ["Basis-Investment", euro.format(baseline.plannedSavingsAmount)],
+    ["Nettogehalt", euro.format(monthlyRow?.netSalaryAmount ?? baseline?.netSalaryAmount ?? 0)],
+    ["Fixkosten", euro.format(monthlyRow?.baselineFixedAmount ?? baseline?.fixedExpensesAmount ?? 0)],
+    ["Variable Basis", euro.format(monthlyRow?.baselineVariableAmount ?? baseline?.baselineVariableAmount ?? 0)],
+    ["Jahreskostenblock", euro.format(monthlyRow?.annualReserveAmount ?? baseline?.annualReserveAmount ?? 0)],
+    ["Basis-Investment", euro.format(monthlyRow?.plannedSavingsAmount ?? baseline?.plannedSavingsAmount ?? 0)],
     {
       label: "Übrig nach Fixkosten",
-      value: euro.format(baseline.netSalaryAmount - baseline.fixedExpensesAmount),
-      formula: `${euro.format(baseline.netSalaryAmount)} - ${euro.format(baseline.fixedExpensesAmount)} = ${euro.format(baseline.netSalaryAmount - baseline.fixedExpensesAmount)}`,
+      value: euro.format(
+        (monthlyRow?.netSalaryAmount ?? baseline?.netSalaryAmount ?? 0) -
+          (monthlyRow?.baselineFixedAmount ?? baseline?.fixedExpensesAmount ?? 0),
+      ),
+      formula: `${euro.format(monthlyRow?.netSalaryAmount ?? baseline?.netSalaryAmount ?? 0)} - ${euro.format(monthlyRow?.baselineFixedAmount ?? baseline?.fixedExpensesAmount ?? 0)} = ${euro.format((monthlyRow?.netSalaryAmount ?? baseline?.netSalaryAmount ?? 0) - (monthlyRow?.baselineFixedAmount ?? baseline?.fixedExpensesAmount ?? 0))}`,
     },
     {
       label: "Übrig nach allen Monatsblöcken",
-      value: euro.format(baseline.computedAvailableFromParts),
-      formula: `${euro.format(baseline.netSalaryAmount)} - ${euro.format(baseline.fixedExpensesAmount)} - ${euro.format(baseline.baselineVariableAmount)} - ${euro.format(baseline.annualReserveAmount)} - ${euro.format(baseline.plannedSavingsAmount)} = ${euro.format(baseline.computedAvailableFromParts)}`,
+      value: euro.format(monthlyRow?.baselineAvailableAmount ?? baseline?.computedAvailableFromParts ?? 0),
+      formula: `${euro.format(monthlyRow?.netSalaryAmount ?? baseline?.netSalaryAmount ?? 0)} - ${euro.format(monthlyRow?.baselineFixedAmount ?? baseline?.fixedExpensesAmount ?? 0)} - ${euro.format(monthlyRow?.baselineVariableAmount ?? baseline?.baselineVariableAmount ?? 0)} - ${euro.format(monthlyRow?.annualReserveAmount ?? baseline?.annualReserveAmount ?? 0)} - ${euro.format(monthlyRow?.plannedSavingsAmount ?? baseline?.plannedSavingsAmount ?? 0)} = ${euro.format(monthlyRow?.baselineAvailableAmount ?? baseline?.computedAvailableFromParts ?? 0)}`,
     },
   ];
 

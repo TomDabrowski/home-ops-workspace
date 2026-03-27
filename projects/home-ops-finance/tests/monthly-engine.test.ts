@@ -483,3 +483,59 @@ test("respects explicit workbook wealth anchors before continuing the forecast",
   assert.equal(continued?.safetyBucketStartAmount, 6300);
   assert.equal(continued?.investmentBucketStartAmount, 12077);
 });
+
+test("continues from the post-anchor month end instead of resetting next month to the raw anchor", () => {
+  const draft = createDraft();
+  draft.incomeEntries = [
+    {
+      id: "music-2026-03",
+      incomeStreamId: "music-income",
+      entryDate: "2026-03-26",
+      amount: 1642.65,
+      reserveAmount: 418.86,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+    {
+      id: "music-2026-04",
+      incomeStreamId: "music-income",
+      entryDate: "2026-04-01",
+      amount: 0,
+      reserveAmount: 0,
+      availableAmount: 0,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.expenseEntries = [];
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 9369.37,
+      investmentBucketAmount: 9200,
+      cashAccounts: {
+        giro: 17.38,
+        cash: 292.5,
+        savings: 9059.49,
+      },
+      totalWealthAmount: 18569.37,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-24",
+    },
+  ];
+
+  const rows = buildMonthlyRows(draft);
+  const march = rows.find((row) => row.monthKey === "2026-03");
+  const april = rows.find((row) => row.monthKey === "2026-04");
+
+  assert.ok(march);
+  assert.ok(april);
+  assert.equal(march?.investmentBucketAnchorAmount, 9200);
+  assert.equal(march?.investmentBucketEndAmount, 10533.28);
+  assert.equal(april?.investmentBucketStartAmount, 10533.28);
+});

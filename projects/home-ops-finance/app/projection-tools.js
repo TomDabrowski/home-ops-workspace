@@ -172,7 +172,13 @@ export function createProjectionTools(deps) {
 
     const result = new Map();
     for (const year of yearKeys) {
-      const data = buildMusicYearData(importDraft, monthlyPlan, `${year}-01`);
+      const data = buildMusicYearData(importDraft, monthlyPlan, `${year}-01`, {
+        uniqueMonthKeys,
+        compareMonthKeys: (left, right) => left.localeCompare(right),
+        incomeMonthKey: (entry) => String(entry.entryDate ?? "").slice(0, 7),
+        monthFromDate: (date) => String(date ?? "").slice(0, 7),
+        roundCurrency,
+      });
       result.set(year, {
         year,
         kind: year < Number(currentMonthKey().slice(0, 4)) ? "Ist" : "Berechnet",
