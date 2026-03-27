@@ -5,6 +5,7 @@ export interface MonthlyForecastRoutingInput {
   monthKey: string;
   useForecastRouting: boolean;
   musicThreshold: number;
+  thresholdAccountCurrentAmount?: number;
   safetyMonthlyReturn: number;
   investmentMonthlyReturn: number;
   salaryAllocationToSafetyAmount: number;
@@ -50,7 +51,8 @@ export function buildMonthlyForecastRouting(
   const currentSafetyAmount = anchorAppliesWithinMonth
     ? Number(input.explicitWealthAnchor?.safetyBucketAmount ?? 0)
     : Number(input.safetyBucketStartAmount ?? 0);
-  const musicSafetyGapAmount = Math.max(0, input.musicThreshold - currentSafetyAmount);
+  const thresholdAmount = Number(input.thresholdAccountCurrentAmount ?? currentSafetyAmount);
+  const musicSafetyGapAmount = Math.max(0, input.musicThreshold - thresholdAmount);
   const musicAllocationToSafetyAmount = roundCurrency(
     !input.useForecastRouting ? 0 : Math.min(projectionIncomeAvailableAmount, musicSafetyGapAmount),
   );

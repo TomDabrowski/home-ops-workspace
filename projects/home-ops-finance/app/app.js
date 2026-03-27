@@ -343,6 +343,27 @@ function activeBaselineLineItemsForMonth(importDraft, monthKey) {
   });
 }
 
+function wealthSnapshotCashTotalForEntry(entry) {
+  return wealthSnapshotCashTotal(entry, roundCurrency);
+}
+
+function financeState() {
+  return window.__financeState ?? null;
+}
+
+function currentImportDraft() {
+  return financeState()?.importDraft ?? window.__importDraft;
+}
+
+function currentMonthlyPlan() {
+  return financeState()?.monthlyPlan ?? null;
+}
+
+function currentSelectedMonthKey() {
+  const monthSelect = document.getElementById("monthReviewSelect");
+  return viewStateMonthValue(monthSelect) ?? window.localStorage.getItem(monthReviewStorageKey) ?? null;
+}
+
 const {
   selectBaselineForMonth,
   buildBaselineForMonth,
@@ -391,11 +412,6 @@ const {
 });
 
 const {
-  financeState,
-  currentImportDraft,
-  currentMonthlyPlan,
-  currentSelectedMonthKey,
-  wealthSnapshotCashTotalForEntry,
   thresholdAccountLabelForId,
   todayIsoDate,
   localDateTimeInputValue,
@@ -988,4 +1004,6 @@ const {
   escapeHtml,
 });
 
-load().catch(handleLoadError);
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  load().catch(handleLoadError);
+}

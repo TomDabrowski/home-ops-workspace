@@ -67,3 +67,35 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.projectedWealthAnchorAmount, 18377);
   assert.equal(result.projectedWealthEndAmount, 18377);
 });
+
+test("routes against the configured threshold account when it differs from total safety cash", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-03",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    thresholdAccountCurrentAmount: 8500,
+    safetyMonthlyReturn: 0.02 / 12,
+    investmentMonthlyReturn: Math.pow(1 + 0.05, 1 / 12) - 1,
+    salaryAllocationToSafetyAmount: 0,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 1223.79,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 12000,
+    investmentBucketStartAmount: 9916,
+    explicitWealthAnchor: {
+      monthKey: "2026-03",
+      safetyBucketAmount: 12000,
+      investmentBucketAmount: 9916,
+      totalWealthAmount: 21916,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-01",
+    },
+    incomeAvailableAfterAnchorAmount: 1223.79,
+    expenseAfterAnchorAmount: 0,
+  });
+
+  assert.equal(result.musicAllocationToSafetyAmount, 1223.79);
+  assert.equal(result.musicAllocationToInvestmentAmount, 0);
+});
