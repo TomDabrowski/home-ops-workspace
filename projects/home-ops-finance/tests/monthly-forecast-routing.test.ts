@@ -58,6 +58,8 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.anchorAppliesWithinMonth, true);
   assert.equal(result.projectionIncomeAvailableAmount, 0);
   assert.equal(result.projectionExpenseAmount, 0);
+  assert.equal(result.projectionSalaryAllocationToSafetyAmount, 0);
+  assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 1050);
   assert.equal(result.musicAllocationToSafetyAmount, 0);
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
   assert.equal(result.safetyBucketAnchorAmount, 6300);
@@ -66,6 +68,38 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.investmentBucketEndAmount, 13127);
   assert.equal(result.projectedWealthAnchorAmount, 18377);
   assert.equal(result.projectedWealthEndAmount, 19427);
+});
+
+test("late in-month wealth anchors do not re-add the base investment when the snapshot likely already contains it", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-03",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    safetyMonthlyReturn: 0.02 / 12,
+    investmentMonthlyReturn: Math.pow(1 + 0.05, 1 / 12) - 1,
+    salaryAllocationToSafetyAmount: 39.51,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 0,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 10172,
+    investmentBucketStartAmount: 12077,
+    explicitWealthAnchor: {
+      monthKey: "2026-03",
+      safetyBucketAmount: 10172,
+      investmentBucketAmount: 13258,
+      totalWealthAmount: 23430,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-27T22:32",
+    },
+    incomeAvailableAfterAnchorAmount: 0,
+    expenseAfterAnchorAmount: 0,
+  });
+
+  assert.equal(result.projectionSalaryAllocationToSafetyAmount, 0);
+  assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 0);
+  assert.equal(result.investmentBucketEndAmount, 13258);
 });
 
 test("routes against the configured threshold account when it differs from total safety cash", () => {

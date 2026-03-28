@@ -97,6 +97,7 @@ export interface SalarySettingState {
 export interface WealthSnapshotState {
   id?: string;
   snapshotDate: string;
+  anchorMonthKey?: string;
   cashAccounts?: {
     giro?: number;
     cash?: number;
@@ -374,6 +375,7 @@ export function parseWealthSnapshotCollection(value: unknown): WealthSnapshotCol
     return {
       id: asOptionalString(item.id, `wealthSnapshots[${index}].id`),
       snapshotDate: asString(item.snapshotDate, `wealthSnapshots[${index}].snapshotDate`),
+      anchorMonthKey: asOptionalString(item.anchorMonthKey, `wealthSnapshots[${index}].anchorMonthKey`),
       cashAccounts: cashAccounts
         ? {
             giro: asOptionalNumber(cashAccounts.giro, `wealthSnapshots[${index}].cashAccounts.giro`),

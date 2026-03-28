@@ -34,8 +34,10 @@ export function renderWorkflowHistory(importDraft, deps) {
   for (const entry of readWealthSnapshots().filter((item) => item.isActive !== false)) {
     entries.push({
       area: "Depot- & Cash-Stand",
-      title: `${entry.snapshotDate}`,
-      detail: `Cash ${euro.format(wealthSnapshotCashTotalForEntry(entry))} · Investment ${euro.format(Number(entry.investmentAmount ?? 0))}`,
+      title: entry.anchorMonthKey ? `Monatsanfang ${entry.anchorMonthKey}` : `${entry.snapshotDate}`,
+      detail:
+        `${entry.anchorMonthKey ? `Gesetzter Monatsanfang auf Basis von ${entry.snapshotDate}` : `Snapshot ${entry.snapshotDate}`} · ` +
+        `Cash ${euro.format(wealthSnapshotCashTotalForEntry(entry))} · Investment ${euro.format(Number(entry.investmentAmount ?? 0))}`,
       updatedAt: entry.updatedAt ?? null,
       notes: entry.notes ?? "",
     });

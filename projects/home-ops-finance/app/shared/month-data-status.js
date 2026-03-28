@@ -13,6 +13,7 @@ export function buildMonthDataStatus(input) {
   const isCurrentMonth = monthKey === currentMonthKey;
   const snapshotMonthKey = String(latestSnapshot?.snapshotDate ?? "").slice(0, 7);
   const snapshotMatchesMonth = snapshotMonthKey === monthKey;
+  const snapshotAnchorsThisMonth = latestSnapshot?.anchorMonthKey === monthKey;
   const sourceLabel = latestSnapshot
     ? (wealthSnapshotPersistence === "project" ? "Projektdatei" : "Browser-Fallback")
     : "Kein Ist-Stand";
@@ -26,6 +27,11 @@ export function buildMonthDataStatus(input) {
   if (!chainOk) {
     status = "Prüfen";
     detail = "Der Monatsanfang passt nicht sauber zum Monatsende des Vormonats.";
+  } else if (isFutureMonth && latestSnapshot && !snapshotAnchorsThisMonth) {
+    status = "Info";
+    detail =
+      `Es gibt schon einen Ist-Stand vom ${formatDisplayDate(latestSnapshot.snapshotDate)}, aber noch keinen expliziten Monatsanfang für ${monthKey}. ` +
+      `Darum wird der Vormonat erst bis Monatsende weitergerechnet.`;
   } else if (isCurrentMonth && !snapshotMatchesMonth) {
     status = "Prüfen";
     detail = "Aktueller Monat ohne Ist-Stand in diesem Monat. Werte können noch Prognose sein.";
@@ -50,6 +56,7 @@ export function buildMonthDataStatus(input) {
       ["Modus", modeLabel],
       ["Letzter Ist-Stand", latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner"],
       ["Quelle", sourceLabel],
+      ["Monatsanfang gesetzt", snapshotAnchorsThisMonth ? "Ja" : "Nein"],
       ["Kette Vormonat → Monat", chainOk ? "Passt" : "Auffällig"],
     ],
     status,

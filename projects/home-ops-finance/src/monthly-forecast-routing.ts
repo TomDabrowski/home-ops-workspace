@@ -23,6 +23,8 @@ export interface MonthlyForecastRoutingResult {
   anchorAppliesWithinMonth: boolean;
   projectionIncomeAvailableAmount: number;
   projectionExpenseAmount: number;
+  projectionSalaryAllocationToSafetyAmount: number;
+  projectionSalaryAllocationToInvestmentAmount: number;
   musicAllocationToSafetyAmount: number;
   musicAllocationToInvestmentAmount: number;
   safetyBucketCalculatedEndAmount?: number;
@@ -37,6 +39,12 @@ export interface MonthlyForecastRoutingResult {
   wealthAnchorApplied: boolean;
 }
 
+function snapshotCapturesBaseInvestment(snapshotDate?: string): boolean {
+  const datePart = String(snapshotDate ?? "").slice(8, 10);
+  const day = Number(datePart);
+  return Number.isFinite(day) && day >= 25;
+}
+
 export function buildMonthlyForecastRouting(
   input: MonthlyForecastRoutingInput,
 ): MonthlyForecastRoutingResult {
@@ -48,6 +56,14 @@ export function buildMonthlyForecastRouting(
   const projectionExpenseAmount = anchorAppliesWithinMonth
     ? roundCurrency(input.expenseAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedExpenseAmount);
+  const projectionSalaryAllocationToSafetyAmount =
+    anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate)
+      ? 0
+      : roundCurrency(input.salaryAllocationToSafetyAmount);
+  const projectionSalaryAllocationToInvestmentAmount =
+    anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate)
+      ? 0
+      : roundCurrency(input.salaryAllocationToInvestmentAmount);
   const currentSafetyAmount = anchorAppliesWithinMonth
     ? Number(input.explicitWealthAnchor?.safetyBucketAmount ?? 0)
     : Number(input.safetyBucketStartAmount ?? 0);
@@ -63,7 +79,7 @@ export function buildMonthlyForecastRouting(
   const safetyBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
         Number(input.safetyBucketStartAmount ?? 0) * (1 + input.safetyMonthlyReturn) +
-          input.salaryAllocationToSafetyAmount +
+          projectionSalaryAllocationToSafetyAmount +
           musicAllocationToSafetyAmount -
           projectionExpenseAmount,
       )
@@ -71,7 +87,7 @@ export function buildMonthlyForecastRouting(
   const investmentBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
         Number(input.investmentBucketStartAmount ?? 0) * (1 + input.investmentMonthlyReturn) +
-          input.salaryAllocationToInvestmentAmount +
+          projectionSalaryAllocationToInvestmentAmount +
           musicAllocationToInvestmentAmount,
       )
     : undefined;
@@ -86,7 +102,7 @@ export function buildMonthlyForecastRouting(
     anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
       ? roundCurrency(
           safetyBucketAnchorAmount +
-            input.salaryAllocationToSafetyAmount +
+            projectionSalaryAllocationToSafetyAmount +
             musicAllocationToSafetyAmount -
             projectionExpenseAmount,
         )
@@ -95,7 +111,7 @@ export function buildMonthlyForecastRouting(
     anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
       ? roundCurrency(
           investmentBucketAnchorAmount +
-            input.salaryAllocationToInvestmentAmount +
+            projectionSalaryAllocationToInvestmentAmount +
             musicAllocationToInvestmentAmount,
         )
       : undefined;
@@ -121,6 +137,8 @@ export function buildMonthlyForecastRouting(
     anchorAppliesWithinMonth,
     projectionIncomeAvailableAmount,
     projectionExpenseAmount,
+    projectionSalaryAllocationToSafetyAmount,
+    projectionSalaryAllocationToInvestmentAmount,
     musicAllocationToSafetyAmount,
     musicAllocationToInvestmentAmount,
     safetyBucketCalculatedEndAmount,

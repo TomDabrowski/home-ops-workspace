@@ -141,6 +141,7 @@ export function validateWealthSnapshotsPayload(payload: unknown): unknown[] {
       cashAccounts,
       cashAmount,
       investmentAmount: assertNumber(entry.investmentAmount, `wealth snapshot ${index}.investmentAmount`, { min: 0 }),
+      anchorMonthKey: entry.anchorMonthKey === undefined ? undefined : assertMonthKey(entry.anchorMonthKey, `wealth snapshot ${index}.anchorMonthKey`),
       notes: normalizeOptionalNotes(entry.notes, `wealth snapshot ${index}.notes`),
       isActive: assertOptionalBoolean(entry.isActive, `wealth snapshot ${index}.isActive`),
       updatedAt: normalizeOptionalTimestamp(entry.updatedAt, `wealth snapshot ${index}.updatedAt`),

@@ -27,6 +27,7 @@
   --bg-contrast: #0c0f14;
   --card: rgba(26, 30, 40, 0.78);
   --card-strong: rgba(24, 28, 38, 0.94);
+  --card-elevated: rgba(36, 41, 53, 0.96);
   --ink: #f3f5f9;
   --muted: #a6adbb;
   --line: rgba(255, 255, 255, 0.1);
@@ -596,10 +597,11 @@ th:first-child {
 .detail-value.has-tooltip::after {
   content: attr(data-tooltip);
   position: absolute;
-  left: 50%;
+  left: 0;
   bottom: calc(100% + 10px);
   z-index: 20;
-  width: min(24rem, calc(100vw - 64px));
+  width: min(18rem, calc(100vw - 96px));
+  max-width: min(18rem, calc(100vw - 96px));
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -610,15 +612,16 @@ th:first-child {
   font-weight: 500;
   line-height: 1.45;
   white-space: normal;
+  word-break: break-word;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 4px);
+  transform: translateY(4px);
   transition: opacity 140ms ease, transform 140ms ease;
 }
 .detail-value.has-tooltip::before {
   content: "";
   position: absolute;
-  left: 50%;
+  left: 18px;
   bottom: calc(100% + 4px);
   z-index: 21;
   border: 6px solid transparent;
@@ -627,6 +630,22 @@ th:first-child {
   pointer-events: none;
   transform: translate(-50%, 4px);
   transition: opacity 140ms ease, transform 140ms ease;
+}
+.month-main .grid.three > .subcard:nth-child(3) .detail-value.has-tooltip::after {
+  left: auto;
+  right: 0;
+}
+.month-main .grid.three > .subcard:nth-child(3) .detail-value.has-tooltip::before {
+  left: auto;
+  right: 18px;
+}
+.month-side .detail-value.has-tooltip::after {
+  left: auto;
+  right: 0;
+}
+.month-side .detail-value.has-tooltip::before {
+  left: auto;
+  right: 18px;
 }
 .detail-value.has-tooltip:hover::after,
 .detail-value.has-tooltip:hover::before,
@@ -794,6 +813,48 @@ th:first-child {
 }
 .month-main .grid.three > .subcard:nth-child(3) .subhead {
   color: var(--teal);
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(1) {
+  border-color: rgba(105, 168, 255, 0.24);
+  background:
+    linear-gradient(180deg, rgba(17, 31, 55, 0.96), rgba(12, 20, 34, 0.94)),
+    radial-gradient(circle at top left, rgba(105, 168, 255, 0.12), transparent 16rem);
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(2) {
+  border-color: rgba(255, 181, 84, 0.24);
+  background:
+    linear-gradient(180deg, rgba(48, 33, 12, 0.96), rgba(28, 21, 12, 0.94)),
+    radial-gradient(circle at top left, rgba(255, 181, 84, 0.1), transparent 16rem);
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(3) {
+  border-color: rgba(77, 214, 200, 0.24);
+  background:
+    linear-gradient(180deg, rgba(11, 40, 38, 0.96), rgba(10, 25, 24, 0.94)),
+    radial-gradient(circle at top left, rgba(77, 214, 200, 0.1), transparent 16rem);
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(1) .subhead {
+  color: #9fc7ff;
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(2) .subhead {
+  color: #ffc778;
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(3) .subhead {
+  color: #7be8dc;
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard .detail-list div {
+  background: var(--card-elevated);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+}
+:root[data-theme="dark"] .month-main .grid.three > .subcard .detail-value.has-tooltip {
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+}
+:root[data-theme="dark"] .detail-value.has-tooltip::after {
+  background: rgba(8, 10, 14, 0.97);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+:root[data-theme="dark"] .detail-value.has-tooltip::before {
+  border-top-color: rgba(8, 10, 14, 0.97);
 }
 .milestone-list,
 .retirement-summary {

@@ -76,7 +76,7 @@ export function renderRows(targetId, rows, mapper) {
 export function renderDetailEntries(entries, deps) {
   const { readDeveloperMode, readFormulaTooltipsEnabled, escapeHtml } = deps;
   const showFormula = readDeveloperMode();
-  const showTooltip = showFormula && readFormulaTooltipsEnabled();
+  const showTooltip = readFormulaTooltipsEnabled();
   return entries
     .map((entry) => {
       const label = Array.isArray(entry) ? entry[0] : entry.label;

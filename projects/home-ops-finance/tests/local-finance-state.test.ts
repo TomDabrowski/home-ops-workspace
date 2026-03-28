@@ -1,80 +1,350 @@
-// @ts-nocheck
 import test from "node:test";
 import assert from "node:assert/strict";
 
+// Shared browser/local-state modules intentionally stay in JS; runtime coverage matters here.
+// @ts-ignore
 import { createLocalFinanceStateTools } from "../app/shared/local-finance-state.js";
 
-test("baseline summary and profiles follow local investment overrides", () => {
+test("latest active wealth snapshot for a month wins when building local anchors", () => {
   const tools = createLocalFinanceStateTools({
-    monthFromDate: (date) => String(date).slice(0, 7),
-    incomeMonthKey: (entry) => String(entry.entryDate).slice(0, 7),
-    compareMonthKeys: (left, right) => left.localeCompare(right),
-    uniqueMonthKeys: (incomeEntries, expenseEntries) =>
-      [...new Set([...incomeEntries, ...expenseEntries].map((entry) => String(entry.entryDate).slice(0, 7)))].sort(),
-    assumptionNumber: (_draft, _key, fallback) => fallback,
-    assumptionString: (_draft, _key, fallback) => fallback,
-    roundCurrency: (value) => Math.round(value * 100) / 100,
-    wealthSnapshotCashAccounts: () => ({}),
-    wealthSnapshotCashTotalForEntry: () => 0,
-    readMonthlyExpenseOverrides: () => [],
-    readMonthlyMusicIncomeOverrides: () => [],
-    readWealthSnapshots: () => [],
-    readSalarySettings: () => [],
-    readBaselineOverrides: () => [
-      {
-        id: "override-invest",
-        label: "Investment",
-        amount: 1500,
-        effectiveFrom: "2026-03",
-        sourceLineItemId: "invest",
-        category: "savings",
-        isActive: true,
-      },
-    ],
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-03", "2026-04"];
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, _key: string, fallback: string) {
+      return fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "old",
+          snapshotDate: "2026-03-25T20:36",
+          cashAmount: 11024.39,
+          cashAccounts: { giro: 731.89, cash: 292.5, savings: 10000 },
+          investmentAmount: 9200,
+          isActive: true,
+        },
+        {
+          id: "new",
+          snapshotDate: "2026-03-27T08:57",
+          cashAmount: 11024.39,
+          cashAccounts: { giro: 731.89, cash: 292.5, savings: 10000 },
+          investmentAmount: 13537.56,
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
   });
 
-  const result = tools.applyLocalWorkflowState({
-    draftReport: {
-      totals: {},
-      topExpenseMonths: [],
-      topIncomeMonths: [],
-      baselineProfiles: [],
-      recentMonths: [],
-      latestDebtBalances: [],
-    },
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
     monthlyPlan: { rows: [] },
+    accounts: [],
     importDraft: {
-      workbookPath: "/tmp/example.xlsx",
-      incomeEntries: [{ id: "income-1", entryDate: "2026-03-01", amount: 0, reserveAmount: 0, availableAmount: 0, incomeStreamId: "salary" }],
-      expenseEntries: [{ id: "expense-1", entryDate: "2026-03-01", amount: 0 }],
-      debtSnapshots: [],
-      forecastWealthAnchors: [],
-      monthlyBaselines: [
+      workbookPath: "",
+      incomeEntries: [
         {
-          monthKey: "2026-03",
-          netSalaryAmount: 3000,
-          fixedExpensesAmount: 1000,
-          baselineVariableAmount: 200,
-          plannedSavingsAmount: 1050,
-          availableBeforeIrregulars: 750,
-          annualReserveAmount: 0,
+          id: "salary-april",
+          entryDate: "2026-04-01",
+          amount: 2800,
+          reserveAmount: 0,
+          availableAmount: 2800,
+          isPlanned: true,
         },
       ],
-      baselineLineItems: [
-        { id: "fixed", label: "Rent", amount: 1000, category: "fixed", effectiveFrom: "2026-03" },
-        { id: "variable", label: "Food", amount: 200, category: "variable", effectiveFrom: "2026-03" },
-        { id: "invest", label: "Investment", amount: 1050, category: "savings", effectiveFrom: "2026-03" },
-      ],
+      expenseEntries: [],
+      debtSnapshots: [],
+      forecastAssumptions: [],
       wealthBuckets: [
         { kind: "safety", currentAmount: 0, expectedAnnualReturn: 0 },
         { kind: "investment", currentAmount: 0, expectedAnnualReturn: 0 },
       ],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-03",
+          netSalaryAmount: 2800,
+          fixedExpensesAmount: 1000,
+          baselineVariableAmount: 500,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1000,
+          availableBeforeIrregulars: 300,
+        },
+        {
+          monthKey: "2026-04",
+          netSalaryAmount: 2800,
+          fixedExpensesAmount: 1000,
+          baselineVariableAmount: 500,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1000,
+          availableBeforeIrregulars: 300,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1000, category: "fixed", effectiveFrom: "2026-03" },
+        { id: "variable", label: "Var", amount: 500, category: "variable", effectiveFrom: "2026-03" },
+        { id: "save", label: "Save", amount: 1000, category: "savings", effectiveFrom: "2026-03" },
+      ],
+      forecastWealthAnchors: [],
     },
   });
 
-  assert.equal(result.monthlyPlan.rows[0].plannedSavingsAmount, 1500);
-  assert.equal(result.draftReport.baselineSummary.plannedSavingsAmount, 1500);
-  assert.equal(result.draftReport.baselineSummary.availableBeforeIrregulars, 300);
-  assert.equal(result.draftReport.baselineProfiles[0].plannedSavingsAmount, 1500);
-  assert.equal(result.draftReport.baselineProfiles[0].availableBeforeIrregulars, 300);
+  const marchAnchor = state.importDraft.forecastWealthAnchors.find((entry: { monthKey: string }) => entry.monthKey === "2026-03");
+  assert.ok(marchAnchor);
+  assert.equal(marchAnchor.snapshotDate, "2026-03-27T08:57");
+  assert.equal(marchAnchor.investmentBucketAmount, 13537.56);
+});
+
+test("month-start wealth anchors use the saved snapshot as the opening value for that month", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-03", "2026-04"];
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, _key: string, fallback: string) {
+      return fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "month-start",
+          snapshotDate: "2026-03-27T08:57",
+          anchorMonthKey: "2026-04",
+          cashAmount: 11024.39,
+          cashAccounts: { giro: 731.89, cash: 292.5, savings: 10000 },
+          investmentAmount: 13537.56,
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "salary-april",
+          entryDate: "2026-04-01",
+          amount: 2800,
+          reserveAmount: 0,
+          availableAmount: 2800,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [],
+      debtSnapshots: [],
+      forecastAssumptions: [],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 0, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 0, expectedAnnualReturn: 0 },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-03",
+          netSalaryAmount: 2800,
+          fixedExpensesAmount: 1000,
+          baselineVariableAmount: 500,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1000,
+          availableBeforeIrregulars: 300,
+        },
+        {
+          monthKey: "2026-04",
+          netSalaryAmount: 2800,
+          fixedExpensesAmount: 1000,
+          baselineVariableAmount: 500,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1000,
+          availableBeforeIrregulars: 300,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1000, category: "fixed", effectiveFrom: "2026-03" },
+        { id: "variable", label: "Var", amount: 500, category: "variable", effectiveFrom: "2026-03" },
+        { id: "save", label: "Save", amount: 1000, category: "savings", effectiveFrom: "2026-03" },
+      ],
+      forecastWealthAnchors: [],
+    },
+  });
+
+  const aprilRow = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-04");
+  assert.ok(aprilRow);
+  assert.equal(aprilRow.anchorMode, "month_start");
+  assert.equal(aprilRow.anchorAppliesAtMonthStart, true);
+  assert.equal(aprilRow.anchorAppliesWithinMonth, false);
+  assert.equal(aprilRow.safetyBucketStartAmount, 11024.39);
+  assert.equal(aprilRow.investmentBucketStartAmount, 13537.56);
+});
+
+test("in-month snapshots do not re-add the full monthly base investment on top of the snapshot", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-03"];
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, _key: string, fallback: string) {
+      return fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "march-in-month",
+          snapshotDate: "2026-03-27T22:32",
+          cashAmount: 10172,
+          cashAccounts: { giro: 100, cash: 72, savings: 10000 },
+          investmentAmount: 13258,
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "salary-march",
+          entryDate: "2026-03-01",
+          amount: 2706,
+          reserveAmount: 0,
+          availableAmount: 2706,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [],
+      debtSnapshots: [],
+      forecastAssumptions: [],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 0, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 0, expectedAnnualReturn: 0 },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-03",
+          netSalaryAmount: 2706,
+          fixedExpensesAmount: 1416.49,
+          baselineVariableAmount: 239.51,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1050,
+          availableBeforeIrregulars: 0,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1416.49, category: "fixed", effectiveFrom: "2026-03" },
+        { id: "variable", label: "Var", amount: 239.51, category: "variable", effectiveFrom: "2026-03" },
+        { id: "save", label: "Save", amount: 1050, category: "savings", effectiveFrom: "2026-03" },
+      ],
+      forecastWealthAnchors: [],
+    },
+  });
+
+  const marchRow = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-03");
+  assert.ok(marchRow);
+  assert.equal(marchRow.anchorAppliesWithinMonth, true);
+  assert.equal(marchRow.projectionSalaryAllocationToInvestmentAmount, 0);
+  assert.equal(marchRow.investmentBucketAnchorAmount, 13258);
+  assert.equal(marchRow.investmentBucketEndAmount, 13258);
 });

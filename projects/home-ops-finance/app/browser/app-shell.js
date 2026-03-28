@@ -116,10 +116,10 @@ export function createAppShellTools(config) {
 
     const tooltipButton = document.getElementById("formulaTooltipButton");
     if (tooltipButton) {
-      const tooltipEnabled = enabled && readFormulaTooltipsEnabled();
-      tooltipButton.hidden = !enabled;
-      tooltipButton.disabled = !enabled;
-      tooltipButton.textContent = tooltipEnabled ? "Erklaerungs-Tooltips an" : "Erklaerungs-Tooltips aus";
+      const tooltipEnabled = readFormulaTooltipsEnabled();
+      tooltipButton.hidden = false;
+      tooltipButton.disabled = false;
+      tooltipButton.textContent = tooltipEnabled ? "Rechen-Tooltips an" : "Rechen-Tooltips aus";
       tooltipButton.classList.toggle("is-active", tooltipEnabled);
     }
 

@@ -138,6 +138,15 @@ export function createLocalFinanceStateTools(deps) {
     return importDraft.forecastWealthAnchors?.find((anchor) => anchor.monthKey === monthKey);
   }
 
+  function wealthAnchorMode(anchor) {
+    return anchor?.anchorMode === "month_start" ? "month_start" : "in_month_snapshot";
+  }
+
+  function snapshotCapturesBaseInvestment(snapshotDate) {
+    const day = Number(String(snapshotDate ?? "").slice(8, 10));
+    return Number.isFinite(day) && day >= 25;
+  }
+
   function latestWealthAnchorOnOrBeforeMonth(importDraft, monthKey) {
     return [...(importDraft.forecastWealthAnchors ?? [])]
       .filter((anchor) => compareMonthKeys(anchor.monthKey, monthKey) <= 0)
@@ -465,17 +474,29 @@ export function createLocalFinanceStateTools(deps) {
       );
       const salaryAllocationToInvestmentAmount = roundCurrency(plannedSavingsAmount);
       const useForecastRouting = firstPlannedMonthKey ? compareMonthKeys(monthKey, firstPlannedMonthKey) >= 0 : false;
-      const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
-      const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
       const explicitWealthAnchor = wealthAnchorForMonth(importDraft, monthKey);
+      const explicitWealthAnchorMode = wealthAnchorMode(explicitWealthAnchor);
       const snapshotDate = explicitWealthAnchor?.snapshotDate;
-      const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
+      const anchorAppliesAtMonthStart = explicitWealthAnchorMode === "month_start";
+      const anchorAppliesWithinMonth = !anchorAppliesAtMonthStart && Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
+      const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
+      const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
+      const safetyBucketStartAmount = useForecastRouting
+        ? (anchorAppliesAtMonthStart ? safetyBucketAnchorAmount : safetyBucketEndAmount)
+        : undefined;
+      const investmentBucketStartAmount = useForecastRouting
+        ? (anchorAppliesAtMonthStart ? investmentBucketAnchorAmount : investmentBucketEndAmount)
+        : undefined;
       const incomeAvailableForProjection = anchorAppliesWithinMonth
         ? sumIncomeAvailableAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
         : importedIncomeAvailableAmount;
       const expenseAmountForProjection = anchorAppliesWithinMonth
         ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
         : importedExpenseAmount;
+      const projectionSalaryAllocationToSafetyAmount =
+        anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToSafetyAmount;
+      const projectionSalaryAllocationToInvestmentAmount =
+        anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToInvestmentAmount;
       const thresholdAccountExpenseAmount = musicThresholdAccountId
         ? roundCurrency(
             (importDraft.expenseEntries ?? [])
@@ -491,7 +512,7 @@ export function createLocalFinanceStateTools(deps) {
         ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
         : (safetyBucketStartAmount ?? 0);
       const currentMusicThresholdAccountAmount = musicThresholdAccountId
-        ? anchorAppliesWithinMonth
+        ? anchorAppliesWithinMonth || anchorAppliesAtMonthStart
           ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
@@ -505,7 +526,7 @@ export function createLocalFinanceStateTools(deps) {
       const safetyBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
-              salaryAllocationToSafetyAmount +
+              projectionSalaryAllocationToSafetyAmount +
               musicAllocationToSafetyAmount -
               expenseAmountForProjection,
           )
@@ -513,7 +534,7 @@ export function createLocalFinanceStateTools(deps) {
       const investmentBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             (investmentBucketStartAmount ?? 0) * (1 + investmentMonthlyReturn) +
-              salaryAllocationToInvestmentAmount +
+              projectionSalaryAllocationToInvestmentAmount +
               musicAllocationToInvestmentAmount,
           )
         : undefined;
@@ -521,13 +542,11 @@ export function createLocalFinanceStateTools(deps) {
         safetyBucketProjectedEndAmount !== undefined && investmentBucketProjectedEndAmount !== undefined
           ? roundCurrency(safetyBucketProjectedEndAmount + investmentBucketProjectedEndAmount)
           : undefined;
-      const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
-      const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
       const anchoredSafetyEndAmount =
         anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
           ? roundCurrency(
               safetyBucketAnchorAmount +
-                salaryAllocationToSafetyAmount +
+                projectionSalaryAllocationToSafetyAmount +
                 musicAllocationToSafetyAmount -
                 expenseAmountForProjection,
             )
@@ -536,7 +555,7 @@ export function createLocalFinanceStateTools(deps) {
         anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
           ? roundCurrency(
               investmentBucketAnchorAmount +
-                salaryAllocationToInvestmentAmount +
+                projectionSalaryAllocationToInvestmentAmount +
                 musicAllocationToInvestmentAmount,
             )
           : undefined;
@@ -546,11 +565,11 @@ export function createLocalFinanceStateTools(deps) {
           : explicitWealthAnchor?.totalWealthAmount;
       const safetyBucketResolvedEndAmount =
         anchoredSafetyEndAmount ??
-        safetyBucketAnchorAmount ??
+        (anchorAppliesAtMonthStart ? safetyBucketProjectedEndAmount : safetyBucketAnchorAmount) ??
         safetyBucketProjectedEndAmount;
       const investmentBucketResolvedEndAmount =
         anchoredInvestmentEndAmount ??
-        investmentBucketAnchorAmount ??
+        (anchorAppliesAtMonthStart ? investmentBucketProjectedEndAmount : investmentBucketAnchorAmount) ??
         investmentBucketProjectedEndAmount;
       const projectedWealthEndAmount =
         safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
@@ -599,7 +618,11 @@ export function createLocalFinanceStateTools(deps) {
         musicAllocationToInvestmentAmount,
         salaryAllocationToSafetyAmount,
         salaryAllocationToInvestmentAmount,
+        projectionSalaryAllocationToSafetyAmount,
+        projectionSalaryAllocationToInvestmentAmount,
         anchorAppliesWithinMonth,
+        anchorMode: explicitWealthAnchorMode,
+        anchorAppliesAtMonthStart,
         projectionIncomeAvailableAmount: incomeAvailableForProjection,
         projectionExpenseAmount: expenseAmountForProjection,
         safetyBucketStartAmount,
@@ -684,11 +707,19 @@ export function createLocalFinanceStateTools(deps) {
   }
 
   function buildLocalWealthSnapshotAnchors() {
-    return readWealthSnapshots()
-      .filter((entry) => entry.isActive !== false)
+    const latestByMonth = new Map();
+
+    for (const entry of readWealthSnapshots()
+      .filter((item) => item.isActive !== false)
+      .sort((left, right) => String(left.snapshotDate).localeCompare(String(right.snapshotDate)))) {
+      const anchorMonthKey = entry.anchorMonthKey ?? String(entry.snapshotDate).slice(0, 7);
+      latestByMonth.set(anchorMonthKey, entry);
+    }
+
+    return [...latestByMonth.values()]
       .sort((left, right) => String(left.snapshotDate).localeCompare(String(right.snapshotDate)))
       .map((entry) => ({
-        monthKey: String(entry.snapshotDate).slice(0, 7),
+        monthKey: entry.anchorMonthKey ?? String(entry.snapshotDate).slice(0, 7),
         safetyBucketAmount: wealthSnapshotCashTotalForEntry(entry),
         cashAccounts: wealthSnapshotCashAccounts(entry),
         investmentBucketAmount: Number(entry.investmentAmount ?? 0),
@@ -696,7 +727,9 @@ export function createLocalFinanceStateTools(deps) {
         sourceSheet: "manual_snapshot",
         sourceRowNumber: 0,
         isManualAnchor: true,
+        anchorMode: entry.anchorMonthKey ? "month_start" : "in_month_snapshot",
         snapshotDate: entry.snapshotDate,
+        anchorMonthKey: entry.anchorMonthKey,
         notes: entry.notes,
       }));
   }

@@ -347,6 +347,45 @@ function makeMoneyCell(value) {
   });
 }
 
+function monthStartCarryForwardFormula({ monthKey, previousRow, previousValue, latestSnapshot, latestSnapshotValue, explicitAnchorMode, explicitAnchorValue, explicitAnchorSnapshotDate, label }) {
+  if (explicitAnchorMode === "month_start" && typeof explicitAnchorValue === "number") {
+    const snapshotNote = explicitAnchorSnapshotDate
+      ? ` Grundlage ist dein gespeicherter Ist-Stand vom ${formatDisplayDate(explicitAnchorSnapshotDate)}.`
+      : "";
+    return `${label} startet in ${monthKey} mit deinem explizit gesetzten Monatsanfang: ${euro.format(explicitAnchorValue)}.${snapshotNote}`;
+  }
+
+  if (previousRow?.monthKey && typeof previousValue === "number") {
+    const snapshotNote = latestSnapshot && String(latestSnapshot.snapshotDate ?? "").slice(0, 7) === previousRow.monthKey
+      ? ` Darin steckt bereits der letzte Ist-Stand vom ${formatDisplayDate(latestSnapshot.snapshotDate)} mit ${euro.format(latestSnapshotValue ?? 0)}.`
+      : "";
+    return `${label} startet in ${monthKey} mit dem Monatsende aus ${previousRow.monthKey}: ${euro.format(previousValue)}.${snapshotNote}`;
+  }
+
+  if (latestSnapshot && typeof latestSnapshotValue === "number") {
+    return `${formatDisplayDate(latestSnapshot.snapshotDate)} ist der letzte bekannte Ist-Stand. ${label} startet deshalb mit ${euro.format(latestSnapshotValue)}.`;
+  }
+
+  return "";
+}
+
+function latestSnapshotEntryFormula({ monthKey, latestSnapshot, latestSnapshotCashAmount, latestSnapshotInvestmentAmount, explicitAnchorMode, explicitAnchorMonthKey }) {
+  if (!latestSnapshot) {
+    return "";
+  }
+
+  if (explicitAnchorMode === "month_start" && explicitAnchorMonthKey === monthKey) {
+    return `${formatDisplayDate(latestSnapshot.snapshotDate)} ist als Monatsanfang fuer ${monthKey} gespeichert: ${euro.format(latestSnapshotCashAmount ?? 0)} Cash und ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment. Darauf baut die ganze Monatsrechnung auf.`;
+  }
+
+  const snapshotMonthKey = String(latestSnapshot.snapshotDate ?? "").slice(0, 7);
+  if (snapshotMonthKey === monthKey) {
+    return `${formatDisplayDate(latestSnapshot.snapshotDate)} liegt innerhalb von ${monthKey}. Der Ist-Stand beträgt ${euro.format(latestSnapshotCashAmount ?? 0)} Cash und ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment und wirkt in diesem Monat ab dem Snapshot weiter.`;
+  }
+
+  return `${formatDisplayDate(latestSnapshot.snapshotDate)} ist der letzte bekannte Ist-Stand vor ${monthKey}: ${euro.format(latestSnapshotCashAmount ?? 0)} Cash und ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment.`;
+}
+
 const {
   simulateForecast,
   buildMusicWealthYearOverview,
@@ -620,6 +659,8 @@ function renderImportsWorkspace(importDraft, review) {
 function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const review = buildMonthReviewData(importDraft, monthlyPlan, monthKey);
   if (!review) return;
+  const monthIndex = monthlyPlan.rows.findIndex((row) => row.monthKey === monthKey);
+  const previousRow = monthIndex > 0 ? monthlyPlan.rows[monthIndex - 1] : null;
 
   const startSummary = document.getElementById("monthReviewStartSummary");
   const flowSummary = document.getElementById("monthReviewFlowSummary");
@@ -645,19 +686,49 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const projectionExpenseAmount = Number(review.row.projectionExpenseAmount ?? review.row.importedExpenseAmount ?? 0);
   const monthValueType = compareMonthKeys(monthKey, currentMonthKey()) > 0 ? "Prognostiziert" : "Berechnet";
   const latestSnapshot = latestActiveWealthSnapshotForMonth(monthKey);
+  const latestSnapshotCashAmount = latestSnapshot ? Number(latestSnapshot.cashAmount ?? review.row.safetyBucketAnchorAmount ?? 0) : null;
+  const latestSnapshotInvestmentAmount = latestSnapshot ? Number(latestSnapshot.investmentAmount ?? review.row.investmentBucketAnchorAmount ?? 0) : null;
   const wealthSourceLabel = workflowState.persistence.wealthSnapshots === "project" ? "Projektdatei" : "Browser-Fallback";
   renderMonthDataStatus(monthlyPlan, monthKey);
 
   if (startSummary) {
     const entries = [
-      [
-        "Cash zu Beginn des geöffneten Monats",
-        review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-",
-      ],
-      [
-        "Investment zu Beginn des geöffneten Monats",
-        review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-",
-      ],
+      {
+        label: "Cash zu Beginn des geöffneten Monats",
+        value: review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-",
+        formula:
+          review.row.safetyBucketStartAmount !== undefined
+            ? monthStartCarryForwardFormula({
+              monthKey,
+              previousRow,
+              previousValue: previousRow?.safetyBucketEndAmount,
+              latestSnapshot,
+              latestSnapshotValue: latestSnapshotCashAmount,
+              explicitAnchorMode: review.row.anchorMode,
+              explicitAnchorValue: review.row.anchorAppliesAtMonthStart ? review.row.safetyBucketAnchorAmount : undefined,
+              explicitAnchorSnapshotDate: review.row.anchorAppliesAtMonthStart ? latestSnapshot?.snapshotDate : undefined,
+              label: "Cash",
+            })
+            : "",
+      },
+      {
+        label: "Investment zu Beginn des geöffneten Monats",
+        value: review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-",
+        formula:
+          review.row.investmentBucketStartAmount !== undefined
+            ? monthStartCarryForwardFormula({
+              monthKey,
+              previousRow,
+              previousValue: previousRow?.investmentBucketEndAmount,
+              latestSnapshot,
+              latestSnapshotValue: latestSnapshotInvestmentAmount,
+              explicitAnchorMode: review.row.anchorMode,
+              explicitAnchorValue: review.row.anchorAppliesAtMonthStart ? review.row.investmentBucketAnchorAmount : undefined,
+              explicitAnchorSnapshotDate: review.row.anchorAppliesAtMonthStart ? latestSnapshot?.snapshotDate : undefined,
+              label: "Investment",
+            })
+            : "",
+      },
       {
         label: "Gesamtvermögen zu Beginn des geöffneten Monats",
         value:
@@ -670,7 +741,20 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
             : "",
       },
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
-      ["Letzter Ist-Stand", latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner"],
+      {
+        label: "Letzter Ist-Stand",
+        value: latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner",
+        formula: latestSnapshot
+          ? latestSnapshotEntryFormula({
+            monthKey,
+            latestSnapshot,
+            latestSnapshotCashAmount,
+            latestSnapshotInvestmentAmount,
+            explicitAnchorMode: review.row.anchorMode,
+            explicitAnchorMonthKey: monthKey,
+          })
+          : "",
+      },
       ["Quelle Ist-Stand", latestSnapshot ? wealthSourceLabel : "-"],
     ];
     startSummary.innerHTML = renderDetailEntries(entries);
@@ -701,7 +785,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           review.row.safetyBucketEndAmount !== undefined
             ? (
               review.row.anchorAppliesWithinMonth && review.row.safetyBucketAnchorAmount !== undefined
-                ? `${euro.format(safetyAnchorAmount)} Ist-Stand + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben nach dem Stichtag = ${euro.format(endSafetyAmount)}`
+                ? `${euro.format(safetyAnchorAmount)} Ist-Stand + ${euro.format(review.row.projectionSalaryAllocationToSafetyAmount ?? 0)} verbleibend aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben nach dem Stichtag = ${euro.format(endSafetyAmount)}`
+                : review.row.anchorAppliesAtMonthStart && review.row.safetyBucketAnchorAmount !== undefined
+                  ? `${euro.format(safetyAnchorAmount)} Monatsanfang + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben = ${euro.format(endSafetyAmount)}`
                 : `${euro.format(startSafetyAmount)} Start-Cash + ${euro.format(review.row.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt + ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer - ${euro.format(projectionExpenseAmount)} Ausgaben = ${euro.format(endSafetyAmount)}`
             )
             : "",
@@ -713,7 +799,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           review.row.investmentBucketEndAmount !== undefined
             ? (
               review.row.anchorAppliesWithinMonth && review.row.investmentBucketAnchorAmount !== undefined
-                ? `${euro.format(investmentAnchorAmount)} Ist-Stand + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
+                ? `${euro.format(investmentAnchorAmount)} Ist-Stand + ${euro.format(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)} verbleibendes Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
+                : review.row.anchorAppliesAtMonthStart && review.row.investmentBucketAnchorAmount !== undefined
+                  ? `${euro.format(investmentAnchorAmount)} Monatsanfang + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
                 : `${euro.format(startInvestmentAmount)} Start-Investment + ${euro.format(review.row.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment + ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer = ${euro.format(endInvestmentAmount)}`
             )
             : "",

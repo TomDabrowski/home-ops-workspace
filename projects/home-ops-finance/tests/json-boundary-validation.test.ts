@@ -64,6 +64,7 @@ test("accepts wealth snapshots in both old and newer saved shapes", () => {
       },
       cashAmount: 11024.39,
       investmentAmount: 9200,
+      anchorMonthKey: "2026-04",
       notes: "",
       isActive: true,
       updatedAt: "2026-03-25T19:36:25.000Z",
@@ -72,6 +73,8 @@ test("accepts wealth snapshots in both old and newer saved shapes", () => {
 
   assert.equal(Array.isArray(payload), true);
   assert.equal(payload.length, 2);
+  const snapshots = payload as Array<{ anchorMonthKey?: string }>;
+  assert.equal(snapshots[1].anchorMonthKey, "2026-04");
 });
 
 test("rejects wealth snapshots without usable cash data", () => {

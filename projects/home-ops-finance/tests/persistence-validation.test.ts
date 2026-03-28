@@ -7,6 +7,7 @@ import {
   parseHouseholdState,
   parseMappingState,
   parseMonthlyExpenseOverrideCollection,
+  parseWealthSnapshotCollection,
 } from "../src/persistence-validation.ts";
 
 test("parses persisted mapping state and keeps optional fields", () => {
@@ -63,6 +64,26 @@ test("parses household state with insurance metadata", () => {
   assert.equal(parsed.items.length, 1);
   assert.equal(parsed.insuranceCoverageAmount, 20000);
   assert.equal(parsed.insuranceCoverageLabel, "Stand 2026");
+});
+
+test("parses wealth snapshots and keeps month-start anchors", () => {
+  const parsed = parseWealthSnapshotCollection([
+    {
+      id: "wealth-1",
+      snapshotDate: "2026-03-27T22:32",
+      anchorMonthKey: "2026-04",
+      cashAccounts: {
+        giro: 100,
+        cash: 72,
+        savings: 10000,
+      },
+      cashAmount: 10172,
+      investmentAmount: 13258,
+      isActive: true,
+    },
+  ]);
+
+  assert.equal(parsed[0].anchorMonthKey, "2026-04");
 });
 
 test("rejects import drafts that are missing required top-level collections", () => {
