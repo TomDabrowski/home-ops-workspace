@@ -41,6 +41,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 
 - `docs/data-model.md`: first draft of the core entities
 - `docs/architecture-guidelines.md`: target architecture for keeping the project business-system-first instead of frontend-first
+- `docs/deployment-pi.md`: recommended first deployment path for a central Pi-hosted setup
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
 - `docs/import-mapping.md`: sheet-to-table migration plan
 - `data/sample-finance.json`: starter shape for real data later
@@ -65,6 +66,7 @@ npm run plan:months -- data/import-draft.json
 npm run plan:reviewed
 npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/dashboard.html
 npm run serve:app
+npm run serve:app:server
 ```
 
 Start with `npm install`, then `npm run typecheck` and `npm test`.
@@ -116,11 +118,23 @@ The current monthly engine also:
 
 Run `npm run serve:app` and open `http://localhost:4310`.
 
+For a central Pi/NAS-style deployment, use `npm run serve:app:server`.
+
+Relevant runtime environment variables:
+
+- `HOME_OPS_FINANCE_DATA_DIR`: external directory for private finance JSON data
+- `HOME_OPS_FINANCE_WORKBOOK_PATH`: external workbook path
+- `HOME_OPS_FINANCE_HOST`: bind host for the app server, for example `0.0.0.0`
+- `PORT`: server port, defaults to `4310`
+- `HOME_OPS_FINANCE_SERVER_MODE=1`: disables the local auto-shutdown behavior for a long-running server
+- `HOME_OPS_FINANCE_PUBLIC_BASE_URL`: optional display URL for logs and runtime diagnostics
+
 The local app shell currently serves:
 
 - `/`: browser entry point
 - `/data/*`: generated draft and monthly plan JSON from the active private data directory
 - `/dist/*`: generated static dashboard output
+- `/api/runtime-info`: current runtime host/data-path/server-mode information
 
 The browser review currently supports:
 
@@ -141,6 +155,21 @@ The current local app also keeps private finance artifacts outside the repositor
 - reviewed drafts and month plans stay in the configured external `dataDir`
 - household inventory persistence also lives in that private external data directory
 - documentation and preview assets inside the repo remain sanitized and example-only
+
+## Central Hosting Direction
+
+For a private “same app everywhere” setup, the recommended path is:
+
+1. keep the app logic inside this repo
+2. point `HOME_OPS_FINANCE_DATA_DIR` at a central private data directory
+3. run `npm run serve:app:server` on a Pi or similar host
+4. reach it through a private network layer such as Tailscale instead of exposing it publicly first
+
+This keeps the finance logic unchanged while making runtime and storage deployment-specific.
+
+A `systemd` starter template is available at:
+
+- `deploy/home-ops-finance.service.example`
 
 ## Next Steps
 

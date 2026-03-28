@@ -212,6 +212,7 @@ This section tracks architecture-relevant changes that are already in place, so 
 
 - Music month ownership now supports a separate `monthKey` in addition to the real `entryDate`.
 - Wealth snapshots now support `snapshotDate` with date and time, so same-day ordering is more reliable.
+- Wealth snapshots now also support an optional explicit month-start owner, so a saved snapshot can act as “the start of April” instead of being inferred only from calendar placement.
 - The reviewed-state flow already persists music overrides, wealth snapshots, and allocation-action state through project JSON files instead of relying only on browser storage.
 - Server-side boundary validation now protects:
   - `reconciliation-state.json`
@@ -231,6 +232,7 @@ Why this matters:
 - planning month and real cash timing are no longer forced into the same field
 - snapshot-based routing can reason more safely about end-of-day or same-day updates
 - workflow state is more portable across devices
+- month-start intent is no longer forced to hide inside a generic in-month snapshot
 
 ### Pure Logic Extractions Already Done
 
@@ -250,6 +252,7 @@ Why this matters:
 - Month guidance now has explicit completion state for salary and music actions.
 - Completed actions are persisted and rendered as done instead of staying visually open forever.
 - Guidance can now explain why money goes to the threshold account and can keep a planned month visible even when the actual music payment happened before month start.
+- Wealth snapshots can now be marked explicitly as the month start for a chosen month, and the month review surfaces expose whether a month-start anchor is active.
 - The wealth-snapshot workflow and monthly music-income workflow now live in `app/ui/workflow-planners.js` instead of being embedded directly inside `app/app.js`.
 - The monthly-expense workflow now also lives in `app/ui/workflow-planners.js`.
 - The month review UI surfaces now live in `app/ui/month-review.js` instead of being embedded directly inside `app/app.js`.
@@ -286,6 +289,7 @@ Why this matters:
 - browser app-state access and refresh plumbing are no longer hidden in the main app shell
 - browser event binding and bootstrap wiring are no longer hidden in the main app shell
 - startup and idle-shutdown behavior are now more tolerant of slow browser attachment, so the local app server does not disappear too aggressively during launch
+- runtime hosting concerns are starting to separate from the finance logic: host, port, data path, and persistent-server mode can now be configured without changing the finance modules
 - retirement planner localStorage behavior is no longer mixed into the app shell
 - month-scoped review data shaping is no longer embedded only inside the app shell
 - browser orchestration concerns are no longer mixed directly into the main app shell
@@ -330,6 +334,8 @@ These are known temporary states, not desired end-state architecture.
 - Browser-side persistence and server persistence already share concepts, but they do not yet have strong schema validation at the boundary.
 - Wealth snapshot form defaults were recently simplified back toward “latest real snapshot first”, but the planner still mixes workflow concerns and financial defaults in one UI surface.
 - Validation is now in place for the persisted planner, workflow, and review JSON endpoints that the local app currently writes.
+- The app server now has a cleaner deployment boundary: runtime host/port/persistent mode are configuration, not finance logic.
+- Pi/NAS deployment guidance now lives in docs and deployment templates instead of being implied through ad-hoc local scripts only.
 
 ## Recommended Next 3 Refactor Steps
 

@@ -15,7 +15,8 @@
     "plan:months": "node --experimental-strip-types src/monthly-engine.ts",
     "plan:reviewed": "node --experimental-strip-types src/monthly-engine.ts --reviewed",
     "build:dashboard": "node --experimental-strip-types src/build-dashboard.ts",
-    "serve:app": "node --experimental-strip-types src/serve-app.ts"
+    "serve:app": "node --experimental-strip-types src/serve-app.ts",
+    "serve:app:server": "HOME_OPS_FINANCE_SERVER_MODE=1 HOME_OPS_FINANCE_HOST=0.0.0.0 node --experimental-strip-types src/serve-app.ts"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",

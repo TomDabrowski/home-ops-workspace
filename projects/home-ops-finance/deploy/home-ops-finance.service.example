@@ -1,0 +1,20 @@
+[Unit]
+Description=Home Ops Finance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/finance/projects/home-ops-finance
+Environment=HOME_OPS_FINANCE_DATA_DIR=/srv/home-ops-finance/data
+Environment=HOME_OPS_FINANCE_HOST=0.0.0.0
+Environment=HOME_OPS_FINANCE_SERVER_MODE=1
+Environment=PORT=4310
+ExecStart=/usr/bin/npm run serve:app
+Restart=always
+RestartSec=5
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target

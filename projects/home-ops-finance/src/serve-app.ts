@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
+import { readServeAppRuntimeConfig } from "./server-runtime-config.ts";
 import {
   ValidationError,
   parseBaselineOverrideCollection,
@@ -24,7 +25,11 @@ const srcDir = join(root, "src");
 ensureFinanceDataDir();
 const dataDir = financeDataDir();
 const distDir = join(root, "dist");
-const port = Number(process.env.PORT ?? 4310);
+const runtimeConfig = readServeAppRuntimeConfig();
+const port = runtimeConfig.port;
+const bindHost = runtimeConfig.bindHost;
+const serverDisplayUrl = runtimeConfig.displayUrl;
+const persistentServer = runtimeConfig.persistentServer;
 const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
@@ -227,6 +232,9 @@ function cancelIdleShutdown(reason: string): void {
 }
 
 function scheduleInitialStartupShutdown(): void {
+  if (persistentServer) {
+    return;
+  }
   if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0 || firstClientSessionSeen) {
     return;
   }
@@ -263,6 +271,9 @@ function performShutdown(reason: string): void {
 }
 
 function scheduleIdleShutdown(reason: string): void {
+  if (persistentServer) {
+    return;
+  }
   removeStaleClientSessions(`${reason} (stale sweep)`);
 
   if (shutdownRequested || idleShutdownTimer || clientSessionCount() > 0) {
@@ -421,6 +432,17 @@ const server = createServer(async (req, res) => {
       });
       return sendJson(res, 500, { ok: false, error: "client_session_failed" });
     }
+  }
+
+  if (url.pathname === "/api/runtime-info" && req.method === "GET") {
+    return sendJson(res, 200, {
+      bindHost,
+      port,
+      displayUrl: serverDisplayUrl,
+      persistentServer,
+      dataDir,
+      dataMode: dataDir === join(root, "data") ? "repo-default" : "external",
+    });
   }
 
   if (url.pathname === "/api/reconciliation-state") {
@@ -606,8 +628,13 @@ const server = createServer(async (req, res) => {
   res.end("Not found");
 });
 
-server.listen(port, () => {
-  appendActivityLog("server gestartet", { url: `http://localhost:${port}` });
-  console.log(`Home Ops Finance app available at http://localhost:${port}`);
+server.listen(port, bindHost, () => {
+  appendActivityLog("server gestartet", {
+    url: serverDisplayUrl,
+    bind_host: bindHost,
+    modus: persistentServer ? "persistent" : "local-auto-shutdown",
+    datenpfad: dataDir,
+  });
+  console.log(`Home Ops Finance app available at ${serverDisplayUrl}`);
   scheduleInitialStartupShutdown();
 });
