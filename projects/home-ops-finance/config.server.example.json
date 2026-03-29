@@ -1,0 +1,4 @@
+{
+  "dataDir": "/srv/home-ops-finance/data",
+  "workbookPath": "/srv/home-ops-finance/private/finance-workbook.xlsx"
+}

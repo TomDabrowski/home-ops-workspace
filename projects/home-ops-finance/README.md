@@ -42,10 +42,12 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 - `docs/data-model.md`: first draft of the core entities
 - `docs/architecture-guidelines.md`: target architecture for keeping the project business-system-first instead of frontend-first
 - `docs/deployment-pi.md`: recommended first deployment path for a central Pi-hosted setup
+- `deploy/docker-compose.synology.yml`: Synology-oriented container starter for the app server
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
 - `docs/import-mapping.md`: sheet-to-table migration plan
 - `data/sample-finance.json`: starter shape for real data later
 - `config.local.example.json`: local-only example for private workbook/data paths outside the repo
+- `config.server.example.json`: example paths for a Pi or similar always-on host
 - `src/workbook-importer.ts`: first workbook-to-draft importer scaffold
 - `src/types.ts`: target import and domain types
 - `TODO.md`: short-term build sequence
@@ -170,6 +172,14 @@ This keeps the finance logic unchanged while making runtime and storage deployme
 A `systemd` starter template is available at:
 
 - `deploy/home-ops-finance.service.example`
+
+A simple runtime check helper is available at:
+
+- `scripts/check-server-runtime.sh`
+
+A Docker image definition is available at:
+
+- `Dockerfile`
 
 ## Next Steps
 

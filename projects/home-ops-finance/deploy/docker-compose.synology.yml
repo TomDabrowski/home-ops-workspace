@@ -1,0 +1,16 @@
+services:
+  home-ops-finance:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: home-ops-finance
+    restart: unless-stopped
+    environment:
+      HOME_OPS_FINANCE_HOST: 0.0.0.0
+      HOME_OPS_FINANCE_SERVER_MODE: "1"
+      HOME_OPS_FINANCE_DATA_DIR: /data
+      PORT: "4310"
+    ports:
+      - "4310:4310"
+    volumes:
+      - /volume1/docker/home-ops-finance/data:/data

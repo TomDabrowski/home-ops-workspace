@@ -71,6 +71,7 @@ Avoid exposing the service directly to the public internet as the first deployme
 - `GET /api/runtime-info`
 - app page loads under the chosen host and port
 - activity log updates in the configured data directory
+- `scripts/check-server-runtime.sh`
 
 ## systemd Direction
 
@@ -84,3 +85,9 @@ This keeps:
 - server mode
 
 outside the finance logic itself.
+
+## Example Files
+
+- `config.server.example.json`
+- `deploy/home-ops-finance.service.example`
+- `scripts/check-server-runtime.sh`

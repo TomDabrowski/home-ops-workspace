@@ -336,6 +336,7 @@ These are known temporary states, not desired end-state architecture.
 - Validation is now in place for the persisted planner, workflow, and review JSON endpoints that the local app currently writes.
 - The app server now has a cleaner deployment boundary: runtime host/port/persistent mode are configuration, not finance logic.
 - Pi/NAS deployment guidance now lives in docs and deployment templates instead of being implied through ad-hoc local scripts only.
+- Synology container deployment now has its own deployment artifacts, again without introducing hosting-specific branches into the finance rules.
 
 ## Recommended Next 3 Refactor Steps
 
