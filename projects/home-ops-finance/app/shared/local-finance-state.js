@@ -159,6 +159,44 @@ export function createLocalFinanceStateTools(deps) {
       .at(-1);
   }
 
+  function nextMonthKey(dateLike) {
+    const raw = String(dateLike ?? "");
+    const year = Number(raw.slice(0, 4));
+    const month = Number(raw.slice(5, 7));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+      return "";
+    }
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    return `${String(nextYear).padStart(4, "0")}-${String(nextMonth).padStart(2, "0")}`;
+  }
+
+  function inferMonthStartAnchorMonth(entry, importDraft) {
+    if (entry.anchorMonthKey) {
+      return entry.anchorMonthKey;
+    }
+
+    const snapshotDate = String(entry.snapshotDate ?? "");
+    const inferredMonthKey = nextMonthKey(snapshotDate);
+    if (!inferredMonthKey) {
+      return "";
+    }
+    const inferredMonthStart = `${inferredMonthKey}-01`;
+
+    const hasPreMonthIncome = (importDraft.incomeEntries ?? []).some((incomeEntry) =>
+      incomeMonthKey(incomeEntry) === inferredMonthKey &&
+      String(incomeEntry.entryDate ?? "") < inferredMonthStart &&
+      String(incomeEntry.entryDate ?? "") <= snapshotDate,
+    );
+    const hasPreMonthExpense = (importDraft.expenseEntries ?? []).some((expenseEntry) =>
+      monthFromDate(expenseEntry.entryDate) === inferredMonthKey &&
+      String(expenseEntry.entryDate ?? "") < inferredMonthStart &&
+      String(expenseEntry.entryDate ?? "") <= snapshotDate,
+    );
+
+    return hasPreMonthIncome || hasPreMonthExpense ? inferredMonthKey : "";
+  }
+
   function allocationInstructionKey(monthKey, instruction) {
     return [
       monthKey,
@@ -714,20 +752,25 @@ export function createLocalFinanceStateTools(deps) {
       }));
   }
 
-  function buildLocalWealthSnapshotAnchors() {
+  function buildLocalWealthSnapshotAnchors(importDraft) {
     const latestByMonth = new Map();
 
     for (const entry of readWealthSnapshots()
       .filter((item) => item.isActive !== false)
       .sort((left, right) => String(left.snapshotDate).localeCompare(String(right.snapshotDate)))) {
-      const anchorMonthKey = entry.anchorMonthKey ?? String(entry.snapshotDate).slice(0, 7);
-      latestByMonth.set(anchorMonthKey, entry);
+      const snapshotMonthKey = String(entry.snapshotDate).slice(0, 7);
+      latestByMonth.set(snapshotMonthKey, { entry, monthKey: snapshotMonthKey, anchorMonthKey: entry.anchorMonthKey ?? "" });
+
+      const inferredMonthStartKey = inferMonthStartAnchorMonth(entry, importDraft);
+      if (inferredMonthStartKey) {
+        latestByMonth.set(inferredMonthStartKey, { entry, monthKey: inferredMonthStartKey, anchorMonthKey: inferredMonthStartKey });
+      }
     }
 
     return [...latestByMonth.values()]
-      .sort((left, right) => String(left.snapshotDate).localeCompare(String(right.snapshotDate)))
-      .map((entry) => ({
-        monthKey: entry.anchorMonthKey ?? String(entry.snapshotDate).slice(0, 7),
+      .sort((left, right) => String(left.entry.snapshotDate).localeCompare(String(right.entry.snapshotDate)))
+      .map(({ entry, monthKey, anchorMonthKey }) => ({
+        monthKey,
         safetyBucketAmount: wealthSnapshotCashTotalForEntry(entry),
         cashAccounts: wealthSnapshotCashAccounts(entry),
         investmentBucketAmount: Number(entry.investmentAmount ?? 0),
@@ -735,9 +778,9 @@ export function createLocalFinanceStateTools(deps) {
         sourceSheet: "manual_snapshot",
         sourceRowNumber: 0,
         isManualAnchor: true,
-        anchorMode: entry.anchorMonthKey ? "month_start" : "in_month_snapshot",
+        anchorMode: anchorMonthKey ? "month_start" : "in_month_snapshot",
         snapshotDate: entry.snapshotDate,
-        anchorMonthKey: entry.anchorMonthKey,
+        anchorMonthKey: anchorMonthKey || undefined,
         notes: entry.notes,
       }));
   }
@@ -838,7 +881,7 @@ export function createLocalFinanceStateTools(deps) {
       };
     }
 
-    const wealthSnapshotAnchors = buildLocalWealthSnapshotAnchors();
+    const wealthSnapshotAnchors = buildLocalWealthSnapshotAnchors(nextDraft);
     if (wealthSnapshotAnchors.length > 0) {
       const overrideMonths = new Set(wealthSnapshotAnchors.map((entry) => entry.monthKey));
       nextDraft = {
