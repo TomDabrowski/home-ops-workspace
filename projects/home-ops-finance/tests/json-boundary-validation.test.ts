@@ -10,6 +10,7 @@ import {
   validateImportMappingsPayload,
   validateMonthlyExpenseOverridesPayload,
   validateMonthlyMusicIncomeOverridesPayload,
+  validateMusicForecastSettingsPayload,
   validateMusicTaxSettingsPayload,
   validateReconciliationStatePayload,
   validateSalarySettingsPayload,
@@ -41,6 +42,23 @@ test("rejects malformed monthly music income overrides", () => {
     () => validateMonthlyMusicIncomeOverridesPayload([{ id: "", monthKey: "2026-04", entryDate: "bad", amount: -1 }]),
     ValidationError,
   );
+});
+
+test("accepts recurring music forecast settings with gültig-ab semantics", () => {
+  const payload = validateMusicForecastSettingsPayload([
+    {
+      id: "music-forecast-1",
+      grossAmount: 1300,
+      effectiveFrom: "2026-09",
+      accountId: "giro",
+      isActive: true,
+      notes: "",
+      updatedAt: "2026-03-29T21:10:00.000Z",
+    },
+  ]);
+
+  assert.equal(Array.isArray(payload), true);
+  assert.equal(payload.length, 1);
 });
 
 test("accepts wealth snapshots in both old and newer saved shapes", () => {

@@ -68,6 +68,16 @@ export interface MonthlyMusicIncomeOverrideState {
   updatedAt?: string;
 }
 
+export interface MusicForecastSettingState {
+  id?: string;
+  grossAmount: number;
+  effectiveFrom: string;
+  accountId?: string;
+  notes?: string;
+  updatedAt?: string;
+  isActive?: boolean;
+}
+
 export interface MusicTaxSettingState {
   quarterlyPrepaymentAmount: number;
   effectiveFrom: string;
@@ -132,6 +142,7 @@ export type ReconciliationState = Record<string, ReconciliationMonthState>;
 export type BaselineOverrideCollection = BaselineOverrideState[];
 export type MonthlyExpenseOverrideCollection = MonthlyExpenseOverrideState[];
 export type MonthlyMusicIncomeOverrideCollection = MonthlyMusicIncomeOverrideState[];
+export type MusicForecastSettingCollection = MusicForecastSettingState[];
 export type MusicTaxSetting = MusicTaxSettingState | null;
 export type ForecastSettings = ForecastSettingsState | null;
 export type SalarySettingCollection = SalarySettingState[];
@@ -317,6 +328,21 @@ export function parseMonthlyMusicIncomeOverrideCollection(value: unknown): Month
       isActive: asOptionalBoolean(item.isActive, `monthlyMusicIncomeOverrides[${index}].isActive`),
       notes: asOptionalString(item.notes, `monthlyMusicIncomeOverrides[${index}].notes`),
       updatedAt: asOptionalString(item.updatedAt, `monthlyMusicIncomeOverrides[${index}].updatedAt`),
+    };
+  });
+}
+
+export function parseMusicForecastSettingCollection(value: unknown): MusicForecastSettingCollection {
+  return asArray(value, "musicForecastSettings").map((entry, index) => {
+    const item = asObject(entry, `musicForecastSettings[${index}]`);
+    return {
+      id: asOptionalString(item.id, `musicForecastSettings[${index}].id`),
+      grossAmount: asNumber(item.grossAmount, `musicForecastSettings[${index}].grossAmount`),
+      effectiveFrom: asString(item.effectiveFrom, `musicForecastSettings[${index}].effectiveFrom`),
+      accountId: asOptionalString(item.accountId, `musicForecastSettings[${index}].accountId`),
+      notes: asOptionalString(item.notes, `musicForecastSettings[${index}].notes`),
+      updatedAt: asOptionalString(item.updatedAt, `musicForecastSettings[${index}].updatedAt`),
+      isActive: asOptionalBoolean(item.isActive, `musicForecastSettings[${index}].isActive`),
     };
   });
 }

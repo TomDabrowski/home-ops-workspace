@@ -14,6 +14,7 @@ export function createLocalFinanceStateTools(deps) {
     wealthSnapshotCashTotalForEntry,
     readMonthlyExpenseOverrides,
     readMonthlyMusicIncomeOverrides,
+    readMusicForecastSettings,
     readWealthSnapshots,
     readSalarySettings,
     readBaselineOverrides,
@@ -733,8 +734,49 @@ export function createLocalFinanceStateTools(deps) {
       }));
   }
 
-  function buildLocalMusicIncomeOverrides() {
-    return readMonthlyMusicIncomeOverrides()
+  function buildLocalMusicIncomeOverrides(importDraft) {
+    const musicTemplates = [...(importDraft?.incomeEntries ?? [])]
+      .filter((entry) => entry.incomeStreamId === "music-income")
+      .sort((left, right) => compareMonthKeys(incomeMonthKey(left), incomeMonthKey(right)));
+    const musicForecastSettings = [...(readMusicForecastSettings?.() ?? [])]
+      .filter((entry) => entry.isActive !== false)
+      .sort((left, right) => compareMonthKeys(left.effectiveFrom, right.effectiveFrom));
+    const forecastMonths = [...new Set([
+      ...(importDraft?.monthlyBaselines ?? []).map((entry) => entry.monthKey),
+      ...musicTemplates.filter((entry) => entry.isPlanned).map((entry) => incomeMonthKey(entry)),
+      ...musicForecastSettings.map((entry) => entry.effectiveFrom),
+    ])].sort(compareMonthKeys);
+
+    const recurringForecastEntries = forecastMonths
+      .map((monthKey) => {
+        const selected = [...musicForecastSettings].reverse().find((entry) => compareMonthKeys(entry.effectiveFrom, monthKey) <= 0);
+        if (!selected) {
+          return null;
+        }
+        const template = musicTemplates.find((entry) => incomeMonthKey(entry) === monthKey)
+          ?? [...musicTemplates].reverse().find((entry) => compareMonthKeys(incomeMonthKey(entry), monthKey) <= 0)
+          ?? null;
+        const grossAmount = Number(selected.grossAmount ?? 0);
+        const reserveRate = Number(template?.amount ?? 0) > 0 ? Number(template?.reserveAmount ?? 0) / Number(template?.amount ?? 0) : 0;
+        const reserveAmount = roundCurrency(grossAmount * reserveRate);
+        return {
+          id: selected.id ? `music-forecast-${selected.id}-${monthKey}` : `music-forecast-${monthKey}`,
+          monthKey,
+          incomeStreamId: "music-income",
+          accountId: selected.accountId ?? template?.accountId ?? "giro",
+          entryDate: `${monthKey}-01T12:00`,
+          amount: grossAmount,
+          reserveAmount,
+          availableAmount: roundCurrency(grossAmount - reserveAmount),
+          kind: "music",
+          isRecurring: false,
+          isPlanned: monthKey >= "2026-01",
+          notes: selected.notes,
+        };
+      })
+      .filter(Boolean);
+
+    const explicitOverrides = readMonthlyMusicIncomeOverrides()
       .filter((entry) => entry.isActive !== false)
       .map((entry) => ({
         id: entry.id,
@@ -750,6 +792,11 @@ export function createLocalFinanceStateTools(deps) {
         isPlanned: entry.monthKey >= "2026-01",
         notes: entry.notes,
       }));
+    const explicitMonths = new Set(explicitOverrides.map((entry) => entry.monthKey));
+    return [
+      ...recurringForecastEntries.filter((entry) => !explicitMonths.has(entry.monthKey)),
+      ...explicitOverrides,
+    ];
   }
 
   function buildLocalWealthSnapshotAnchors(importDraft) {
@@ -867,7 +914,7 @@ export function createLocalFinanceStateTools(deps) {
       };
     }
 
-    const musicIncomeOverrides = buildLocalMusicIncomeOverrides();
+    const musicIncomeOverrides = buildLocalMusicIncomeOverrides(nextDraft);
     if (musicIncomeOverrides.length > 0) {
       const overrideMonths = new Set(musicIncomeOverrides.map((entry) => incomeMonthKey(entry)));
       nextDraft = {

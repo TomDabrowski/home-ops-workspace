@@ -444,3 +444,162 @@ export function renderMusicTaxPlanner(importDraft, deps) {
     });
   };
 }
+
+export function renderMusicForecastPlanner(importDraft, deps) {
+  const {
+    readMusicForecastSettings,
+    currentSelectedMonthKey,
+    reviewFocusMonthKey,
+    euro,
+    formatDisplayDate,
+    formatHistoryTimestamp,
+    confirmAction,
+    saveMusicForecastSettings,
+    refreshFinanceView,
+    statusDetailForMode,
+  } = deps;
+
+  const amountField = document.getElementById("musicForecastAmount");
+  const effectiveFromField = document.getElementById("musicForecastEffectiveFrom");
+  const notesField = document.getElementById("musicForecastNotes");
+  const metaTarget = document.getElementById("musicForecastMeta");
+  const listTarget = document.getElementById("musicForecastList");
+  const saveButton = document.getElementById("saveMusicForecastButton");
+
+  if (!amountField || !effectiveFromField || !notesField || !metaTarget || !listTarget || !saveButton) {
+    return;
+  }
+
+  const settings = [...readMusicForecastSettings()].sort((left, right) =>
+    (left.effectiveFrom ?? "").localeCompare(right.effectiveFrom ?? ""),
+  );
+  const suggestedMonth = currentSelectedMonthKey() ?? reviewFocusMonthKey;
+
+  const musicForecastNote = bindAutoNote(
+    notesField,
+    () => {
+      const amount = Number(amountField.value);
+      const effectiveFrom = effectiveFromField.value || suggestedMonth;
+      if (Number.isFinite(amount) && amount >= 0) {
+        return `Musik-Forecast ab ${effectiveFrom}: ${euro.format(amount)} brutto pro Monat.`;
+      }
+      return `Musik-Forecast ab ${effectiveFrom}.`;
+    },
+    [amountField, effectiveFromField],
+  );
+
+  function resetForm() {
+    amountField.value = "";
+    effectiveFromField.value = suggestedMonth;
+    saveButton.dataset.editingId = "";
+    saveButton.textContent = "Musik-Forecast speichern";
+    musicForecastNote.refresh(true);
+  }
+
+  if (!(saveButton.dataset.editingId ?? "")) {
+    effectiveFromField.value = suggestedMonth;
+    musicForecastNote.refresh(true);
+  }
+
+  metaTarget.textContent = settings.length > 0
+    ? `${settings.length} Musik-Forecast-Stand/-Stände gespeichert. Neuere "gültig ab"-Einträge überschreiben spätere Monate.`
+    : "Noch kein fortlaufender Musik-Forecast gespeichert.";
+
+  listTarget.innerHTML = settings.length > 0
+    ? settings
+        .map((entry) => `
+          <div class="mapping-card">
+            <div class="mapping-card-head">
+              <div>
+                <strong>${euro.format(entry.grossAmount)} brutto</strong>
+                <p>Gültig ab ${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
+              </div>
+              <div class="filter-group">
+                <button class="pill" type="button" data-music-forecast-edit="${entry.id}">Bearbeiten</button>
+                <button class="pill" type="button" data-music-forecast-toggle="${entry.id}">
+                  ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
+                </button>
+              </div>
+            </div>
+            <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
+            <p class="section-copy">Zuletzt geändert: ${entry.updatedAt ? formatHistoryTimestamp(entry.updatedAt) : "unbekannt"}</p>
+          </div>
+        `)
+        .join("")
+    : `<p class="empty-state">Noch kein fortlaufender Musik-Forecast gespeichert.</p>`;
+
+  for (const button of listTarget.querySelectorAll("[data-music-forecast-edit]")) {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-music-forecast-edit");
+      const entry = readMusicForecastSettings().find((item) => item.id === id);
+      if (!entry) return;
+      saveButton.dataset.editingId = entry.id ?? "";
+      amountField.value = String(entry.grossAmount ?? "");
+      effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
+      musicForecastNote.setManualValue(entry.notes ?? "");
+      saveButton.textContent = "Musik-Forecast aktualisieren";
+      metaTarget.textContent = `Bearbeite gerade: ${euro.format(entry.grossAmount)} brutto ab ${entry.effectiveFrom}`;
+    });
+  }
+
+  for (const button of listTarget.querySelectorAll("[data-music-forecast-toggle]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-music-forecast-toggle");
+      if (!id) return;
+      const entry = readMusicForecastSettings().find((item) => item.id === id);
+      if (!entry || !confirmAction(`Musik-Forecast ${euro.format(entry.grossAmount)} ab ${entry.effectiveFrom} wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
+        return;
+      }
+
+      const nextState = readMusicForecastSettings().map((item) =>
+        item.id === id ? { ...item, isActive: item.isActive === false, updatedAt: new Date().toISOString() } : item,
+      );
+      const result = await saveMusicForecastSettings(nextState);
+      await refreshFinanceView({
+        title: `Musik-Forecast ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  saveButton.onclick = async () => {
+    const editingId = saveButton.dataset.editingId ?? "";
+    const grossAmount = Number(amountField.value);
+    const effectiveFrom = effectiveFromField.value || suggestedMonth;
+    const notes = notesField.value.trim();
+
+    if (!Number.isFinite(grossAmount) || grossAmount < 0 || !effectiveFrom) {
+      metaTarget.textContent = "Bitte Bruttobetrag und gültig-ab-Monat eintragen.";
+      return;
+    }
+
+    const isEditing = Boolean(editingId);
+    if (!confirmAction(isEditing
+      ? `Musik-Forecast ${euro.format(grossAmount)} ab ${effectiveFrom} wirklich aktualisieren?`
+      : `Musik-Forecast ${euro.format(grossAmount)} ab ${effectiveFrom} wirklich speichern?`)) {
+      return;
+    }
+
+    const nextEntry = {
+      id: editingId || `music-forecast-${Date.now()}`,
+      grossAmount,
+      effectiveFrom,
+      notes,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const nextState = isEditing
+      ? readMusicForecastSettings().map((item) => (item.id === editingId ? nextEntry : item))
+      : [...readMusicForecastSettings(), nextEntry];
+
+    const result = await saveMusicForecastSettings(nextState);
+    resetForm();
+    await refreshFinanceView({
+      title: isEditing ? "Musik-Forecast aktualisiert" : "Musik-Forecast gespeichert",
+      detail: `${statusDetailForMode(result.mode)} Gilt ab ${effectiveFrom} für alle späteren Monate, bis ein neuerer Eintrag übernimmt.`,
+      tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
+}

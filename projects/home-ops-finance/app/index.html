@@ -562,6 +562,43 @@
         <article class="card">
           <div class="section-head">
             <div>
+              <h2>Musik-Forecast ab Monat</h2>
+              <p class="section-copy">Hier legst du einen laufenden Musik-Forecast mit `gültig ab` fest. Ein neuerer Eintrag überschreibt spätere Monate automatisch.</p>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="subcard">
+              <h3 class="subhead">Forecast speichern</h3>
+              <div class="planner-inputs">
+                <label class="select-wrap currency-wrap">
+                  <span>Musik brutto pro Monat</span>
+                  <input id="musicForecastAmount" type="number" min="0" step="0.01" placeholder="1300">
+                </label>
+                <label class="select-wrap">
+                  <span>Gültig ab</span>
+                  <input id="musicForecastEffectiveFrom" type="month">
+                </label>
+                <label class="select-wrap planner-span-two">
+                  <span>Notiz</span>
+                  <input id="musicForecastNotes" type="text" placeholder="optional">
+                </label>
+              </div>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="musicForecastMeta">Noch kein fortlaufender Musik-Forecast gespeichert.</p>
+                <button class="pill is-active" id="saveMusicForecastButton" type="button">Musik-Forecast speichern</button>
+              </div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Gespeicherte Forecast-Stände</h3>
+              <div id="musicForecastList" class="mapping-list"></div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="grid two">
+        <article class="card">
+          <div class="section-head">
+            <div>
               <h2>Musik pro Monat</h2>
               <p class="section-copy">Hier siehst du pro Monat nur Musik-Einnahmen, Musik-Ausgaben, geschätzte Steuer und was nach Steuer von der Einnahme übrig bleibt.</p>
             </div>

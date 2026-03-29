@@ -10,6 +10,7 @@ import {
   parseForecastSettings,
   parseMappingState,
   parseMonthlyExpenseOverrideCollection,
+  parseMusicForecastSettingCollection,
   parseMonthlyMusicIncomeOverrideCollection,
   parseMusicTaxSetting,
   parseReconciliationState,
@@ -18,6 +19,7 @@ import {
   type ForecastSettings,
   type MappingState,
   type MonthlyExpenseOverrideCollection,
+  type MusicForecastSettingCollection,
   type MonthlyMusicIncomeOverrideCollection,
   type MusicTaxSetting,
   type ReconciliationState,
@@ -85,6 +87,73 @@ function baselineForMonth(baselines: MonthlyBaseline[], monthKey: string): Month
   }
 
   return selected;
+}
+
+function musicIncomeTemplateForMonth(draft: ImportDraft, monthKey: string) {
+  const all = draft.incomeEntries
+    .filter((entry) => entry.incomeStreamId === "music-income")
+    .sort((left, right) => compareMonthKeys(left.monthKey ?? left.entryDate.slice(0, 7), right.monthKey ?? right.entryDate.slice(0, 7)));
+
+  const exact = all.find((entry) => (entry.monthKey ?? entry.entryDate.slice(0, 7)) === monthKey);
+  if (exact) {
+    return exact;
+  }
+
+  const latestBefore = [...all].reverse().find((entry) => compareMonthKeys(entry.monthKey ?? entry.entryDate.slice(0, 7), monthKey) <= 0);
+  return latestBefore ?? all[0] ?? null;
+}
+
+function reserveRateForMusicMonth(draft: ImportDraft, monthKey: string): number {
+  const source = musicIncomeTemplateForMonth(draft, monthKey);
+  const gross = Number(source?.amount ?? 0);
+  const reserve = Number(source?.reserveAmount ?? 0);
+  return gross > 0 ? reserve / gross : 0;
+}
+
+function applyMusicForecastSettings(
+  draft: ImportDraft,
+  musicForecastSettings: MusicForecastSettingCollection = [],
+): MonthlyMusicIncomeOverrideCollection {
+  const active = [...musicForecastSettings]
+    .filter((entry) => entry.isActive !== false)
+    .sort((left, right) => compareMonthKeys(left.effectiveFrom, right.effectiveFrom));
+
+  if (active.length === 0) {
+    return [];
+  }
+
+  const monthKeys = [...new Set([
+    ...draft.monthlyBaselines.map((entry) => entry.monthKey),
+    ...draft.incomeEntries.filter((entry) => entry.isPlanned).map((entry) => entry.monthKey ?? entry.entryDate.slice(0, 7)),
+    ...active.map((entry) => entry.effectiveFrom),
+  ])].sort(compareMonthKeys);
+
+  return monthKeys
+    .map((monthKey) => {
+      const selected = [...active].reverse().find((entry) => compareMonthKeys(entry.effectiveFrom, monthKey) <= 0);
+      if (!selected) {
+        return null;
+      }
+      const reserveRate = reserveRateForMusicMonth(draft, monthKey);
+      const amount = Number(selected.grossAmount ?? 0);
+      const reserveAmount = roundCurrency(amount * reserveRate);
+      return {
+        id: selected.id ? `music-forecast-${selected.id}-${monthKey}` : `music-forecast-${monthKey}`,
+        monthKey,
+        entryDate: `${monthKey}-01T12:00`,
+        amount,
+        reserveAmount,
+        availableAmount: roundCurrency(amount - reserveAmount),
+        accountId: selected.accountId ?? "giro",
+        isActive: true,
+        notes: mergeNotes(selected.notes, [
+          `music forecast ab ${selected.effectiveFrom}`,
+          selected.updatedAt ? `music forecast ${selected.updatedAt}` : "music forecast",
+        ]),
+        updatedAt: selected.updatedAt,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 }
 
 function applySalarySettingsToBaselines(
@@ -234,6 +303,7 @@ export function applyReviewState(
   baselineOverrides: BaselineOverrideCollection = [],
   monthlyExpenseOverrides: MonthlyExpenseOverrideCollection = [],
   monthlyMusicIncomeOverrides: MonthlyMusicIncomeOverrideCollection = [],
+  musicForecastSettings: MusicForecastSettingCollection = [],
   musicTaxSetting: MusicTaxSetting = null,
   forecastSettings: ForecastSettings = null,
   salarySettings: SalarySettingCollection = [],
@@ -268,7 +338,11 @@ export function applyReviewState(
         entry.updatedAt ? `manual monthly expense ${entry.updatedAt}` : "manual monthly expense",
       ]),
     }));
-  const activeMonthlyMusicIncomeOverrides = monthlyMusicIncomeOverrides
+  const generatedMusicForecastOverrides = applyMusicForecastSettings(draft, musicForecastSettings);
+  const activeMonthlyMusicIncomeOverrides = [
+    ...generatedMusicForecastOverrides,
+    ...monthlyMusicIncomeOverrides,
+  ]
     .filter((entry) => entry.isActive !== false)
     .map((entry) => ({
       monthKey: entry.monthKey,
@@ -425,9 +499,10 @@ function main(): void {
   const monthlyExpenseOverridesPath = resolve(process.argv[6] ?? financeDataPath("monthly-expense-overrides.json"));
   const monthlyMusicIncomeOverridesPath = resolve(process.argv[7] ?? financeDataPath("monthly-music-income-overrides.json"));
   const outputPath = resolve(process.argv[8] ?? financeDataPath("import-draft-reviewed.json"));
-  const musicTaxSettingsPath = resolve(process.argv[9] ?? financeDataPath("music-tax-settings.json"));
-  const forecastSettingsPath = resolve(process.argv[10] ?? financeDataPath("forecast-settings.json"));
-  const salarySettingsPath = resolve(process.argv[11] ?? financeDataPath("salary-settings.json"));
+  const musicForecastSettingsPath = resolve(process.argv[9] ?? financeDataPath("music-forecast-settings.json"));
+  const musicTaxSettingsPath = resolve(process.argv[10] ?? financeDataPath("music-tax-settings.json"));
+  const forecastSettingsPath = resolve(process.argv[11] ?? financeDataPath("forecast-settings.json"));
+  const salarySettingsPath = resolve(process.argv[12] ?? financeDataPath("salary-settings.json"));
 
   if (!existsSync(inputPath)) {
     console.log(`Skipped reviewed draft generation because no import draft exists at ${inputPath}`);
@@ -441,6 +516,7 @@ function main(): void {
   const baselineOverrides = parseBaselineOverrideCollection(readJsonFile(baselineOverridesPath) ?? []);
   const monthlyExpenseOverrides = parseMonthlyExpenseOverrideCollection(readJsonFile(monthlyExpenseOverridesPath) ?? []);
   const monthlyMusicIncomeOverrides = parseMonthlyMusicIncomeOverrideCollection(readJsonFile(monthlyMusicIncomeOverridesPath) ?? []);
+  const musicForecastSettings = parseMusicForecastSettingCollection(readJsonFile(musicForecastSettingsPath) ?? []);
   const musicTaxSetting = parseMusicTaxSetting(readJsonFile(musicTaxSettingsPath) ?? null);
   const forecastSettings = parseForecastSettings(readJsonFile(forecastSettingsPath) ?? null);
   const salarySettings = parseSalarySettingCollection(readJsonFile(salarySettingsPath) ?? []);
@@ -452,6 +528,7 @@ function main(): void {
     baselineOverrides,
     monthlyExpenseOverrides,
     monthlyMusicIncomeOverrides,
+    musicForecastSettings,
     musicTaxSetting,
     forecastSettings,
     salarySettings,

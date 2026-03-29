@@ -11,6 +11,7 @@ import {
   parseHouseholdState,
   parseMappingState,
   parseMonthlyExpenseOverrideCollection,
+  parseMusicForecastSettingCollection,
   parseMonthlyMusicIncomeOverrideCollection,
   parseMusicTaxSetting,
   parseReconciliationState,
@@ -35,6 +36,7 @@ const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
 const monthlyExpenseOverridesPath = financeDataPath("monthly-expense-overrides.json");
 const monthlyMusicIncomeOverridesPath = financeDataPath("monthly-music-income-overrides.json");
+const musicForecastSettingsPath = financeDataPath("music-forecast-settings.json");
 const musicTaxSettingsPath = financeDataPath("music-tax-settings.json");
 const forecastSettingsPath = financeDataPath("forecast-settings.json");
 const salarySettingsPath = financeDataPath("salary-settings.json");
@@ -502,6 +504,18 @@ const server = createServer(async (req, res) => {
       failureEvent: "musik-istwerte fehlgeschlagen",
       invalidPayloadError: "invalid_monthly_music_income_payload",
       saveFailedError: "monthly_music_income_save_failed",
+    });
+  }
+
+  if (url.pathname === "/api/music-forecast-settings") {
+    return handleValidatedStateEndpoint(req, res, {
+      path: musicForecastSettingsPath,
+      fallback: [],
+      parser: parseMusicForecastSettingCollection,
+      successEvent: "musik-forecast gespeichert",
+      failureEvent: "musik-forecast fehlgeschlagen",
+      invalidPayloadError: "invalid_music_forecast_payload",
+      saveFailedError: "music_forecast_save_failed",
     });
   }
 

@@ -126,6 +126,23 @@ export function validateMonthlyMusicIncomeOverridesPayload(payload: unknown): un
   });
 }
 
+export function validateMusicForecastSettingsPayload(payload: unknown): unknown[] {
+  assert(Array.isArray(payload), "music forecast settings must be an array");
+
+  return payload.map((entry, index) => {
+    assert(isPlainObject(entry), `music forecast setting ${index} must be an object`);
+    return {
+      id: assertOptionalString(entry.id, `music forecast setting ${index}.id`),
+      grossAmount: assertNumber(entry.grossAmount, `music forecast setting ${index}.grossAmount`, { min: 0 }),
+      effectiveFrom: assertMonthKey(entry.effectiveFrom, `music forecast setting ${index}.effectiveFrom`),
+      accountId: assertOptionalString(entry.accountId, `music forecast setting ${index}.accountId`),
+      isActive: assertOptionalBoolean(entry.isActive, `music forecast setting ${index}.isActive`),
+      notes: normalizeOptionalNotes(entry.notes, `music forecast setting ${index}.notes`),
+      updatedAt: normalizeOptionalTimestamp(entry.updatedAt, `music forecast setting ${index}.updatedAt`),
+    };
+  });
+}
+
 export function validateWealthSnapshotsPayload(payload: unknown): unknown[] {
   assert(Array.isArray(payload), "wealth snapshots must be an array");
 

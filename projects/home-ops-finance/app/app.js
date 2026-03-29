@@ -58,6 +58,7 @@ import {
 } from "./ui/review-workspace.js";
 import {
   renderForecastPlanner as renderForecastPlannerView,
+  renderMusicForecastPlanner as renderMusicForecastPlannerView,
   renderMusicTaxPlanner as renderMusicTaxPlannerView,
   renderSalaryPlanner as renderSalaryPlannerView,
 } from "./ui/planners.js";
@@ -115,6 +116,7 @@ const mappingStorageKey = "home-ops-finance-entry-mapping-v1";
 const baselineOverridesStorageKey = "home-ops-finance-baseline-overrides-v1";
 const monthlyExpenseOverridesStorageKey = "home-ops-finance-monthly-expense-overrides-v1";
 const monthlyMusicIncomeOverridesStorageKey = "home-ops-finance-monthly-music-income-overrides-v1";
+const musicForecastSettingsStorageKey = "home-ops-finance-music-forecast-settings-v1";
 const musicTaxSettingsStorageKey = "home-ops-finance-music-tax-settings-v1";
 const forecastSettingsStorageKey = "home-ops-finance-forecast-settings-v1";
 const salarySettingsStorageKey = "home-ops-finance-salary-settings-v1";
@@ -180,6 +182,7 @@ const workflowState = createWorkflowStateStore({
   baselineOverridesStorageKey,
   monthlyExpenseOverridesStorageKey,
   monthlyMusicIncomeOverridesStorageKey,
+  musicForecastSettingsStorageKey,
   musicTaxSettingsStorageKey,
   forecastSettingsStorageKey,
   salarySettingsStorageKey,
@@ -197,6 +200,7 @@ const {
   readBaselineOverrides,
   readMonthlyExpenseOverrides,
   readMonthlyMusicIncomeOverrides,
+  readMusicForecastSettings,
   readMusicTaxSettings,
   readForecastSettings,
   readSalarySettings,
@@ -209,6 +213,7 @@ const {
   saveBaselineOverrides,
   saveMonthlyExpenseOverrides,
   saveMonthlyMusicIncomeOverrides,
+  saveMusicForecastSettings,
   saveMusicTaxSettings,
   saveForecastSettings,
   saveSalarySettings,
@@ -248,6 +253,7 @@ function rerenderSelectedMonthContext() {
   renderSelectedMonthSharedUi(importDraft, monthKey);
   renderFixedCostPlanner(importDraft, monthKey);
   renderSalaryPlanner(importDraft);
+  renderMusicForecastPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderMonthReview(importDraft, monthlyPlan, monthKey);
   renderWorkflowHistory(importDraft);
@@ -586,6 +592,7 @@ const {
   wealthSnapshotCashTotalForEntry,
   readMonthlyExpenseOverrides,
   readMonthlyMusicIncomeOverrides,
+  readMusicForecastSettings,
   readWealthSnapshots,
   readSalarySettings,
   readBaselineOverrides,
@@ -733,6 +740,21 @@ function renderMonthlyMusicIncomeEditor(importDraft, monthKey) {
     refreshFinanceView,
     statusDetailForMode,
     monthFromDate,
+  });
+}
+
+function renderMusicForecastPlanner(importDraft) {
+  renderMusicForecastPlannerView(importDraft, {
+    readMusicForecastSettings,
+    currentSelectedMonthKey,
+    reviewFocusMonthKey,
+    euro,
+    formatDisplayDate,
+    formatHistoryTimestamp,
+    confirmAction,
+    saveMusicForecastSettings,
+    refreshFinanceView,
+    statusDetailForMode,
   });
 }
 
@@ -1328,6 +1350,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   );
   renderForecastPlanner(importDraft);
   renderSalaryPlanner(importDraft);
+  renderMusicForecastPlanner(importDraft);
   renderWealthSnapshotPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderHouseholdWorkspace();

@@ -8,6 +8,7 @@ export function createWorkflowStateStore(config) {
     baselineOverridesStorageKey,
     monthlyExpenseOverridesStorageKey,
     monthlyMusicIncomeOverridesStorageKey,
+    musicForecastSettingsStorageKey,
     musicTaxSettingsStorageKey,
     forecastSettingsStorageKey,
     salarySettingsStorageKey,
@@ -22,6 +23,7 @@ export function createWorkflowStateStore(config) {
     baseline: "browser",
     monthlyExpense: "browser",
     monthlyMusicIncome: "browser",
+    musicForecast: "browser",
     musicTax: "browser",
     forecast: "browser",
     salary: "browser",
@@ -35,6 +37,7 @@ export function createWorkflowStateStore(config) {
   let baselineOverridesCache = [];
   let monthlyExpenseOverridesCache = [];
   let monthlyMusicIncomeOverridesCache = [];
+  let musicForecastSettingsCache = [];
   let musicTaxSettingsCache = null;
   let forecastSettingsCache = null;
   let salarySettingsCache = [];
@@ -159,6 +162,16 @@ export function createWorkflowStateStore(config) {
     }
 
     try {
+      const payload = await loadStateFromApi("/api/music-forecast-settings", musicForecastSettingsStorageKey);
+      musicForecastSettingsCache = Array.isArray(payload) ? payload : [];
+      persistence.musicForecast = "project";
+    } catch {
+      const fallback = loadStateFromLocalStorage(musicForecastSettingsStorageKey);
+      musicForecastSettingsCache = Array.isArray(fallback) ? fallback : [];
+      persistence.musicForecast = "browser";
+    }
+
+    try {
       const payload = await loadStateFromApi("/api/music-tax-settings", musicTaxSettingsStorageKey);
       musicTaxSettingsCache = payload && typeof payload === "object" ? payload : null;
       persistence.musicTax = "project";
@@ -275,6 +288,15 @@ export function createWorkflowStateStore(config) {
     return musicTaxSettingsCache;
   }
 
+  function readMusicForecastSettings() {
+    return musicForecastSettingsCache;
+  }
+
+  function writeMusicForecastSettings(state) {
+    musicForecastSettingsCache = state;
+    window.localStorage.setItem(musicForecastSettingsStorageKey, JSON.stringify(state ?? []));
+  }
+
   function writeMusicTaxSettings(state) {
     musicTaxSettingsCache = state;
     window.localStorage.setItem(musicTaxSettingsStorageKey, JSON.stringify(state ?? {}));
@@ -362,6 +384,11 @@ export function createWorkflowStateStore(config) {
     return persistState("/api/monthly-music-income-overrides", monthlyMusicIncomeOverridesStorageKey, state, "monthlyMusicIncome");
   }
 
+  async function saveMusicForecastSettings(state) {
+    writeMusicForecastSettings(state);
+    return persistState("/api/music-forecast-settings", musicForecastSettingsStorageKey, state, "musicForecast");
+  }
+
   async function saveMusicTaxSettings(state) {
     writeMusicTaxSettings(state);
     return persistState("/api/music-tax-settings", musicTaxSettingsStorageKey, state, "musicTax");
@@ -405,6 +432,8 @@ export function createWorkflowStateStore(config) {
     writeMonthlyExpenseOverrides,
     readMonthlyMusicIncomeOverrides,
     writeMonthlyMusicIncomeOverrides,
+    readMusicForecastSettings,
+    writeMusicForecastSettings,
     readMusicTaxSettings,
     writeMusicTaxSettings,
     readForecastSettings,
@@ -423,6 +452,7 @@ export function createWorkflowStateStore(config) {
     saveBaselineOverrides,
     saveMonthlyExpenseOverrides,
     saveMonthlyMusicIncomeOverrides,
+    saveMusicForecastSettings,
     saveMusicTaxSettings,
     saveForecastSettings,
     saveSalarySettings,
