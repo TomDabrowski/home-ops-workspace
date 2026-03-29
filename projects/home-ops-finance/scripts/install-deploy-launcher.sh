@@ -9,9 +9,13 @@ APP_PATH="${APP_DIR}/${APP_NAME}.app"
 CONTENTS_DIR="${APP_PATH}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-RUNNER_PATH="${SCRIPT_DIR}/deploy-synology-macos.sh"
+UI_RUNNER_PATH="${SCRIPT_DIR}/deploy-synology-ui.swift"
 ICON_SOURCE="${ICON_SOURCE:-${HOME}/Applications/Home Ops Finance.app/Contents/Resources/applet.icns}"
 EXECUTABLE_NAME="${EXECUTABLE_NAME:-home-ops-finance-deploy}"
+UI_BINARY_NAME="${UI_BINARY_NAME:-home-ops-finance-deploy-ui}"
+SWIFTC_BIN="${SWIFTC_BIN:-$(xcrun --find swiftc)}"
+MACOS_SDK_PATH="${MACOS_SDK_PATH:-$(xcrun --show-sdk-path --sdk macosx 2>/dev/null || true)}"
+MACOS_TARGET="${MACOS_TARGET:-arm64-apple-macos12.0}"
 
 mkdir -p "${APP_DIR}"
 rm -rf "${APP_PATH}"
@@ -46,16 +50,31 @@ cat >"${CONTENTS_DIR}/Info.plist" <<PLIST
 </plist>
 PLIST
 
-cat >"${MACOS_DIR}/${EXECUTABLE_NAME}" <<SH
+if [[ -n "${SWIFTC_BIN}" && -f "${UI_RUNNER_PATH}" ]]; then
+  SWIFTC_ARGS=(-O -o "${RESOURCES_DIR}/${UI_BINARY_NAME}")
+  if [[ -n "${MACOS_SDK_PATH}" ]]; then
+    SWIFTC_ARGS+=(-sdk "${MACOS_SDK_PATH}")
+  fi
+  if [[ -n "${MACOS_TARGET}" ]]; then
+    SWIFTC_ARGS+=(-target "${MACOS_TARGET}")
+  fi
+  SWIFTC_ARGS+=("${UI_RUNNER_PATH}")
+  "${SWIFTC_BIN}" "${SWIFTC_ARGS[@]}"
+  cat >"${MACOS_DIR}/${EXECUTABLE_NAME}" <<SH
+#!/bin/zsh
+export HOME_OPS_FINANCE_ROOT="${SCRIPT_DIR}/.."
+exec "${RESOURCES_DIR}/${UI_BINARY_NAME}" "${SCRIPT_DIR}/.."
+SH
+  chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
+else
+  cat >"${MACOS_DIR}/${EXECUTABLE_NAME}" <<SH
 #!/bin/zsh
 /usr/bin/osascript <<OSA
-tell application "Terminal"
-  activate
-  do script quoted form of POSIX path of "${RUNNER_PATH}"
-end tell
+display dialog "Der native Deploy-Launcher konnte nicht gebaut werden." buttons {"OK"} default button "OK" with title "Home Ops Finance Deploy"
 OSA
 SH
-chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
+  chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
+fi
 
 if [[ -f "${ICON_SOURCE}" ]]; then
   cp "${ICON_SOURCE}" "${RESOURCES_DIR}/applet.icns"

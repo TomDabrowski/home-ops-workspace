@@ -46,11 +46,6 @@
 }
 
 * { box-sizing: border-box; }
-html,
-body {
-  max-width: 100%;
-  overflow-x: hidden;
-}
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
@@ -487,6 +482,11 @@ h2 {
   color: #ff9a95;
 }
 @media (max-width: 720px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   .floating-controls {
     top: 12px;
     right: 14px;
@@ -695,7 +695,7 @@ th:first-child {
   background: var(--card-strong);
   padding: 14px;
   box-shadow: var(--shadow-soft);
-  overflow: hidden;
+  overflow: visible;
 }
 .detail-list dt {
   color: var(--muted);
@@ -739,7 +739,7 @@ th:first-child {
   font-size: 0.82rem;
   font-weight: 500;
   line-height: 1.45;
-  white-space: normal;
+  white-space: pre-line;
   word-break: break-word;
   opacity: 0;
   pointer-events: none;
@@ -789,6 +789,24 @@ th:first-child {
   line-height: 1.45;
   text-transform: none;
   letter-spacing: normal;
+}
+.detail-note {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.detail-list div.is-consumed {
+  border-style: dashed;
+  opacity: 0.82;
+}
+.detail-list div.is-partial {
+  border-style: dashed;
+}
+.detail-value.is-consumed {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
 }
 .signal-list {
   margin: 0;

@@ -222,6 +222,93 @@ test("routes music to the configured threshold account instead of total safety c
   assert.equal(investing?.musicAllocationToInvestmentAmount, 0);
 });
 
+test("month-start anchors without threshold-account detail keep routing against the carried threshold balance", () => {
+  const draft = createDraft();
+  draft.forecastAssumptions = [
+    ...draft.forecastAssumptions,
+    { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+  ];
+  draft.incomeEntries = [
+    {
+      id: "music-2026-03",
+      incomeStreamId: "music-income",
+      entryDate: "2026-03-10",
+      amount: 1800,
+      reserveAmount: 576.21,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: false,
+    },
+    {
+      id: "music-2026-04",
+      incomeStreamId: "music-income",
+      entryDate: "2026-04-05",
+      amount: 1800,
+      reserveAmount: 576.21,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.expenseEntries = [
+    {
+      id: "activate-april-forecast",
+      entryDate: "2026-04-01",
+      description: "Activate forecast",
+      amount: 0,
+      expenseCategoryId: "other",
+      expenseType: "variable",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.monthlyBaselines.push({
+    monthKey: "2026-04",
+    netSalaryAmount: 2920,
+    fixedExpensesAmount: 1266.49,
+    baselineVariableAmount: 320,
+    plannedSavingsAmount: 1050,
+    availableBeforeIrregulars: 283.51,
+    annualReserveAmount: 102.08,
+  });
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-03",
+      safetyBucketAmount: 12000,
+      investmentBucketAmount: 9916,
+      cashAccounts: {
+        giro: 2800,
+        cash: 700,
+        savings: 8500,
+      },
+      totalWealthAmount: 21916,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-01",
+    },
+    {
+      monthKey: "2026-04",
+      safetyBucketAmount: 10172,
+      investmentBucketAmount: 13258,
+      totalWealthAmount: 23430,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 2,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-27T22:32",
+    },
+  ];
+
+  const april = buildMonthlyRows(draft).find((row) => row.monthKey === "2026-04");
+
+  assert.ok(april);
+  assert.equal(april?.anchorAppliesAtMonthStart, true);
+  assert.equal(april?.musicAllocationToSafetyAmount, 84);
+  assert.equal(april?.musicAllocationToInvestmentAmount, 1139.79);
+});
+
 test("builds date-based allocation instructions for salary and music", () => {
   const draft = createDraft();
   draft.forecastAssumptions = [

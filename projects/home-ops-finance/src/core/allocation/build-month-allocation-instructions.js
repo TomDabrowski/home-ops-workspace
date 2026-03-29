@@ -46,7 +46,7 @@ export function buildMonthAllocationInstructionsFromReview(review, importDraft) 
   const monthStartDate = `${monthKey}-01`;
   const latestAnchor = latestWealthAnchorOnOrBeforeMonth(importDraft, monthKey);
   const thresholdStartAmount = thresholdAccountId
-    ? Number(latestAnchor?.cashAccounts?.[thresholdAccountId] ?? review.row.safetyBucketStartAmount ?? 0)
+    ? Number(review.row.thresholdAccountStartAmount ?? latestAnchor?.cashAccounts?.[thresholdAccountId] ?? review.row.safetyBucketStartAmount ?? 0)
     : Number(review.row.safetyBucketStartAmount ?? 0);
 
   const instructions = [];

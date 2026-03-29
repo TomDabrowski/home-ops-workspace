@@ -194,6 +194,11 @@ function anchorCashAccountAmount(anchor: ForecastWealthAnchor | undefined, accou
   return typeof amount === "number" && Number.isFinite(amount) ? amount : fallback;
 }
 
+function anchorCashAccountAmountOrUndefined(anchor: ForecastWealthAnchor | undefined, accountId: string): number | undefined {
+  const amount = anchor?.cashAccounts?.[accountId];
+  return typeof amount === "number" && Number.isFinite(amount) ? amount : undefined;
+}
+
 function sumExpensesForMonthAndAccount(entries: ExpenseEntry[], monthKey: string, accountId: string): number {
   return roundCurrency(
     selectExpenseEntriesForMonth(entries, monthKey)
@@ -304,12 +309,17 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
     const currentMusicThresholdAccountAmount = musicThresholdAccountId
-      ? anchorAppliesWithinMonth || anchorAppliesAtMonthStart
-        ? anchorCashAccountAmount(
-            explicitWealthAnchor,
-            musicThresholdAccountId,
-            Number(explicitWealthAnchor?.safetyBucketAmount ?? 0),
-          )
+      ? anchorAppliesAtMonthStart
+        ? (
+          anchorCashAccountAmountOrUndefined(explicitWealthAnchor, musicThresholdAccountId) ??
+          musicThresholdAccountEndAmount
+        )
+        : anchorAppliesWithinMonth
+          ? anchorCashAccountAmount(
+              explicitWealthAnchor,
+              musicThresholdAccountId,
+              Number(explicitWealthAnchor?.safetyBucketAmount ?? 0),
+            )
         : musicThresholdAccountEndAmount
       : Number(safetyBucketStartAmount ?? 0);
     const forecastRouting = buildMonthlyForecastRouting({

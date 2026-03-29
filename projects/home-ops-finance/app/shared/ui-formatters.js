@@ -82,10 +82,13 @@ export function renderDetailEntries(entries, deps) {
       const label = Array.isArray(entry) ? entry[0] : entry.label;
       const value = Array.isArray(entry) ? entry[1] : entry.value;
       const formula = Array.isArray(entry) ? "" : (entry.formula ?? "");
+      const note = Array.isArray(entry) ? "" : (entry.note ?? "");
+      const itemClass = Array.isArray(entry) ? "" : (entry.itemClass ?? "");
+      const valueClass = Array.isArray(entry) ? "" : (entry.valueClass ?? "");
       const valueMarkup = showTooltip && formula
-        ? `<span class="detail-value has-tooltip" data-tooltip="${escapeHtml(formula)}">${value}</span>`
-        : `<span class="detail-value">${value}</span>`;
-      return `<div><dt>${label}</dt><dd>${valueMarkup}${showFormula && formula ? `<p class="detail-formula">${formula}</p>` : ""}</dd></div>`;
+        ? `<span class="detail-value ${valueClass} has-tooltip" data-tooltip="${escapeHtml(formula)}">${value}</span>`
+        : `<span class="detail-value ${valueClass}">${value}</span>`;
+      return `<div class="${itemClass}"><dt>${label}</dt><dd>${valueMarkup}${note ? `<p class="detail-note">${note}</p>` : ""}${showFormula && formula ? `<p class="detail-formula">${formula}</p>` : ""}</dd></div>`;
     })
     .join("");
 }

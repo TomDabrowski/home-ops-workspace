@@ -111,3 +111,51 @@ test("keeps April music instructions visible when the money arrived before month
   assert.equal(musicInstruction?.toCashAmount, 0);
   assert.equal(musicInstruction?.toInvestmentAmount, 1223.79);
 });
+
+test("prefers the reviewed threshold-account start over total cash when building music instructions", () => {
+  const importDraft = {
+    forecastAssumptions: [
+      { key: "safety_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+    ],
+    forecastWealthAnchors: [
+      {
+        monthKey: "2026-04",
+        safetyBucketAmount: 10172,
+        investmentBucketAmount: 13258,
+        snapshotDate: "2026-03-27T22:32",
+      },
+    ],
+  };
+
+  const review = {
+    row: {
+      monthKey: "2026-04",
+      anchorAppliesWithinMonth: false,
+      safetyBucketStartAmount: 10172,
+      thresholdAccountStartAmount: 9059.49,
+      salaryAllocationToSafetyAmount: 283.51,
+      salaryAllocationToInvestmentAmount: 1050,
+    },
+    incomeEntries: [
+      {
+        incomeStreamId: "music-income",
+        entryDate: "2026-04-05",
+        amount: 1642.65,
+        reserveAmount: 418.86,
+        availableAmount: 1223.79,
+      },
+    ],
+    expenseEntries: [],
+  };
+
+  const instructions = buildMonthAllocationInstructionsFromReview(review, importDraft);
+  const musicInstruction = instructions.find((entry: { kind?: string }) => entry.kind === "music");
+
+  assert.ok(musicInstruction);
+  assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
+  assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
+  assert.equal(musicInstruction?.toCashAmount, 940.51);
+  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+});

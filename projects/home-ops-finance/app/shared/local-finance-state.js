@@ -74,6 +74,11 @@ export function createLocalFinanceStateTools(deps) {
     return { ...anchor, monthKey, baselineProfile: "forecast_investing" };
   }
 
+  function anchorCashAccountAmountOrUndefined(anchor, accountId) {
+    const amount = anchor?.cashAccounts?.[accountId];
+    return typeof amount === "number" && Number.isFinite(amount) ? amount : undefined;
+  }
+
   function sumIncomeForMonth(entries, monthKey) {
     return roundCurrency(
       entries
@@ -513,8 +518,10 @@ export function createLocalFinanceStateTools(deps) {
         ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
         : (safetyBucketStartAmount ?? 0);
       const currentMusicThresholdAccountAmount = musicThresholdAccountId
-        ? anchorAppliesWithinMonth || anchorAppliesAtMonthStart
-          ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
+        ? anchorAppliesAtMonthStart
+          ? (anchorCashAccountAmountOrUndefined(explicitWealthAnchor, musicThresholdAccountId) ?? musicThresholdAccountEndAmount)
+          : anchorAppliesWithinMonth
+            ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
       const musicSafetyGapAmount = Math.max(0, musicThreshold - currentMusicThresholdAccountAmount);

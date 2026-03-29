@@ -465,3 +465,144 @@ test("month-start anchors do not re-add music income that is already captured in
   assert.equal(aprilRow.musicAllocationToInvestmentAmount, 0);
   assert.equal(aprilRow.investmentBucketEndAmount, 14308);
 });
+
+test("month-start anchors without threshold-account detail keep routing against the carried threshold balance", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-03", "2026-04"];
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, key: string, fallback: string) {
+      return key === "music_threshold_account_id" ? "savings" : fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "march-anchor",
+          snapshotDate: "2026-03-01",
+          cashAmount: 12000,
+          cashAccounts: { giro: 2800, cash: 700, savings: 8500 },
+          investmentAmount: 9916,
+          isActive: true,
+        },
+        {
+          id: "april-start",
+          snapshotDate: "2026-03-27T22:32",
+          anchorMonthKey: "2026-04",
+          cashAmount: 10172,
+          investmentAmount: 13258,
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "music-march",
+          incomeStreamId: "music-income",
+          monthKey: "2026-03",
+          entryDate: "2026-03-10",
+          amount: 1642.65,
+          reserveAmount: 418.86,
+          availableAmount: 1223.79,
+          isPlanned: false,
+        },
+        {
+          id: "music-april",
+          incomeStreamId: "music-income",
+          monthKey: "2026-04",
+          entryDate: "2026-04-05",
+          amount: 1642.65,
+          reserveAmount: 418.86,
+          availableAmount: 1223.79,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [
+        {
+          id: "activate-april-forecast",
+          entryDate: "2026-04-01",
+          amount: 0,
+          isPlanned: true,
+        },
+      ],
+      debtSnapshots: [],
+      forecastAssumptions: [],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 0, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 0, expectedAnnualReturn: 0 },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-03",
+          netSalaryAmount: 2920,
+          fixedExpensesAmount: 1266.49,
+          baselineVariableAmount: 320,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1050,
+          availableBeforeIrregulars: 283.51,
+        },
+        {
+          monthKey: "2026-04",
+          netSalaryAmount: 2920,
+          fixedExpensesAmount: 1266.49,
+          baselineVariableAmount: 320,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1050,
+          availableBeforeIrregulars: 283.51,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1266.49, category: "fixed", effectiveFrom: "2026-03" },
+        { id: "variable", label: "Var", amount: 320, category: "variable", effectiveFrom: "2026-03" },
+        { id: "save", label: "Save", amount: 1050, category: "savings", effectiveFrom: "2026-03" },
+      ],
+      forecastWealthAnchors: [],
+    },
+  });
+
+  const aprilRow = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-04");
+  assert.ok(aprilRow);
+  assert.equal(aprilRow.anchorMode, "month_start");
+  assert.equal(aprilRow.musicAllocationToSafetyAmount, 1223.79);
+  assert.equal(aprilRow.musicAllocationToInvestmentAmount, 0);
+});
