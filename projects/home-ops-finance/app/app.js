@@ -483,6 +483,22 @@ function movementVisualState(remainingAmount, totalAmount, enabled = true) {
   return { itemClass: "", valueClass: "", note: "" };
 }
 
+function sumEntryAmounts(entries, accessor) {
+  return roundCurrency(
+    (entries ?? []).reduce((sum, entry) => sum + Number(accessor(entry) ?? 0), 0),
+  );
+}
+
+function amountsAfterSnapshot(entries, latestSnapshotDate, accessor) {
+  if (!latestSnapshotDate) {
+    return sumEntryAmounts(entries, accessor);
+  }
+  return sumEntryAmounts(
+    (entries ?? []).filter((entry) => String(entry.entryDate ?? "") > latestSnapshotDate),
+    accessor,
+  );
+}
+
 const {
   simulateForecast,
   buildMusicWealthYearOverview,
@@ -878,13 +894,35 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   if (flowSummary) {
     const fixedMonthlyCosts = Number(review.row.baselineFixedAmount ?? 0) + Number(review.row.baselineVariableAmount ?? 0);
     const basisInvestmentTotalAmount = Number(review.row.plannedSavingsAmount ?? 0);
+    const hasAnyActiveSnapshot = Boolean(review.row.wealthAnchorApplied && latestSnapshotDate);
     const basisInvestmentRemainingAmount = hasActiveInMonthSnapshot
       ? Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)
       : basisInvestmentTotalAmount;
     const basisInvestmentConsumedAmount = roundCurrency(Math.max(0, basisInvestmentTotalAmount - basisInvestmentRemainingAmount));
+    const musicIncomeEntries = (review.incomeEntries ?? []).filter((entry) => entry.incomeStreamId === "music-income");
+    const musicGrossTotalAmount = roundCurrency(Number(review.row.musicIncomeAmount ?? 0));
+    const musicReserveTotalAmount = sumEntryAmounts(musicIncomeEntries, (entry) => entry.reserveAmount ?? 0);
+    const musicNetTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicReserveTotalAmount));
+    const musicGrossRemainingAmount = hasAnyActiveSnapshot
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0)
+      : musicGrossTotalAmount;
+    const musicReserveRemainingAmount = hasAnyActiveSnapshot
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.reserveAmount ?? 0)
+      : musicReserveTotalAmount;
+    const musicNetRemainingAmount = hasAnyActiveSnapshot
+      ? amountsAfterSnapshot(
+        musicIncomeEntries,
+        latestSnapshotDate,
+        (entry) => entry.availableAmount ?? (Number(entry.amount ?? 0) - Number(entry.reserveAmount ?? 0)),
+      )
+      : musicNetTotalAmount;
+    const musicGrossConsumedAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount));
+    const musicReserveConsumedAmount = roundCurrency(Math.max(0, musicReserveTotalAmount - musicReserveRemainingAmount));
+    const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
     const basisInvestmentState = movementVisualState(basisInvestmentRemainingAmount, basisInvestmentTotalAmount, hasActiveInMonthSnapshot);
+    const musicIncomeState = movementVisualState(musicGrossRemainingAmount, musicGrossTotalAmount, hasAnyActiveSnapshot);
     const importedExpenseState = movementVisualState(remainingImportedExpenseAmount, importedExpenseAmount, hasActiveInMonthSnapshot);
     const manualExpenseState = movementVisualState(remainingManualExpenseAmount, manualExpenseAmount, hasActiveInMonthSnapshot);
     const entries = [
@@ -916,14 +954,21 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       },
       {
         label: "Musik brutto",
-        value: euro.format(review.row.musicIncomeAmount ?? 0),
+        value: euro.format(musicGrossTotalAmount),
         formula: joinTooltipLines([
-          `Musik brutto im Monat: ${euro.format(review.row.musicIncomeAmount ?? 0)}`,
-          `Fuer die Vermoegensrechnung nach Steuer relevant: ${euro.format((review.row.musicAllocationToSafetyAmount ?? 0) + (review.row.musicAllocationToInvestmentAmount ?? 0))}`,
-          hasActiveInMonthSnapshot
-            ? `Durch den Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} wird nur der Teil nach dem Stichtag weitergerechnet.`
-            : `Ohne aktiven Ist-Stand fliesst der Monatswert gemaess Routing voll in die Rechnung ein.`,
+          `Musik brutto im Monat: ${euro.format(musicGrossTotalAmount)}`,
+          `${euro.format(musicGrossTotalAmount)} brutto - ${euro.format(musicReserveTotalAmount)} Steuer/Ruecklage = ${euro.format(musicNetTotalAmount)} netto verfuegbar`,
+          hasAnyActiveSnapshot
+            ? `Schon im Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} enthalten: ${euro.format(musicGrossConsumedAmount)} brutto (${euro.format(musicReserveConsumedAmount)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmount)} netto)`
+            : "",
+          hasAnyActiveSnapshot
+            ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmount)} brutto (${euro.format(musicReserveRemainingAmount)} Steuer/Ruecklage, ${euro.format(musicNetRemainingAmount)} netto)`
+            : `Ohne aktiven Ist-Stand ist der volle Monatsblock offen.`,
+          `Vom noch offenen Netto laufen ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} in Cash/Threshold und ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} ins Investment.`,
         ]),
+        note: musicIncomeState.note,
+        itemClass: musicIncomeState.itemClass,
+        valueClass: musicIncomeState.valueClass,
       },
       {
         label: "Importierte Zusatz-Ausgaben",
