@@ -86,6 +86,7 @@ export interface MonthlyPlanRow {
   musicAllocationToInvestmentAmount: number;
   salaryAllocationToSafetyAmount: number;
   salaryAllocationToInvestmentAmount: number;
+  anchorAppliesAtMonthStart?: boolean;
   anchorAppliesWithinMonth?: boolean;
   projectionIncomeAvailableAmount?: number;
   projectionExpenseAmount?: number;
@@ -286,19 +287,24 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     );
     const salaryAllocationToInvestmentAmount = roundCurrency(plannedSavingsAmount);
     const useForecastRouting = firstPlannedMonthKey ? compareMonthKeys(monthKey, firstPlannedMonthKey) >= 0 : false;
-    const safetyBucketStartAmount = useForecastRouting ? safetyBucketEndAmount : undefined;
-    const investmentBucketStartAmount = useForecastRouting ? investmentBucketEndAmount : undefined;
     const explicitWealthAnchor = wealthAnchorForMonth(draft, monthKey);
     const snapshotDate = explicitWealthAnchor?.snapshotDate;
+    const anchorAppliesAtMonthStart = Boolean(snapshotDate && monthFromDate(snapshotDate) !== monthKey);
     const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
-    const incomeAvailableForProjection = anchorAppliesWithinMonth
+    const safetyBucketStartAmount = useForecastRouting
+      ? (anchorAppliesAtMonthStart ? explicitWealthAnchor?.safetyBucketAmount : safetyBucketEndAmount)
+      : undefined;
+    const investmentBucketStartAmount = useForecastRouting
+      ? (anchorAppliesAtMonthStart ? explicitWealthAnchor?.investmentBucketAmount : investmentBucketEndAmount)
+      : undefined;
+    const incomeAvailableForProjection = snapshotDate
       ? sumIncomeAvailableAfterDate(draft.incomeEntries, monthKey, snapshotDate!)
       : importedIncomeAvailableAmount;
-    const expenseAmountForProjection = anchorAppliesWithinMonth
+    const expenseAmountForProjection = snapshotDate
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
     const currentMusicThresholdAccountAmount = musicThresholdAccountId
-      ? anchorAppliesWithinMonth
+      ? anchorAppliesWithinMonth || anchorAppliesAtMonthStart
         ? anchorCashAccountAmount(
             explicitWealthAnchor,
             musicThresholdAccountId,
@@ -324,7 +330,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       expenseAfterAnchorAmount: expenseAmountForProjection,
     });
     const thresholdAccountExpenseAmount = musicThresholdAccountId
-      ? anchorAppliesWithinMonth
+      ? snapshotDate
         ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
         : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
       : expenseAmountForProjection;
@@ -386,6 +392,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       musicAllocationToInvestmentAmount: forecastRouting.musicAllocationToInvestmentAmount,
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
+      anchorAppliesAtMonthStart: forecastRouting.anchorAppliesAtMonthStart,
       anchorAppliesWithinMonth: forecastRouting.anchorAppliesWithinMonth,
       projectionIncomeAvailableAmount: forecastRouting.projectionIncomeAvailableAmount,
       projectionExpenseAmount: forecastRouting.projectionExpenseAmount,

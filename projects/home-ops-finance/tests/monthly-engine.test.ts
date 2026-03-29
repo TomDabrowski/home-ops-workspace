@@ -539,3 +539,71 @@ test("continues from the post-anchor month end instead of resetting next month t
   assert.equal(march?.investmentBucketEndAmount, 10533.28);
   assert.equal(april?.investmentBucketStartAmount, 10533.28);
 });
+
+test("month-start anchors do not re-add music income that was already received before the month begins", () => {
+  const draft = createDraft();
+  draft.incomeEntries = [
+    {
+      id: "music-2026-04",
+      incomeStreamId: "music-income",
+      monthKey: "2026-04",
+      entryDate: "2026-03-25T18:00",
+      amount: 1642.65,
+      reserveAmount: 418.86,
+      availableAmount: 1223.79,
+      kind: "music",
+      isRecurring: false,
+      isPlanned: false,
+    },
+  ];
+  draft.expenseEntries = [
+    {
+      id: "activate-april-forecast",
+      entryDate: "2026-04-01",
+      description: "Activate forecast",
+      amount: 0,
+      expenseCategoryId: "other",
+      expenseType: "variable",
+      isRecurring: false,
+      isPlanned: true,
+    },
+  ];
+  draft.monthlyBaselines.push({
+    monthKey: "2026-04",
+    netSalaryAmount: 2920,
+    fixedExpensesAmount: 1266.49,
+    baselineVariableAmount: 320,
+    plannedSavingsAmount: 1050,
+    availableBeforeIrregulars: 283.51,
+    annualReserveAmount: 102.08,
+  });
+  draft.forecastWealthAnchors = [
+    {
+      monthKey: "2026-04",
+      safetyBucketAmount: 10172,
+      investmentBucketAmount: 13258,
+      cashAccounts: {
+        giro: 100,
+        cash: 72,
+        savings: 10000,
+      },
+      totalWealthAmount: 23430,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-27T22:32",
+    },
+  ];
+
+  const april = buildMonthlyRows(draft).find((row) => row.monthKey === "2026-04");
+
+  assert.ok(april);
+  assert.equal(april?.anchorAppliesAtMonthStart, true);
+  assert.equal(april?.anchorAppliesWithinMonth, false);
+  assert.equal(april?.projectionIncomeAvailableAmount, 0);
+  assert.equal(april?.musicAllocationToSafetyAmount, 0);
+  assert.equal(april?.musicAllocationToInvestmentAmount, 0);
+  assert.equal(april?.safetyBucketStartAmount, 10172);
+  assert.equal(april?.investmentBucketStartAmount, 13258);
+  assert.equal(april?.investmentBucketEndAmount, 14362.01);
+});

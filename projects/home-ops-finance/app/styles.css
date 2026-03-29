@@ -291,10 +291,12 @@ h1 {
 .tab-panel.is-active {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 .grid {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -514,6 +516,18 @@ h2 {
   .subcard {
     padding: 18px;
     border-radius: 22px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .shell > *,
+  .tab-panel,
+  .month-main,
+  .month-side,
+  .month-main .card,
+  .month-side .card,
+  .month-main .grid.three > .subcard {
+    min-width: 0;
+    max-width: 100%;
   }
   .hero {
     gap: 16px;
@@ -562,6 +576,51 @@ h2 {
     width: calc(100vw - 20px);
     margin-top: 10px;
     padding: 12px 14px;
+  }
+  .detail-list div {
+    padding: 12px;
+  }
+  .detail-list dt {
+    font-size: 0.78rem;
+  }
+  .detail-list dd,
+  .detail-value {
+    font-size: 0.98rem;
+  }
+  .detail-list,
+  .compact-details {
+    min-width: 0;
+  }
+  .table-wrap {
+    margin-inline: -4px;
+    padding: 0 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-wrap table {
+    width: max-content;
+    min-width: 34rem;
+  }
+  th,
+  td {
+    padding: 10px 12px 10px 0;
+    font-size: 0.92rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  th {
+    font-size: 0.72rem;
+  }
+  .settings-trigger {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+  }
+  .settings-trigger span:last-child {
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 table {
@@ -630,23 +689,30 @@ th:first-child {
 }
 .detail-list div {
   position: relative;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: var(--card-strong);
   padding: 14px;
   box-shadow: var(--shadow-soft);
+  overflow: hidden;
 }
 .detail-list dt {
   color: var(--muted);
   font-size: 0.82rem;
   margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 .detail-list dd {
   margin: 0;
   font-weight: 600;
+  min-width: 0;
 }
 .detail-value {
   display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .detail-value.has-tooltip {
   position: relative;
@@ -808,6 +874,7 @@ th:first-child {
 .month-side {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 .month-summary-grid {
   margin: 0;
@@ -849,6 +916,7 @@ th:first-child {
   min-width: 0;
 }
 .subcard {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 22px;
   background: var(--card-strong);
@@ -1133,6 +1201,9 @@ th:first-child {
   }
   .month-nav-bar {
     top: 132px;
+  }
+  .month-main .grid.three > .subcard {
+    min-width: 0;
   }
   .table-wrap--month,
   .table-wrap--side,

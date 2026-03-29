@@ -479,6 +479,7 @@ export function createLocalFinanceStateTools(deps) {
       const snapshotDate = explicitWealthAnchor?.snapshotDate;
       const anchorAppliesAtMonthStart = explicitWealthAnchorMode === "month_start";
       const anchorAppliesWithinMonth = !anchorAppliesAtMonthStart && Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
+      const anchorUsesSnapshotCutoff = Boolean(snapshotDate);
       const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
       const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
       const safetyBucketStartAmount = useForecastRouting
@@ -487,10 +488,10 @@ export function createLocalFinanceStateTools(deps) {
       const investmentBucketStartAmount = useForecastRouting
         ? (anchorAppliesAtMonthStart ? investmentBucketAnchorAmount : investmentBucketEndAmount)
         : undefined;
-      const incomeAvailableForProjection = anchorAppliesWithinMonth
+      const incomeAvailableForProjection = anchorUsesSnapshotCutoff
         ? sumIncomeAvailableAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
         : importedIncomeAvailableAmount;
-      const expenseAmountForProjection = anchorAppliesWithinMonth
+      const expenseAmountForProjection = anchorUsesSnapshotCutoff
         ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
         : importedExpenseAmount;
       const projectionSalaryAllocationToSafetyAmount =
@@ -503,7 +504,7 @@ export function createLocalFinanceStateTools(deps) {
               .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
               .filter((entry) =>
                 entry.accountId === musicThresholdAccountId &&
-                (!anchorAppliesWithinMonth || String(entry.entryDate) > String(snapshotDate)),
+                (!anchorUsesSnapshotCutoff || String(entry.entryDate) > String(snapshotDate)),
               )
               .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
           )

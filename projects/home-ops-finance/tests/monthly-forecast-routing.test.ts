@@ -102,6 +102,42 @@ test("late in-month wealth anchors do not re-add the base investment when the sn
   assert.equal(result.investmentBucketEndAmount, 13258);
 });
 
+test("month-start anchors do not re-add income that was already received before the anchored month begins", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-04",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    safetyMonthlyReturn: 0.02 / 12,
+    investmentMonthlyReturn: Math.pow(1 + 0.05, 1 / 12) - 1,
+    salaryAllocationToSafetyAmount: 656.49,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 1223.79,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 10172,
+    investmentBucketStartAmount: 13258,
+    explicitWealthAnchor: {
+      monthKey: "2026-04",
+      safetyBucketAmount: 10172,
+      investmentBucketAmount: 13258,
+      totalWealthAmount: 23430,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-03-27T22:32",
+    },
+    incomeAvailableAfterAnchorAmount: 0,
+    expenseAfterAnchorAmount: 0,
+  });
+
+  assert.equal(result.anchorAppliesAtMonthStart, true);
+  assert.equal(result.anchorAppliesWithinMonth, false);
+  assert.equal(result.projectionIncomeAvailableAmount, 0);
+  assert.equal(result.musicAllocationToSafetyAmount, 0);
+  assert.equal(result.musicAllocationToInvestmentAmount, 0);
+  assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 1050);
+  assert.equal(result.investmentBucketEndAmount, 14362.01);
+});
+
 test("routes against the configured threshold account when it differs from total safety cash", () => {
   const result = buildMonthlyForecastRouting({
     monthKey: "2026-03",

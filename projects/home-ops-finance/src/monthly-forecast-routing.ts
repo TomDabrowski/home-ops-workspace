@@ -20,6 +20,7 @@ export interface MonthlyForecastRoutingInput {
 }
 
 export interface MonthlyForecastRoutingResult {
+  anchorAppliesAtMonthStart: boolean;
   anchorAppliesWithinMonth: boolean;
   projectionIncomeAvailableAmount: number;
   projectionExpenseAmount: number;
@@ -49,11 +50,12 @@ export function buildMonthlyForecastRouting(
   input: MonthlyForecastRoutingInput,
 ): MonthlyForecastRoutingResult {
   const snapshotDate = input.explicitWealthAnchor?.snapshotDate;
+  const anchorAppliesAtMonthStart = Boolean(snapshotDate && monthFromDate(snapshotDate) !== input.monthKey);
   const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === input.monthKey);
-  const projectionIncomeAvailableAmount = anchorAppliesWithinMonth
+  const projectionIncomeAvailableAmount = snapshotDate
     ? roundCurrency(input.incomeAvailableAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedIncomeAvailableAmount);
-  const projectionExpenseAmount = anchorAppliesWithinMonth
+  const projectionExpenseAmount = snapshotDate
     ? roundCurrency(input.expenseAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedExpenseAmount);
   const projectionSalaryAllocationToSafetyAmount =
@@ -122,11 +124,11 @@ export function buildMonthlyForecastRouting(
 
   const safetyBucketEndAmount =
     anchoredSafetyEndAmount ??
-    safetyBucketAnchorAmount ??
+    (anchorAppliesAtMonthStart ? safetyBucketCalculatedEndAmount : safetyBucketAnchorAmount) ??
     safetyBucketCalculatedEndAmount;
   const investmentBucketEndAmount =
     anchoredInvestmentEndAmount ??
-    investmentBucketAnchorAmount ??
+    (anchorAppliesAtMonthStart ? investmentBucketCalculatedEndAmount : investmentBucketAnchorAmount) ??
     investmentBucketCalculatedEndAmount;
   const projectedWealthEndAmount =
     safetyBucketEndAmount !== undefined && investmentBucketEndAmount !== undefined
@@ -134,6 +136,7 @@ export function buildMonthlyForecastRouting(
       : undefined;
 
   return {
+    anchorAppliesAtMonthStart,
     anchorAppliesWithinMonth,
     projectionIncomeAvailableAmount,
     projectionExpenseAmount,

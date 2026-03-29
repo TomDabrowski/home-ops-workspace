@@ -45,6 +45,15 @@ cd /path/to/finance/projects/home-ops-finance
 DEPLOY_USER=tom DEPLOY_HOST=192.168.178.74 npm run deploy:synology
 ```
 
+For macOS there is also a one-click deploy path:
+
+1. copy `.deploy.local.example.env` to `.deploy.local.env`
+2. fill in the Synology SSH target and SSH identity path
+3. run `scripts/install-deploy-launcher.sh` once
+4. use `Home Ops Finance Deploy.app` from `~/Applications`
+
+The macOS launcher asks only for the Synology sudo password and then runs the same repo-based deploy flow without opening a terminal.
+
 This keeps a clear split:
 
 - repo checkout: code

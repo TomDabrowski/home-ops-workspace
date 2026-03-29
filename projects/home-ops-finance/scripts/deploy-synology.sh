@@ -4,6 +4,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LOCAL_DEPLOY_ENV="${PROJECT_ROOT}/.deploy.local.env"
+
+if [[ -f "${LOCAL_DEPLOY_ENV}" ]]; then
+  # shellcheck disable=SC1090
+  source "${LOCAL_DEPLOY_ENV}"
+fi
 
 DEPLOY_HOST="${DEPLOY_HOST:-}"
 DEPLOY_USER="${DEPLOY_USER:-}"
@@ -14,6 +20,7 @@ DEPLOY_PORT="${DEPLOY_PORT:-4310}"
 DEPLOY_CONTAINER_NAME="${DEPLOY_CONTAINER_NAME:-home-ops-finance}"
 DEPLOY_IMAGE_TAG="${DEPLOY_IMAGE_TAG:-home-ops-finance:synology}"
 DEPLOY_SSH_IDENTITY="${DEPLOY_SSH_IDENTITY:-}"
+DEPLOY_REMOTE_SUDO_PASSWORD="${DEPLOY_REMOTE_SUDO_PASSWORD:-}"
 
 if [[ -z "${DEPLOY_HOST}" || -z "${DEPLOY_USER}" ]]; then
   cat <<'EOF' >&2
@@ -55,27 +62,39 @@ COPYFILE_DISABLE=1 tar \
   -cf - . | ssh "${SSH_ARGS[@]}" "${SSH_TARGET}" "tar -xf - -C '${DEPLOY_APP_DIR}'"
 
 echo "Building image and restarting container on ${SSH_TARGET} ..."
-ssh -tt "${SSH_ARGS[@]}" "${SSH_TARGET}" \
-  "set -euo pipefail; \
-   docker_bin=''; \
-   for candidate in \"\$(command -v docker 2>/dev/null || true)\" /usr/local/bin/docker /var/packages/ContainerManager/target/usr/bin/docker; do \
-     if [ -n \"\${candidate}\" ] && [ -x \"\${candidate}\" ]; then docker_bin=\"\${candidate}\"; break; fi; \
-   done; \
-   if [ -z \"\${docker_bin}\" ]; then echo 'Could not find docker binary on Synology.' >&2; exit 1; fi; \
-   sudo \"\${docker_bin}\" build --network host -t '${DEPLOY_IMAGE_TAG}' '${DEPLOY_APP_DIR}'; \
-   if sudo \"\${docker_bin}\" ps -a --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
-     sudo \"\${docker_bin}\" rm -f '${DEPLOY_CONTAINER_NAME}'; \
-   fi; \
-   sudo \"\${docker_bin}\" run -d \
-     --name '${DEPLOY_CONTAINER_NAME}' \
-     -p '${DEPLOY_PORT}:${DEPLOY_PORT}' \
-     -e HOME_OPS_FINANCE_HOST=0.0.0.0 \
-     -e HOME_OPS_FINANCE_SERVER_MODE=1 \
-     -e HOME_OPS_FINANCE_DATA_DIR=/data \
-     -e PORT='${DEPLOY_PORT}' \
-     -v '${DEPLOY_DATA_DIR}:/data' \
-     '${DEPLOY_IMAGE_TAG}' >/dev/null; \
-   sudo \"\${docker_bin}\" ps --filter 'name=${DEPLOY_CONTAINER_NAME}'"
+REMOTE_BUILD_CMD="set -euo pipefail; \
+ docker_bin=''; \
+ for candidate in \"\$(command -v docker 2>/dev/null || true)\" /usr/local/bin/docker /var/packages/ContainerManager/target/usr/bin/docker; do \
+   if [ -n \"\${candidate}\" ] && [ -x \"\${candidate}\" ]; then docker_bin=\"\${candidate}\"; break; fi; \
+ done; \
+ if [ -z \"\${docker_bin}\" ]; then echo 'Could not find docker binary on Synology.' >&2; exit 1; fi; \
+ if [ -n \"\${DEPLOY_REMOTE_SUDO_PASSWORD:-}\" ]; then \
+   sudo_run() { printf '%s\n' \"\${DEPLOY_REMOTE_SUDO_PASSWORD}\" | sudo -S -p '' \"\$@\"; }; \
+ else \
+   sudo_run() { sudo \"\$@\"; }; \
+ fi; \
+ sudo_run \"\${docker_bin}\" build --network host -t '${DEPLOY_IMAGE_TAG}' '${DEPLOY_APP_DIR}'; \
+ if sudo_run \"\${docker_bin}\" ps -a --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
+   sudo_run \"\${docker_bin}\" rm -f '${DEPLOY_CONTAINER_NAME}'; \
+ fi; \
+ sudo_run \"\${docker_bin}\" run -d \
+   --name '${DEPLOY_CONTAINER_NAME}' \
+   -p '${DEPLOY_PORT}:${DEPLOY_PORT}' \
+   -e HOME_OPS_FINANCE_HOST=0.0.0.0 \
+   -e HOME_OPS_FINANCE_SERVER_MODE=1 \
+   -e HOME_OPS_FINANCE_DATA_DIR=/data \
+   -e PORT='${DEPLOY_PORT}' \
+   -v '${DEPLOY_DATA_DIR}:/data' \
+   '${DEPLOY_IMAGE_TAG}' >/dev/null; \
+ sudo_run \"\${docker_bin}\" ps --filter 'name=${DEPLOY_CONTAINER_NAME}'"
+
+if [[ -n "${DEPLOY_REMOTE_SUDO_PASSWORD}" ]]; then
+  printf '%s\n' "${DEPLOY_REMOTE_SUDO_PASSWORD}" | \
+    ssh "${SSH_ARGS[@]}" "${SSH_TARGET}" \
+      "IFS= read -r DEPLOY_REMOTE_SUDO_PASSWORD; export DEPLOY_REMOTE_SUDO_PASSWORD; ${REMOTE_BUILD_CMD}"
+else
+  ssh -tt "${SSH_ARGS[@]}" "${SSH_TARGET}" "${REMOTE_BUILD_CMD}"
+fi
 
 echo
 echo "Deployment finished."
