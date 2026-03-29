@@ -6,6 +6,8 @@ This is the recommended deployment path for the current setup because Synology a
 
 Run `home-ops-finance` as its own container in Synology Container Manager.
 
+The repo stays the single source of truth for code. Synology is only the deployment target plus the live data directory.
+
 ## Recommended Shape
 
 - one container for `home-ops-finance`
@@ -24,7 +26,38 @@ Recommended exposed port:
 
 - `Dockerfile`
 - `deploy/docker-compose.synology.yml`
+- `scripts/deploy-synology.sh`
 - `scripts/check-server-runtime.sh`
+
+## Recommended Deploy Flow
+
+Prefer the repo-driven deploy script over manual file copying or Synology's project build UI.
+
+1. develop and commit locally in the Git repo
+2. sync code to Synology with `scripts/deploy-synology.sh`
+3. let the script build via `docker build --network host`
+4. let the script restart the `home-ops-finance` container against the stable live data directory
+
+Example:
+
+```bash
+cd /path/to/finance/projects/home-ops-finance
+DEPLOY_USER=tom DEPLOY_HOST=192.168.178.74 npm run deploy:synology
+```
+
+This keeps a clear split:
+
+- repo checkout: code
+- `/volume1/docker/home-ops-finance/data`: live finance JSON
+
+## Why Not Use The Synology Build UI?
+
+The current Synology project build path proved brittle for this app:
+
+- uploaded compose files did not include the full build context
+- Docker DNS in the Synology UI build path was flaky, while `docker build --network host` worked reliably
+
+Use the Synology UI for visibility if you want, but use the repo-driven deploy script as the primary deployment path.
 
 ## Container Environment
 

@@ -7,6 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "deploy:synology": "./scripts/deploy-synology.sh",
     "import:workbook": "node --experimental-strip-types src/workbook-importer.ts",
     "bootstrap:mappings": "node --experimental-strip-types src/bootstrap-import-mappings.ts",
     "apply:review-state": "node --experimental-strip-types src/apply-review-state.ts",

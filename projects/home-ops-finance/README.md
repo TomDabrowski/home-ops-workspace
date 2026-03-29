@@ -43,6 +43,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 - `docs/architecture-guidelines.md`: target architecture for keeping the project business-system-first instead of frontend-first
 - `docs/deployment-pi.md`: recommended first deployment path for a central Pi-hosted setup
 - `deploy/docker-compose.synology.yml`: Synology-oriented container starter for the app server
+- `scripts/deploy-synology.sh`: repo-driven Synology deploy script that syncs code and restarts the container
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
 - `docs/import-mapping.md`: sheet-to-table migration plan
 - `data/sample-finance.json`: starter shape for real data later
@@ -69,6 +70,7 @@ npm run plan:reviewed
 npm run build:dashboard -- data/draft-report.json data/monthly-plan.json dist/dashboard.html
 npm run serve:app
 npm run serve:app:server
+npm run deploy:synology
 ```
 
 Start with `npm install`, then `npm run typecheck` and `npm test`.
@@ -180,6 +182,16 @@ A simple runtime check helper is available at:
 A Docker image definition is available at:
 
 - `Dockerfile`
+
+For Synology specifically, prefer the repo-driven deploy script:
+
+- `scripts/deploy-synology.sh`
+
+It keeps the repo as the only code source while the Synology stores only:
+
+- the synced deployment checkout
+- the running container
+- the external private data directory
 
 ## Next Steps
 

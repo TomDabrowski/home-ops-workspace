@@ -337,6 +337,7 @@ These are known temporary states, not desired end-state architecture.
 - The app server now has a cleaner deployment boundary: runtime host/port/persistent mode are configuration, not finance logic.
 - Pi/NAS deployment guidance now lives in docs and deployment templates instead of being implied through ad-hoc local scripts only.
 - Synology container deployment now has its own deployment artifacts, again without introducing hosting-specific branches into the finance rules.
+- Synology deployment now also has a repo-driven sync/build/restart script so the NAS is treated as a deployment target, not a second development workspace.
 
 ## Recommended Next 3 Refactor Steps
 
