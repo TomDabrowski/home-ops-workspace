@@ -46,6 +46,11 @@
 }
 
 * { box-sizing: border-box; }
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
@@ -500,6 +505,63 @@ h2 {
   }
   .shell {
     padding-top: 132px;
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-bottom: 40px;
+  }
+  .hero,
+  .card,
+  .subcard {
+    padding: 18px;
+    border-radius: 22px;
+  }
+  .hero {
+    gap: 16px;
+  }
+  .tabs {
+    position: sticky;
+    top: 68px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin: 16px -4px 18px;
+    padding: 10px 4px 8px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 10px 14px;
+  }
+  .month-nav-bar {
+    position: static;
+    top: auto;
+    padding: 16px;
+  }
+  .month-nav-head h2 {
+    font-size: 1.2rem;
+  }
+  .month-nav-actions {
+    gap: 8px;
+  }
+  .month-picker {
+    min-width: 0;
+    width: 100%;
+  }
+  .month-picker select,
+  #monthPrevButton,
+  #monthNextButton {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-status {
+    top: 10px;
+    width: calc(100vw - 20px);
+    margin-top: 10px;
+    padding: 12px 14px;
   }
 }
 table {

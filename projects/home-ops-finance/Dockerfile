@@ -11,7 +11,6 @@ COPY dist ./dist
 COPY docs ./docs
 COPY scripts ./scripts
 COPY src ./src
-COPY data/sample-finance.json ./data/sample-finance.json
 COPY README.md STATUS.md TODO.md tsconfig.json config.server.example.json ./
 
 ENV NODE_ENV=production
