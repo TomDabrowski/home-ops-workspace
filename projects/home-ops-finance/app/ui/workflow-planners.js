@@ -1,6 +1,51 @@
 // UI workflow surfaces live here so app.js can stay focused on wiring the app
 // together. Domain calculations should still come from shared core modules.
 
+function bindAutoNote(notesField, buildSuggestion, watchTargets = []) {
+  if (!notesField) {
+    return { refresh() {}, setManualValue() {} };
+  }
+
+  const normalize = (value) => String(value ?? "").trim();
+
+  function refresh(force = false) {
+    const suggestion = normalize(buildSuggestion());
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    const autoEnabled = notesField.dataset.autoNoteManaged !== "false";
+
+    if (force || autoEnabled || !current || current === lastAuto) {
+      notesField.value = suggestion;
+      notesField.dataset.autoNoteManaged = "true";
+    }
+
+    notesField.dataset.lastAutoNote = suggestion;
+  }
+
+  notesField.addEventListener("input", () => {
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    notesField.dataset.autoNoteManaged = !current || current === lastAuto ? "true" : "false";
+  });
+
+  for (const target of watchTargets) {
+    if (!target) {
+      continue;
+    }
+    target.addEventListener("input", () => refresh(false));
+    target.addEventListener("change", () => refresh(false));
+  }
+
+  return {
+    refresh,
+    setManualValue(value) {
+      notesField.value = value ?? "";
+      notesField.dataset.autoNoteManaged = "false";
+      notesField.dataset.lastAutoNote = "";
+    },
+  };
+}
+
 export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
   const {
     manualMusicIncomeOverridesForMonth,
@@ -40,7 +85,22 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
   const reserveRateLabel = formatPercent(profile.reserveRate ?? 0);
 
   if (!(saveButton.dataset.editingId ?? "")) {
-    dateField.value = monthKey;
+    dateField.value = defaultDateTimeForMonth(monthKey);
+  }
+
+  const musicNote = bindAutoNote(
+    notesField,
+    () => {
+      const amount = Number(amountField.value);
+      const selectedDateTime = dateField.value || defaultDateTimeForMonth(monthKey);
+      const selectedMonthKey = monthFromDate(selectedDateTime) || monthKey;
+      const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
+      return `Musik-Istwert für ${selectedMonthKey} am ${formatDisplayDate(selectedDateTime)}: ${amountLabel} brutto.`;
+    },
+    [amountField, dateField],
+  );
+  if (!(saveButton.dataset.editingId ?? "")) {
+    musicNote.refresh(true);
   }
 
   summaryTarget.innerHTML = [
@@ -85,7 +145,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
       saveButton.textContent = "Musik-Istwert aktualisieren";
       amountField.value = String(entry.amount);
       dateField.value = String(entry.entryDate ?? "").slice(0, 16) || defaultDateTimeForMonth(monthKey);
-      notesField.value = entry.notes || "";
+      musicNote.setManualValue(entry.notes || "");
       metaTarget.textContent = `Bearbeitungsmodus aktiv für ${euro.format(entry.amount)} brutto`;
       amountField.scrollIntoView({ behavior: "smooth", block: "center" });
       focusAndSelectField(amountField);
@@ -157,7 +217,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
     saveButton.textContent = "Musik-Istwert speichern";
     amountField.value = "";
     dateField.value = defaultDateTimeForMonth(monthKey);
-    notesField.value = "";
+    musicNote.refresh(true);
     await refreshFinanceView({
       title: isEditing ? "Musik-Istwert aktualisiert" : "Musik-Istwert gespeichert",
       detail: `${statusDetailForMode(result.mode)} Reserve ${euro.format(reserveAmount)}, frei ${euro.format(availableAmount)}.`,
@@ -211,6 +271,21 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   accountField.innerHTML = optionMarkup(accountOptions, accountField.value || "giro");
   if (!(saveButton.dataset.editingId ?? "")) {
     dateField.value = defaultDateTimeForMonth(monthKey);
+  }
+
+  const expenseNote = bindAutoNote(
+    notesField,
+    () => {
+      const description = descriptionField.value.trim();
+      const amount = Number(amountField.value);
+      const entryDate = dateField.value || defaultDateTimeForMonth(monthKey);
+      const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
+      return `${description || "Manuelle Monatsausgabe"} am ${formatDisplayDate(entryDate)} für ${monthKey}: ${amountLabel}.`;
+    },
+    [descriptionField, amountField, dateField, categoryField, accountField],
+  );
+  if (!(saveButton.dataset.editingId ?? "")) {
+    expenseNote.refresh(true);
   }
 
   const persistenceLabel = monthlyExpensePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
@@ -273,6 +348,13 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
       : [...readMonthlyExpenseOverrides(), nextEntry];
 
     const result = await saveMonthlyExpenseOverrides(nextState);
+    saveButton.dataset.editingId = "";
+    descriptionField.value = "";
+    amountField.value = "";
+    dateField.value = defaultDateTimeForMonth(monthKey);
+    categoryField.value = "other";
+    accountField.value = "giro";
+    expenseNote.refresh(true);
     await refreshFinanceView({
       title: isEditing ? "Monatsausgabe aktualisiert" : "Monatsausgabe gespeichert",
       detail: statusDetailForMode(result.mode),
@@ -389,12 +471,12 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   function resetForm() {
     dateField.value = fallbackDate;
     applySuggestedSnapshotValues(fallbackDate);
-    notesField.value = "";
     monthStartEnabledField.checked = false;
     monthStartMonthField.value = currentSelectedMonthKey();
     monthStartMonthField.disabled = true;
     saveButton.dataset.editingId = "";
     saveButton.textContent = "Ist-Stand speichern";
+    snapshotNote.refresh(true);
   }
 
   if (!dateField.value) {
@@ -403,6 +485,29 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
 
   if (!saveButton.dataset.editingId) {
     applySuggestedSnapshotValues(dateField.value || fallbackDate);
+  }
+
+  const snapshotNote = bindAutoNote(
+    notesField,
+    () => {
+      const snapshotDate = dateField.value || fallbackDate;
+      const anchorMonthKey = monthStartEnabledField.checked
+        ? (monthStartMonthField.value || monthFromDate(snapshotDate) || currentSelectedMonthKey())
+        : "";
+      const cashAmount = roundCurrency(
+        Number(giroField.value || 0) +
+        Number(tradeRepublicField.value || 0) +
+        Number(scalableField.value || 0),
+      );
+      const investmentAmount = Number(investmentField.value || 0);
+      return anchorMonthKey
+        ? `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment, gilt als Monatsanfang für ${anchorMonthKey}.`
+        : `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment.`;
+    },
+    [dateField, giroField, tradeRepublicField, scalableField, investmentField, monthStartEnabledField, monthStartMonthField],
+  );
+  if (!saveButton.dataset.editingId) {
+    snapshotNote.refresh(true);
   }
 
   if (snapshots.length === 0) {
@@ -457,7 +562,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       tradeRepublicField.value = String(cashAccounts.cash);
       scalableField.value = String(cashAccounts.savings);
       investmentField.value = String(entry.investmentAmount ?? 0);
-      notesField.value = entry.notes || "";
+      snapshotNote.setManualValue(entry.notes || "");
       monthStartEnabledField.checked = Boolean(entry.anchorMonthKey);
       monthStartMonthField.value = entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate) ?? currentSelectedMonthKey();
       monthStartMonthField.disabled = !monthStartEnabledField.checked;

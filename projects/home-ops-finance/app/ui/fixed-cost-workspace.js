@@ -1,6 +1,51 @@
 // Fixed-cost / baseline override workspace. This keeps the future-plan editing
 // flow out of the app shell and groups the list + form behavior in one place.
 
+function bindAutoNote(notesField, buildSuggestion, watchTargets = []) {
+  if (!notesField) {
+    return { refresh() {}, setManualValue() {} };
+  }
+
+  const normalize = (value) => String(value ?? "").trim();
+
+  function refresh(force = false) {
+    const suggestion = normalize(buildSuggestion());
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    const autoEnabled = notesField.dataset.autoNoteManaged !== "false";
+
+    if (force || autoEnabled || !current || current === lastAuto) {
+      notesField.value = suggestion;
+      notesField.dataset.autoNoteManaged = "true";
+    }
+
+    notesField.dataset.lastAutoNote = suggestion;
+  }
+
+  notesField.addEventListener("input", () => {
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    notesField.dataset.autoNoteManaged = !current || current === lastAuto ? "true" : "false";
+  });
+
+  for (const target of watchTargets) {
+    if (!target) {
+      continue;
+    }
+    target.addEventListener("input", () => refresh(false));
+    target.addEventListener("change", () => refresh(false));
+  }
+
+  return {
+    refresh,
+    setManualValue(value) {
+      notesField.value = value ?? "";
+      notesField.dataset.autoNoteManaged = "false";
+      notesField.dataset.lastAutoNote = "";
+    },
+  };
+}
+
 export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
   const {
     readBaselineOverrides,
@@ -62,6 +107,25 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     importDraft.monthlyBaselines[importDraft.monthlyBaselines.length - 1]?.monthKey ??
     reviewFocusMonthKey;
 
+  const fixedCostNote = bindAutoNote(
+    notesField,
+    () => {
+      const label = labelField.value.trim() || "Grundplan-Posten";
+      const category = baselineCategoryLabel(categoryField.value || "fixed");
+      const stopMode = saveButton.dataset.stopMode === "true";
+      if (stopMode) {
+        return `${label} endet zum ${formatDisplayDate(endDateField.value || todayIsoDate())}.`;
+      }
+      const effectiveFrom = effectiveFromField.value || suggestedMonth;
+      const rawAmount = Number(amountField.value);
+      const amount = Number.isFinite(rawAmount) && rawAmount > 0
+        ? euro.format(storedAmountFromEditorValue(categoryField.value || "fixed", rawAmount))
+        : "offener Betrag";
+      return `${label} (${category}) ab ${effectiveFrom}: ${amount}.`;
+    },
+    [labelField, categoryField, amountField, effectiveFromField, endDateField],
+  );
+
   function resetForm() {
     labelField.value = "";
     categoryField.value = "fixed";
@@ -69,7 +133,6 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     amountField.value = "";
     effectiveFromField.value = suggestedMonth;
     endDateField.value = todayIsoDate();
-    notesField.value = "";
     labelField.readOnly = false;
     saveButton.dataset.editingId = "";
     saveButton.dataset.sourceLineItemId = "";
@@ -77,6 +140,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     saveButton.textContent = "Grundplan-Posten speichern";
     updateStopModeUi();
     updateAmountFieldUi();
+    fixedCostNote.refresh(true);
   }
 
   if (overrides.length === 0) {
@@ -113,6 +177,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
 
   if (!editingId && !sourceLineItemId) {
     effectiveFromField.value = suggestedMonth;
+    fixedCostNote.refresh(true);
   }
 
   for (const button of listTarget.querySelectorAll("[data-fixed-cost-edit]")) {
@@ -130,7 +195,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       amountField.value = entry.amount > 0 ? String(editorValueFromStoredAmount(categoryField.value, entry.amount)) : "";
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
       endDateField.value = entry.endDate ?? todayIsoDate();
-      notesField.value = entry.notes ?? "";
+      fixedCostNote.setManualValue(entry.notes ?? "");
       labelField.readOnly = Boolean(entry.sourceLineItemId);
       saveButton.textContent = "Fixkosten aktualisieren";
       metaTarget.textContent = `Bearbeite gerade: ${entry.label}`;
@@ -179,11 +244,11 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       categoryField.value = source.category ?? "fixed";
       amountField.value = String(editorValueFromStoredAmount(categoryField.value, source.amount));
       effectiveFromField.value = suggestedMonth;
-      notesField.value = `Ändert bestehenden Posten ab ${suggestedMonth}.`;
       labelField.readOnly = true;
       categoryField.disabled = true;
       saveButton.textContent = "Grundplan-Override speichern";
       metaTarget.textContent = `Bearbeitungsmodus aktiv für bestehenden Posten: ${source.label}`;
+      fixedCostNote.refresh(true);
       labelField.scrollIntoView({ behavior: "smooth", block: "center" });
       amountField.focus();
       updateStopModeUi();
@@ -203,11 +268,11 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       categoryField.value = source.category ?? "fixed";
       amountField.value = "";
       endDateField.value = todayIsoDate();
-      notesField.value = `Gekuendigt zum ${formatDisplayDate(endDateField.value)}.`;
       labelField.readOnly = true;
       categoryField.disabled = true;
       saveButton.textContent = "Kündigung speichern";
       metaTarget.textContent = `Kündigungsmodus aktiv für ${source.label}. Wähle jetzt das Kündigungsdatum aus und speichere dann.`;
+      fixedCostNote.refresh(true);
       updateStopModeUi();
       updateAmountFieldUi();
       endDateField.scrollIntoView({ behavior: "smooth", block: "center" });

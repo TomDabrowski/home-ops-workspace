@@ -905,9 +905,25 @@ th:first-child {
   top: 126px;
   z-index: 12;
   padding: 18px 22px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(247, 249, 252, 0.94));
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  overflow: visible;
+  background: linear-gradient(180deg, rgba(23, 27, 36, 0.86), rgba(18, 22, 30, 0.76));
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 22px 40px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(26px) saturate(1.15);
+  -webkit-backdrop-filter: blur(26px) saturate(1.15);
+}
+.month-nav-bar::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -24px;
+  height: 42px;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(180deg, rgba(16, 18, 23, 0.28), rgba(16, 18, 23, 0));
+  pointer-events: none;
 }
 .month-nav-head {
   display: flex;
@@ -918,12 +934,25 @@ th:first-child {
 .month-nav-head h2 {
   margin: 2px 0 0;
   font-size: 1.8rem;
+  color: var(--ink);
 }
 .month-nav-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: end;
+}
+.month-nav-bar .eyebrow,
+.month-nav-bar .select-wrap > span {
+  color: rgba(243, 245, 249, 0.74);
+}
+.month-nav-bar .pill {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.month-nav-bar .month-picker select {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .month-side {
   position: sticky;

@@ -1,6 +1,51 @@
 // Planner-oriented UI surfaces: forecast thresholds, salary settings and
 // music tax settings. The surrounding app should wire these screens together.
 
+function bindAutoNote(notesField, buildSuggestion, watchTargets = []) {
+  if (!notesField) {
+    return { refresh() {}, setManualValue() {} };
+  }
+
+  const normalize = (value) => String(value ?? "").trim();
+
+  function refresh(force = false) {
+    const suggestion = normalize(buildSuggestion());
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    const autoEnabled = notesField.dataset.autoNoteManaged !== "false";
+
+    if (force || autoEnabled || !current || current === lastAuto) {
+      notesField.value = suggestion;
+      notesField.dataset.autoNoteManaged = "true";
+    }
+
+    notesField.dataset.lastAutoNote = suggestion;
+  }
+
+  notesField.addEventListener("input", () => {
+    const current = normalize(notesField.value);
+    const lastAuto = normalize(notesField.dataset.lastAutoNote);
+    notesField.dataset.autoNoteManaged = !current || current === lastAuto ? "true" : "false";
+  });
+
+  for (const target of watchTargets) {
+    if (!target) {
+      continue;
+    }
+    target.addEventListener("input", () => refresh(false));
+    target.addEventListener("change", () => refresh(false));
+  }
+
+  return {
+    refresh,
+    setManualValue(value) {
+      notesField.value = value ?? "";
+      notesField.dataset.autoNoteManaged = "false";
+      notesField.dataset.lastAutoNote = "";
+    },
+  };
+}
+
 export function renderForecastPlanner(importDraft, deps) {
   const {
     readForecastSettings,
@@ -47,6 +92,21 @@ export function renderForecastPlanner(importDraft, deps) {
   musicAccountField.innerHTML = optionMarkup(accountOptions, musicThresholdAccountId);
   musicAccountField.value = musicThresholdAccountId;
   notesField.value = stored?.notes ?? "";
+  const forecastNote = bindAutoNote(
+    notesField,
+    () => {
+      const selectedAccountId = musicAccountField.value || musicThresholdAccountId;
+      const selectedSafetyThreshold = Number(safetyField.value);
+      const selectedMusicThreshold = Number(musicField.value);
+      return `Cash-Ziel ${euro.format(Number.isFinite(selectedSafetyThreshold) ? selectedSafetyThreshold : safetyThreshold)}, Musik-Schwelle ${euro.format(Number.isFinite(selectedMusicThreshold) ? selectedMusicThreshold : musicThreshold)} auf ${thresholdAccountLabel(selectedAccountId)}.`;
+    },
+    [safetyField, musicField, musicAccountField],
+  );
+  if (stored?.notes) {
+    forecastNote.setManualValue(stored.notes);
+  } else {
+    forecastNote.refresh(true);
+  }
 
   const persistenceLabel = forecastPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = stored?.updatedAt
@@ -138,13 +198,29 @@ export function renderSalaryPlanner(importDraft, deps) {
   function resetForm() {
     amountField.value = "";
     effectiveFromField.value = suggestedMonth;
-    notesField.value = "";
+    salaryNote.refresh(true);
     saveButton.dataset.editingId = "";
     saveButton.textContent = "Gehaltsstand speichern";
   }
 
   if (!(saveButton.dataset.editingId ?? "")) {
     effectiveFromField.value = suggestedMonth;
+  }
+
+  const salaryNote = bindAutoNote(
+    notesField,
+    () => {
+      const amount = Number(amountField.value);
+      const effectiveFrom = effectiveFromField.value || suggestedMonth;
+      if (Number.isFinite(amount) && amount > 0) {
+        return `Gehaltsstand ab ${effectiveFrom}: ${euro.format(amount)} netto pro Monat.`;
+      }
+      return `Gehaltsstand ab ${effectiveFrom}.`;
+    },
+    [amountField, effectiveFromField],
+  );
+  if (!(saveButton.dataset.editingId ?? "")) {
+    salaryNote.refresh(true);
   }
 
   if (settings.length === 0) {
@@ -192,7 +268,7 @@ export function renderSalaryPlanner(importDraft, deps) {
       saveButton.dataset.editingId = entry.id;
       amountField.value = String(entry.netSalaryAmount ?? "");
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
-      notesField.value = entry.notes ?? "";
+      salaryNote.setManualValue(entry.notes ?? "");
       saveButton.textContent = "Gehaltsstand aktualisieren";
       metaTarget.textContent = `Bearbeite gerade: ${euro.format(entry.netSalaryAmount)} ab ${entry.effectiveFrom}`;
     });
@@ -302,6 +378,23 @@ export function renderMusicTaxPlanner(importDraft, deps) {
   amountField.value = Number.isFinite(currentAmount) ? String(currentAmount) : String(workbookDefault);
   effectiveFromField.value = currentEffectiveFrom;
   notesField.value = stored?.notes ?? "";
+  const musicTaxNote = bindAutoNote(
+    notesField,
+    () => {
+      const amount = Number(amountField.value);
+      const effectiveFrom = effectiveFromField.value || currentEffectiveFrom;
+      if (Number.isFinite(amount) && amount >= 0) {
+        return `Quartals-Steuer-Vorauszahlung ab ${effectiveFrom}: ${euro.format(amount)} pro Quartal.`;
+      }
+      return `Quartals-Steuer-Vorauszahlung ab ${effectiveFrom}.`;
+    },
+    [amountField, effectiveFromField],
+  );
+  if (stored?.notes) {
+    musicTaxNote.setManualValue(stored.notes);
+  } else {
+    musicTaxNote.refresh(true);
+  }
 
   const persistenceLabel = musicTaxPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = stored?.updatedAt
