@@ -233,6 +233,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     buildCategoryOptions,
     accountOptions,
     defaultDateTimeForMonth,
+    formatDisplayDate,
     monthlyExpensePersistence,
     renderSignalInline,
     expenseWarningsForInput,
