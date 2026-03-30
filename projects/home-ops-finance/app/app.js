@@ -433,7 +433,7 @@ function monthEndSafetyFormula({
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
     const thresholdAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
     const thresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
-    const thresholdTargetLabel = thresholdAccountLabel(importDraft, thresholdAccountId);
+    const thresholdTargetLabel = thresholdAccountLabel(accountOptions, thresholdAccountId);
     const musicDateLabel = entryDatesLabel(musicIncomeEntries);
     const remaining = joinMoneyDeltas([
       moneyDeltaLabel(reviewRow.projectionSalaryAllocationToSafetyAmount, "noch aus Gehalt ins Cash"),
