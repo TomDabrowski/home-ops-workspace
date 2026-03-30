@@ -906,6 +906,7 @@ th:first-child {
   z-index: 12;
   padding: 18px 22px;
   overflow: visible;
+  pointer-events: none;
   background: linear-gradient(180deg, rgba(23, 27, 36, 0.86), rgba(18, 22, 30, 0.76));
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow:
@@ -930,6 +931,7 @@ th:first-child {
   justify-content: space-between;
   align-items: end;
   gap: 16px;
+  pointer-events: auto;
 }
 .month-nav-head h2 {
   margin: 2px 0 0;
@@ -941,6 +943,7 @@ th:first-child {
   flex-wrap: wrap;
   gap: 10px;
   align-items: end;
+  pointer-events: auto;
 }
 .month-nav-bar .eyebrow,
 .month-nav-bar .select-wrap > span {
@@ -949,6 +952,12 @@ th:first-child {
 .month-nav-bar .pill {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.08);
+}
+.month-nav-bar .month-picker,
+.month-nav-bar .month-picker select,
+.month-nav-bar button,
+.month-nav-bar label {
+  pointer-events: auto;
 }
 .month-nav-bar .month-picker select {
   background: rgba(255, 255, 255, 0.12);
