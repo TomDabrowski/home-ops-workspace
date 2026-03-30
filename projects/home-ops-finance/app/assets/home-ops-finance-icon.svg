@@ -1,0 +1,58 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="180" y1="120" x2="842" y2="910" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101A2B"/>
+      <stop offset="1" stop-color="#07111E"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(730 220) rotate(138.576) scale(520.434)">
+      <stop stop-color="#5AE7FF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#5AE7FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stroke" x1="222" y1="210" x2="793" y2="818" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7FE7FF"/>
+      <stop offset="0.55" stop-color="#6AA6FF"/>
+      <stop offset="1" stop-color="#3CF2C7"/>
+    </linearGradient>
+    <linearGradient id="bars" x1="382" y1="681" x2="649" y2="451" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#72F0D2"/>
+      <stop offset="1" stop-color="#86D7FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="110" y="110" width="804" height="804" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur"/>
+    </filter>
+  </defs>
+
+  <rect x="72" y="72" width="880" height="880" rx="220" fill="url(#bg)"/>
+  <rect x="72" y="72" width="880" height="880" rx="220" fill="url(#glow)"/>
+  <rect x="84" y="84" width="856" height="856" rx="208" stroke="url(#stroke)" stroke-opacity="0.25" stroke-width="4"/>
+
+  <g opacity="0.18">
+    <path d="M244 270H780" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M224 382H800" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M204 494H820" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M224 606H800" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M244 718H780" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M334 188V836" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M512 156V868" stroke="#8FC8FF" stroke-width="2"/>
+    <path d="M690 188V836" stroke="#8FC8FF" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#softGlow)">
+    <path d="M512 190L720 310V550L512 670L304 550V310L512 190Z" stroke="url(#stroke)" stroke-width="22" stroke-linejoin="round"/>
+    <path d="M512 258L660 344V516L512 602L364 516V344L512 258Z" stroke="#0D2033" stroke-width="16" stroke-linejoin="round"/>
+
+    <rect x="386" y="516" width="56" height="124" rx="20" fill="url(#bars)"/>
+    <rect x="484" y="456" width="56" height="184" rx="20" fill="url(#bars)"/>
+    <rect x="582" y="396" width="56" height="244" rx="20" fill="url(#bars)"/>
+
+    <path d="M358 622L452 526L530 560L662 406" stroke="url(#stroke)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M612 406H662V456" stroke="url(#stroke)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <circle cx="358" cy="622" r="18" fill="#07111E" stroke="#7FE7FF" stroke-width="10"/>
+    <circle cx="452" cy="526" r="18" fill="#07111E" stroke="#6AA6FF" stroke-width="10"/>
+    <circle cx="530" cy="560" r="18" fill="#07111E" stroke="#55B9FF" stroke-width="10"/>
+    <circle cx="662" cy="406" r="18" fill="#07111E" stroke="#3CF2C7" stroke-width="10"/>
+  </g>
+</svg>

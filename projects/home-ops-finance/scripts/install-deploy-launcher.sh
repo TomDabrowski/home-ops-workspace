@@ -10,12 +10,58 @@ CONTENTS_DIR="${APP_PATH}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 UI_RUNNER_PATH="${SCRIPT_DIR}/deploy-synology-ui.swift"
-ICON_SOURCE="${ICON_SOURCE:-${HOME}/Applications/Home Ops Finance.app/Contents/Resources/applet.icns}"
+ICON_SOURCE="${ICON_SOURCE:-${SCRIPT_DIR}/assets/home-ops-finance-deploy.icns}"
+ICON_SVG_SOURCE="${ICON_SVG_SOURCE:-${SCRIPT_DIR}/assets/home-ops-finance-deploy-icon.svg}"
 EXECUTABLE_NAME="${EXECUTABLE_NAME:-home-ops-finance-deploy}"
 UI_BINARY_NAME="${UI_BINARY_NAME:-home-ops-finance-deploy-ui}"
 SWIFTC_BIN="${SWIFTC_BIN:-$(xcrun --find swiftc)}"
 MACOS_SDK_PATH="${MACOS_SDK_PATH:-$(xcrun --show-sdk-path --sdk macosx 2>/dev/null || true)}"
 MACOS_TARGET="${MACOS_TARGET:-arm64-apple-macos12.0}"
+
+build_icon_from_svg() {
+  local svg_source="$1"
+  local iconset_dir
+  local preview_dir
+  local preview_file
+
+  [[ -f "${svg_source}" ]] || return 1
+  command -v qlmanage >/dev/null 2>&1 || return 1
+  command -v sips >/dev/null 2>&1 || return 1
+  command -v iconutil >/dev/null 2>&1 || return 1
+
+  iconset_dir="$(mktemp -d "${TMPDIR:-/tmp}/home-ops-iconset.XXXXXX")"
+  preview_dir="$(mktemp -d "${TMPDIR:-/tmp}/home-ops-preview.XXXXXX")"
+
+  qlmanage -t -s 1024 -o "${preview_dir}" "${svg_source}" >/dev/null 2>&1 || {
+    rm -rf "${iconset_dir}" "${preview_dir}"
+    return 1
+  }
+
+  preview_file="$(find "${preview_dir}" -maxdepth 1 -type f -name '*.png' | head -n 1)"
+  [[ -f "${preview_file}" ]] || {
+    rm -rf "${iconset_dir}" "${preview_dir}"
+    return 1
+  }
+
+  cp "${preview_file}" "${iconset_dir}/icon_512x512@2x.png"
+  sips -z 16 16 "${preview_file}" --out "${iconset_dir}/icon_16x16.png" >/dev/null
+  sips -z 32 32 "${preview_file}" --out "${iconset_dir}/icon_16x16@2x.png" >/dev/null
+  sips -z 32 32 "${preview_file}" --out "${iconset_dir}/icon_32x32.png" >/dev/null
+  sips -z 64 64 "${preview_file}" --out "${iconset_dir}/icon_32x32@2x.png" >/dev/null
+  sips -z 128 128 "${preview_file}" --out "${iconset_dir}/icon_128x128.png" >/dev/null
+  sips -z 256 256 "${preview_file}" --out "${iconset_dir}/icon_128x128@2x.png" >/dev/null
+  sips -z 256 256 "${preview_file}" --out "${iconset_dir}/icon_256x256.png" >/dev/null
+  sips -z 512 512 "${preview_file}" --out "${iconset_dir}/icon_256x256@2x.png" >/dev/null
+  sips -z 512 512 "${preview_file}" --out "${iconset_dir}/icon_512x512.png" >/dev/null
+
+  iconutil -c icns "${iconset_dir}" -o "${ICON_SOURCE}" >/dev/null 2>&1 || {
+    rm -rf "${iconset_dir}" "${preview_dir}"
+    return 1
+  }
+
+  rm -rf "${iconset_dir}" "${preview_dir}"
+  return 0
+}
 
 mkdir -p "${APP_DIR}"
 rm -rf "${APP_PATH}"
@@ -74,6 +120,10 @@ display dialog "Der native Deploy-Launcher konnte nicht gebaut werden." buttons 
 OSA
 SH
   chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
+fi
+
+if [[ ! -f "${ICON_SOURCE}" ]]; then
+  build_icon_from_svg "${ICON_SVG_SOURCE}" || true
 fi
 
 if [[ -f "${ICON_SOURCE}" ]]; then
