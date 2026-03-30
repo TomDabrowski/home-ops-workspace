@@ -11,11 +11,13 @@ export interface MonthlyForecastRoutingInput {
   salaryAllocationToSafetyAmount: number;
   salaryAllocationToInvestmentAmount: number;
   importedIncomeAvailableAmount: number;
+  importedIncomeReserveAmount: number;
   importedExpenseAmount: number;
   safetyBucketStartAmount?: number;
   investmentBucketStartAmount?: number;
   explicitWealthAnchor?: ForecastWealthAnchor;
   incomeAvailableAfterAnchorAmount?: number;
+  incomeReserveAfterAnchorAmount?: number;
   expenseAfterAnchorAmount?: number;
 }
 
@@ -23,9 +25,11 @@ export interface MonthlyForecastRoutingResult {
   anchorAppliesAtMonthStart: boolean;
   anchorAppliesWithinMonth: boolean;
   projectionIncomeAvailableAmount: number;
+  projectionIncomeReserveAmount: number;
   projectionExpenseAmount: number;
   projectionSalaryAllocationToSafetyAmount: number;
   projectionSalaryAllocationToInvestmentAmount: number;
+  salaryAllocationToThresholdAmount: number;
   musicAllocationToSafetyAmount: number;
   musicAllocationToInvestmentAmount: number;
   safetyBucketCalculatedEndAmount?: number;
@@ -55,6 +59,9 @@ export function buildMonthlyForecastRouting(
   const projectionIncomeAvailableAmount = snapshotDate
     ? roundCurrency(input.incomeAvailableAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedIncomeAvailableAmount);
+  const projectionIncomeReserveAmount = snapshotDate
+    ? roundCurrency(input.incomeReserveAfterAnchorAmount ?? 0)
+    : roundCurrency(input.importedIncomeReserveAmount);
   const projectionExpenseAmount = snapshotDate
     ? roundCurrency(input.expenseAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedExpenseAmount);
@@ -71,11 +78,18 @@ export function buildMonthlyForecastRouting(
     : Number(input.safetyBucketStartAmount ?? 0);
   const thresholdAmount = Number(input.thresholdAccountCurrentAmount ?? currentSafetyAmount);
   const musicSafetyGapAmount = Math.max(0, input.musicThreshold - thresholdAmount);
+  const musicNetNeededForThresholdAmount = roundCurrency(
+    Math.max(0, Math.min(projectionIncomeAvailableAmount, musicSafetyGapAmount - projectionIncomeReserveAmount)),
+  );
   const musicAllocationToSafetyAmount = roundCurrency(
-    !input.useForecastRouting ? 0 : Math.min(projectionIncomeAvailableAmount, musicSafetyGapAmount),
+    !input.useForecastRouting ? 0 : projectionIncomeReserveAmount + musicNetNeededForThresholdAmount,
   );
   const musicAllocationToInvestmentAmount = roundCurrency(
-    !input.useForecastRouting ? 0 : Math.max(0, projectionIncomeAvailableAmount - musicAllocationToSafetyAmount),
+    !input.useForecastRouting ? 0 : Math.max(0, projectionIncomeAvailableAmount - musicNetNeededForThresholdAmount),
+  );
+  const salarySafetyGapAmount = Math.max(0, musicSafetyGapAmount - musicAllocationToSafetyAmount);
+  const salaryAllocationToThresholdAmount = roundCurrency(
+    !input.useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
   );
 
   const safetyBucketCalculatedEndAmount = input.useForecastRouting
@@ -139,9 +153,11 @@ export function buildMonthlyForecastRouting(
     anchorAppliesAtMonthStart,
     anchorAppliesWithinMonth,
     projectionIncomeAvailableAmount,
+    projectionIncomeReserveAmount,
     projectionExpenseAmount,
     projectionSalaryAllocationToSafetyAmount,
     projectionSalaryAllocationToInvestmentAmount,
+    salaryAllocationToThresholdAmount,
     musicAllocationToSafetyAmount,
     musicAllocationToInvestmentAmount,
     safetyBucketCalculatedEndAmount,

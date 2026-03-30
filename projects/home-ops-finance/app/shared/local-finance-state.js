@@ -112,6 +112,14 @@ export function createLocalFinanceStateTools(deps) {
     );
   }
 
+  function sumIncomeReserveAfterDate(entries, monthKey, snapshotDate) {
+    return roundCurrency(
+      entries
+        .filter((entry) => incomeMonthKey(entry) === monthKey && String(entry.entryDate) > snapshotDate)
+        .reduce((sum, entry) => sum + Number(entry.reserveAmount ?? 0), 0),
+    );
+  }
+
   function sumMusicIncomeForMonth(entries, monthKey) {
     return roundCurrency(
       entries
@@ -535,6 +543,9 @@ export function createLocalFinanceStateTools(deps) {
       const incomeAvailableForProjection = anchorUsesSnapshotCutoff
         ? sumIncomeAvailableAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
         : importedIncomeAvailableAmount;
+      const incomeReserveForProjection = anchorUsesSnapshotCutoff
+        ? sumIncomeReserveAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
+        : importedIncomeReserveAmount;
       const expenseAmountForProjection = anchorUsesSnapshotCutoff
         ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
         : importedExpenseAmount;
@@ -564,11 +575,18 @@ export function createLocalFinanceStateTools(deps) {
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
       const musicSafetyGapAmount = Math.max(0, musicThreshold - currentMusicThresholdAccountAmount);
+      const musicNetNeededForThresholdAmount = roundCurrency(
+        Math.max(0, Math.min(incomeAvailableForProjection, musicSafetyGapAmount - incomeReserveForProjection)),
+      );
       const musicAllocationToSafetyAmount = roundCurrency(
-        !useForecastRouting ? 0 : Math.min(incomeAvailableForProjection, musicSafetyGapAmount),
+        !useForecastRouting ? 0 : incomeReserveForProjection + musicNetNeededForThresholdAmount,
       );
       const musicAllocationToInvestmentAmount = roundCurrency(
-        !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicAllocationToSafetyAmount),
+        !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicNetNeededForThresholdAmount),
+      );
+      const salarySafetyGapAmount = Math.max(0, musicSafetyGapAmount - musicAllocationToSafetyAmount);
+      const salaryAllocationToThresholdAmount = roundCurrency(
+        !useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
       );
       const safetyBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
@@ -625,6 +643,7 @@ export function createLocalFinanceStateTools(deps) {
       const musicThresholdAccountProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
+              salaryAllocationToThresholdAmount +
               musicAllocationToSafetyAmount -
               thresholdAccountExpenseAmount,
           )
@@ -665,12 +684,14 @@ export function createLocalFinanceStateTools(deps) {
         musicAllocationToInvestmentAmount,
         salaryAllocationToSafetyAmount,
         salaryAllocationToInvestmentAmount,
+        salaryAllocationToThresholdAmount,
         projectionSalaryAllocationToSafetyAmount,
         projectionSalaryAllocationToInvestmentAmount,
         anchorAppliesWithinMonth,
         anchorMode: explicitWealthAnchorMode,
         anchorAppliesAtMonthStart,
         projectionIncomeAvailableAmount: incomeAvailableForProjection,
+        projectionIncomeReserveAmount: incomeReserveForProjection,
         projectionExpenseAmount: expenseAmountForProjection,
         safetyBucketStartAmount,
         thresholdAccountStartAmount: musicThresholdAccountId ? currentMusicThresholdAccountAmount : undefined,

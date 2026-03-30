@@ -131,6 +131,14 @@ export function sumIncomeAvailableAfterDate(entries: IncomeEntry[], monthKey: st
   );
 }
 
+export function sumIncomeReserveAfterDate(entries: IncomeEntry[], monthKey: string, snapshotDate: string): number {
+  return roundCurrency(
+    entries
+      .filter((entry) => incomeMonthKey(entry) === monthKey && String(entry.entryDate) > snapshotDate)
+      .reduce((sum, entry) => sum + (entry.reserveAmount ?? 0), 0),
+  );
+}
+
 export function sumMusicIncomeForMonth(entries: IncomeEntry[], monthKey: string): number {
   return roundCurrency(
     entries

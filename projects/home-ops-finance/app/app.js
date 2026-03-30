@@ -443,7 +443,7 @@ function monthEndSafetyFormula({
     return joinTooltipLines([
       `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
       `${snapshotDate} ist der aktive Ist-Stand fuer Cash mit ${euro.format(safetyAnchorAmount)}.`,
-      `Bis zu diesem Stichtag stecken bereits ${euro.format(salarySafetyConsumedAmount)} aus Gehalt und ${euro.format(musicSafetyConsumedAmount)} aus Musik netto im Cash.`,
+      `Bis zu diesem Stichtag stecken bereits ${euro.format(salarySafetyConsumedAmount)} aus Gehalt und ${euro.format(musicSafetyConsumedAmount)} aus Musik im Cash.`,
       musicSafetyConsumedAmount > 0
         ? `${euro.format(musicSafetyConsumedAmount)} davon wurden ins Cash-Ziel ${thresholdTargetLabel} gelenkt, um es wieder Richtung ${euro.format(thresholdAmount)} zu bringen.`
         : "",
@@ -460,7 +460,7 @@ function monthEndSafetyFormula({
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.safetyBucketAnchorAmount !== undefined) {
     return joinTooltipLines([
       `${monthKey}: Start-Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
-      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik netto ins Cash.`,
+      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
       `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
       `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
     ]);
@@ -468,7 +468,7 @@ function monthEndSafetyFormula({
 
   return joinTooltipLines([
     `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
-    `Dazu kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik netto ins Cash.`,
+    `Dazu kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
     `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
     `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
   ]);
@@ -1030,14 +1030,12 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount),
       )
       : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicInvestmentRemainingAmount = hasActiveInMonthSnapshot
-      ? roundCurrency(Math.max(0, musicNetRemainingAmount - Number(review.row.musicAllocationToSafetyAmount ?? 0)))
-      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
-      ? roundCurrency(Math.max(0, musicNetConsumedAmount - musicInvestmentConsumedAmount))
-      : Number(review.row.musicAllocationToSafetyAmount ?? 0);
-    const musicSafetyTotalAmount = roundCurrency(musicSafetyConsumedAmount + Number(review.row.musicAllocationToSafetyAmount ?? 0));
+    const musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
     const musicInvestmentTotalAmount = roundCurrency(musicInvestmentConsumedAmount + musicInvestmentRemainingAmount);
+    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, musicGrossConsumedAmount - musicInvestmentConsumedAmount))
+      : Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    const musicSafetyTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicInvestmentTotalAmount));
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
     const basisInvestmentState = movementVisualState(basisInvestmentRemainingAmount, basisInvestmentTotalAmount, hasActiveInMonthSnapshot);
@@ -1160,11 +1158,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount))
       : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicInvestmentRemainingAmount = hasActiveInMonthSnapshot
-      ? roundCurrency(Math.max(0, musicNetRemainingAmount - Number(review.row.musicAllocationToSafetyAmount ?? 0)))
-      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    const musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
     const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
-      ? roundCurrency(Math.max(0, musicNetConsumedAmount - musicInvestmentConsumedAmount))
+      ? roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount - musicInvestmentConsumedAmount))
       : Number(review.row.musicAllocationToSafetyAmount ?? 0);
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));

@@ -13,6 +13,7 @@ test("routes forecast music into safety until the threshold is filled", () => {
     salaryAllocationToSafetyAmount: 283.51,
     salaryAllocationToInvestmentAmount: 1050,
     importedIncomeAvailableAmount: 490,
+    importedIncomeReserveAmount: 0,
     importedExpenseAmount: 300,
     safetyBucketStartAmount: 9916,
     investmentBucketStartAmount: 9916,
@@ -38,6 +39,7 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
     salaryAllocationToSafetyAmount: 0,
     salaryAllocationToInvestmentAmount: 1050,
     importedIncomeAvailableAmount: 420,
+    importedIncomeReserveAmount: 0,
     importedExpenseAmount: 250,
     safetyBucketStartAmount: 9913.74,
     investmentBucketStartAmount: 9956.4,
@@ -80,6 +82,7 @@ test("late in-month wealth anchors do not re-add the base investment when the sn
     salaryAllocationToSafetyAmount: 39.51,
     salaryAllocationToInvestmentAmount: 1050,
     importedIncomeAvailableAmount: 0,
+    importedIncomeReserveAmount: 0,
     importedExpenseAmount: 0,
     safetyBucketStartAmount: 10172,
     investmentBucketStartAmount: 12077,
@@ -112,6 +115,7 @@ test("month-start anchors do not re-add income that was already received before 
     salaryAllocationToSafetyAmount: 656.49,
     salaryAllocationToInvestmentAmount: 1050,
     importedIncomeAvailableAmount: 1223.79,
+    importedIncomeReserveAmount: 0,
     importedExpenseAmount: 0,
     safetyBucketStartAmount: 10172,
     investmentBucketStartAmount: 13258,
@@ -149,6 +153,7 @@ test("routes against the configured threshold account when it differs from total
     salaryAllocationToSafetyAmount: 0,
     salaryAllocationToInvestmentAmount: 1050,
     importedIncomeAvailableAmount: 1223.79,
+    importedIncomeReserveAmount: 0,
     importedExpenseAmount: 0,
     safetyBucketStartAmount: 12000,
     investmentBucketStartAmount: 9916,
@@ -168,4 +173,26 @@ test("routes against the configured threshold account when it differs from total
 
   assert.equal(result.musicAllocationToSafetyAmount, 1223.79);
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
+});
+
+test("fills the threshold with music gross first and then salary remainder if needed", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-06",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    thresholdAccountCurrentAmount: 9581,
+    safetyMonthlyReturn: 0.02 / 12,
+    investmentMonthlyReturn: Math.pow(1 + 0.05, 1 / 12) - 1,
+    salaryAllocationToSafetyAmount: 250,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 200,
+    importedIncomeReserveAmount: 120,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 11000,
+    investmentBucketStartAmount: 15000,
+  });
+
+  assert.equal(result.musicAllocationToSafetyAmount, 320);
+  assert.equal(result.musicAllocationToInvestmentAmount, 0);
+  assert.equal(result.salaryAllocationToThresholdAmount, 99);
 });

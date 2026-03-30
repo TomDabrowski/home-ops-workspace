@@ -33,6 +33,7 @@ import {
   sumIncomeAvailableAfterDate,
   sumIncomeAvailableForMonth,
   sumIncomeForMonth,
+  sumIncomeReserveAfterDate,
   sumIncomeReserveForMonth,
   sumLineItems,
   sumMusicIncomeForMonth,
@@ -55,6 +56,7 @@ export {
   sumIncomeAvailableAfterDate,
   sumIncomeAvailableForMonth,
   sumIncomeForMonth,
+  sumIncomeReserveAfterDate,
   sumIncomeReserveForMonth,
   sumLineItems,
   sumMusicIncomeForMonth,
@@ -81,11 +83,13 @@ export interface MonthlyPlanRow {
   importedIncomeAmount: number;
   importedIncomeReserveAmount: number;
   importedIncomeAvailableAmount: number;
+  projectionIncomeReserveAmount?: number;
   musicIncomeAmount: number;
   musicAllocationToSafetyAmount: number;
   musicAllocationToInvestmentAmount: number;
   salaryAllocationToSafetyAmount: number;
   salaryAllocationToInvestmentAmount: number;
+  salaryAllocationToThresholdAmount?: number;
   anchorAppliesAtMonthStart?: boolean;
   anchorAppliesWithinMonth?: boolean;
   projectionIncomeAvailableAmount?: number;
@@ -305,6 +309,9 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const incomeAvailableForProjection = snapshotDate
       ? sumIncomeAvailableAfterDate(draft.incomeEntries, monthKey, snapshotDate!)
       : importedIncomeAvailableAmount;
+    const incomeReserveForProjection = snapshotDate
+      ? sumIncomeReserveAfterDate(draft.incomeEntries, monthKey, snapshotDate!)
+      : importedIncomeReserveAmount;
     const expenseAmountForProjection = snapshotDate
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
@@ -332,11 +339,13 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
       importedIncomeAvailableAmount,
+      importedIncomeReserveAmount,
       importedExpenseAmount,
       safetyBucketStartAmount,
       investmentBucketStartAmount,
       explicitWealthAnchor,
       incomeAvailableAfterAnchorAmount: incomeAvailableForProjection,
+      incomeReserveAfterAnchorAmount: incomeReserveForProjection,
       expenseAfterAnchorAmount: expenseAmountForProjection,
     });
     const thresholdAccountExpenseAmount = musicThresholdAccountId
@@ -347,6 +356,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const musicThresholdAccountProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
+            forecastRouting.salaryAllocationToThresholdAmount +
             forecastRouting.musicAllocationToSafetyAmount -
             thresholdAccountExpenseAmount,
         )
@@ -402,9 +412,11 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       musicAllocationToInvestmentAmount: forecastRouting.musicAllocationToInvestmentAmount,
       salaryAllocationToSafetyAmount,
       salaryAllocationToInvestmentAmount,
+      salaryAllocationToThresholdAmount: forecastRouting.salaryAllocationToThresholdAmount,
       anchorAppliesAtMonthStart: forecastRouting.anchorAppliesAtMonthStart,
       anchorAppliesWithinMonth: forecastRouting.anchorAppliesWithinMonth,
       projectionIncomeAvailableAmount: forecastRouting.projectionIncomeAvailableAmount,
+      projectionIncomeReserveAmount: forecastRouting.projectionIncomeReserveAmount,
       projectionExpenseAmount: forecastRouting.projectionExpenseAmount,
       safetyBucketStartAmount,
       safetyBucketCalculatedEndAmount: forecastRouting.safetyBucketCalculatedEndAmount,

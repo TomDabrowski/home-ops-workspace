@@ -167,8 +167,8 @@ test("builds monthly rows with historical and investing profiles", () => {
   assert.equal(investing?.baselineAvailableAmount, 283.51);
   assert.equal(investing?.importedIncomeReserveAmount, 210);
   assert.equal(investing?.importedIncomeAvailableAmount, 490);
-  assert.equal(investing?.musicAllocationToSafetyAmount, 84);
-  assert.equal(investing?.musicAllocationToInvestmentAmount, 406);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 210);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 490);
   assert.equal(investing?.netAfterImportedFlows, 473.51);
   assert.equal(investing?.consistencySignals.length, 1);
   assert.deepEqual(
@@ -218,8 +218,8 @@ test("routes music to the configured threshold account instead of total safety c
   const investing = buildMonthlyRows(draft).find((row) => row.monthKey === "2026-03");
 
   assert.ok(investing);
-  assert.equal(investing?.musicAllocationToSafetyAmount, 1223.79);
-  assert.equal(investing?.musicAllocationToInvestmentAmount, 0);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 1500);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 300);
 });
 
 test("month-start anchors without threshold-account detail keep routing against the carried threshold balance", () => {
@@ -305,8 +305,8 @@ test("month-start anchors without threshold-account detail keep routing against 
 
   assert.ok(april);
   assert.equal(april?.anchorAppliesAtMonthStart, true);
-  assert.equal(april?.musicAllocationToSafetyAmount, 84);
-  assert.equal(april?.musicAllocationToInvestmentAmount, 1139.79);
+  assert.equal(april?.musicAllocationToSafetyAmount, 576.21);
+  assert.equal(april?.musicAllocationToInvestmentAmount, 1223.79);
 });
 
 test("builds date-based allocation instructions for salary and music", () => {
@@ -489,7 +489,7 @@ test("builds a month review with baseline and imported flows", () => {
   assert.equal(review?.expenseEntries.length, 1);
   assert.equal(review?.row.baselineAvailableAmount, 283.51);
   assert.equal(review?.row.safetyBucketStartAmount, 9916);
-  assert.equal(review?.row.safetyBucketEndAmount, 10000.04);
+  assert.equal(review?.row.safetyBucketEndAmount, 10126.04);
   assert.deepEqual(
     review?.row.consistencySignals.map((signal) => signal.title),
     ["Importierte Ausgaben uebersteigen freie Baseline"],
@@ -623,8 +623,8 @@ test("continues from the post-anchor month end instead of resetting next month t
   assert.ok(march);
   assert.ok(april);
   assert.equal(march?.investmentBucketAnchorAmount, 9200);
-  assert.equal(march?.investmentBucketEndAmount, 10533.28);
-  assert.equal(april?.investmentBucketStartAmount, 10533.28);
+  assert.equal(march?.investmentBucketEndAmount, 10952.14);
+  assert.equal(april?.investmentBucketStartAmount, 10952.14);
 });
 
 test("month-start anchors do not re-add music income that was already received before the month begins", () => {

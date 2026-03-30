@@ -735,6 +735,6 @@ test("month-start anchors without threshold-account detail keep routing against 
   const aprilRow = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-04");
   assert.ok(aprilRow);
   assert.equal(aprilRow.anchorMode, "month_start");
-  assert.equal(aprilRow.musicAllocationToSafetyAmount, 1223.79);
+  assert.equal(aprilRow.musicAllocationToSafetyAmount, 1642.65);
   assert.equal(aprilRow.musicAllocationToInvestmentAmount, 0);
 });
