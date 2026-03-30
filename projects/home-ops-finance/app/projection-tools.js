@@ -105,27 +105,34 @@ export function createProjectionTools(deps) {
           ? Math.max(0, constantMusicGrossPerMonth)
           : Math.max(forecastMusicGross, minimumMusicGrossPerMonth);
       const musicTaxAmount = musicGross * (musicTaxRate / 100);
+      const musicReserveAmount = musicTaxAmount;
       const musicNetAvailable = musicGross * (1 - musicTaxRate / 100);
       const salaryToSafety = Math.max(0, baselineAvailableAmount - importedExpenseAmount);
       const salaryToInvestment = Math.max(0, plannedSavingsAmount);
       const currentThresholdAmount = musicThresholdAccountId ? thresholdAccountStartAmount : safetyStartAmount;
       const musicSafetyGapAmount = Math.max(0, musicThreshold - currentThresholdAmount);
-      const musicToSafety = Math.min(musicNetAvailable, musicSafetyGapAmount);
-      const musicToInvestment = Math.max(0, musicNetAvailable - musicToSafety);
+      const musicNetNeededForThreshold = Math.max(0, Math.min(musicNetAvailable, musicSafetyGapAmount - musicReserveAmount));
+      const musicToSafety = Math.max(0, musicReserveAmount + musicNetNeededForThreshold);
+      const musicToInvestment = Math.max(0, musicNetAvailable - musicNetNeededForThreshold);
+      const remainingThresholdGapAfterMusic = Math.max(0, musicSafetyGapAmount - musicToSafety);
+      const salaryToThreshold = Math.min(salaryToSafety, remainingThresholdGapAfterMusic);
       const safetyGrowthAmount = safetyStartAmount * safetyMonthlyReturn;
       const investmentGrowthAmount = investmentStartAmount * investmentMonthlyReturn;
       const thresholdAccountGrowthAmount = currentThresholdAmount * safetyMonthlyReturn;
       const safetyEndAmount =
         safetyStartAmount +
         safetyGrowthAmount +
-        (safetyStartAmount < safetyThreshold ? salaryToSafety : 0) +
+        salaryToSafety +
         musicToSafety;
-      const thresholdAccountEndAmount = currentThresholdAmount + thresholdAccountGrowthAmount + musicToSafety;
+      const thresholdAccountEndAmount =
+        currentThresholdAmount +
+        thresholdAccountGrowthAmount +
+        salaryToThreshold +
+        musicToSafety;
       const investmentEndAmount =
         investmentStartAmount +
         investmentGrowthAmount +
         plannedSavingsAmount +
-        (safetyStartAmount >= safetyThreshold ? salaryToInvestment : 0) +
         musicToInvestment;
 
       results.push({
@@ -299,16 +306,27 @@ export function createProjectionTools(deps) {
   function wealthMilestones(simulation, requiredNestEgg) {
     const lastWealth = simulation.at(-1)?.wealthEndAmount ?? 0;
     const maxGoal = Math.max(requiredNestEgg, lastWealth, 100000);
-    const highestMilestone = Math.ceil(maxGoal / 25000) * 25000;
     const milestones = [];
 
-    for (let amount = 25000; amount <= highestMilestone; amount += 25000) {
+    for (let amount = 25000; amount <= Math.min(100000, maxGoal); amount += 25000) {
       const hit = simulation.find((row) => row.wealthEndAmount >= amount);
       milestones.push({
         amount,
         hitMonthKey: hit?.monthKey ?? null,
         hitWealthAmount: hit?.wealthEndAmount ?? null,
       });
+    }
+
+    if (maxGoal > 100000) {
+      const highestMilestone = Math.ceil(maxGoal / 50000) * 50000;
+      for (let amount = 150000; amount <= highestMilestone; amount += 50000) {
+        const hit = simulation.find((row) => row.wealthEndAmount >= amount);
+        milestones.push({
+          amount,
+          hitMonthKey: hit?.monthKey ?? null,
+          hitWealthAmount: hit?.wealthEndAmount ?? null,
+        });
+      }
     }
 
     return milestones;
@@ -377,7 +395,7 @@ export function createProjectionTools(deps) {
       return [];
     }
 
-    const months = Math.max(1, yearDelta(firstRow.monthKey, untilMonthKey) + 1);
+    const months = monthsUntilInclusive(firstRow.monthKey, untilMonthKey);
     const simulation = simulateForecast(importDraft, monthlyPlan, {
       months,
       constantMusicGrossPerMonth: 0,
