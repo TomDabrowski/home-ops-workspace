@@ -20,6 +20,7 @@ export function createPlannerSettingsStore({ storageKey }) {
       expenseGrowthRate: 2,
       musicGrowthRate: 0,
       musicTaxRate: 42,
+      minimumMusicGrossPerMonth: 0,
     };
   }
 
@@ -39,6 +40,10 @@ export function createPlannerSettingsStore({ storageKey }) {
         expenseGrowthRate: Number(saved.expenseGrowthRate) || defaults.expenseGrowthRate,
         musicGrowthRate: Number(saved.musicGrowthRate) || defaults.musicGrowthRate,
         musicTaxRate: Number(saved.musicTaxRate) || defaults.musicTaxRate,
+        minimumMusicGrossPerMonth:
+          Number.isFinite(Number(saved.minimumMusicGrossPerMonth))
+            ? Number(saved.minimumMusicGrossPerMonth)
+            : defaults.minimumMusicGrossPerMonth,
       };
     } catch {
       return defaults;

@@ -31,6 +31,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   const expenseGrowthRateInput = document.getElementById("plannerExpenseGrowthRate");
   const musicGrowthRateInput = document.getElementById("plannerMusicGrowthRate");
   const musicTaxRateInput = document.getElementById("plannerMusicTaxRate");
+  const minimumMusicGrossPerMonthInput = document.getElementById("plannerMinimumMusicGrossPerMonth");
   const applyButton = document.getElementById("applyRetirementPlannerButton");
   const errorBox = document.getElementById("plannerErrorBox");
   const assumptionsTarget = document.getElementById("plannerAssumptions");
@@ -55,6 +56,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     !expenseGrowthRateInput ||
     !musicGrowthRateInput ||
     !musicTaxRateInput ||
+    !minimumMusicGrossPerMonthInput ||
     !applyButton ||
     !errorBox ||
     !assumptionsTarget ||
@@ -82,6 +84,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   expenseGrowthRateInput.value = plannerSettings.expenseGrowthRate;
   musicGrowthRateInput.value = plannerSettings.musicGrowthRate;
   musicTaxRateInput.value = plannerSettings.musicTaxRate;
+  minimumMusicGrossPerMonthInput.value = plannerSettings.minimumMusicGrossPerMonth;
 
   function setPlannerError(messages = []) {
     if (messages.length === 0) {
@@ -106,6 +109,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       expenseGrowthRate: Number(expenseGrowthRateInput.value),
       musicGrowthRate: Number(musicGrowthRateInput.value),
       musicTaxRate: Number(musicTaxRateInput.value),
+      minimumMusicGrossPerMonth: Number(minimumMusicGrossPerMonthInput.value),
     };
   }
 
@@ -144,6 +148,9 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     if (!Number.isFinite(raw.musicTaxRate) || raw.musicTaxRate < 0 || raw.musicTaxRate > 60) {
       messages.push("`Steuersatz Musik` muss zwischen 0 und 60 liegen.");
     }
+    if (!Number.isFinite(raw.minimumMusicGrossPerMonth) || raw.minimumMusicGrossPerMonth < 0) {
+      messages.push("`Musik mindestens pro Monat` muss 0 oder größer sein.");
+    }
     return messages;
   }
 
@@ -168,6 +175,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       expenseGrowthRate: raw.expenseGrowthRate,
       musicGrowthRate: raw.musicGrowthRate,
       musicTaxRate: raw.musicTaxRate,
+      minimumMusicGrossPerMonth: raw.minimumMusicGrossPerMonth,
     };
     writePlannerSettings(settings);
     currentAgeInput.value = settings.currentAge;
@@ -185,6 +193,11 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     const targetMonthKey = targetMonthFromAges(settings.currentAge, settings.targetAge, firstForecastMonthKey);
     const retirementMonths = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
     const baseSimulation = simulateForecast(importDraft, monthlyPlan, { months: retirementMonths, ...plannerAssumptions });
+    const minimumMusicSimulation = simulateForecast(importDraft, monthlyPlan, {
+      months: retirementMonths,
+      ...plannerAssumptions,
+      minimumMusicGrossPerMonth: settings.minimumMusicGrossPerMonth,
+    });
     const targetYears = Math.max(0, settings.targetAge - settings.currentAge);
     const retirementSpendAtTarget =
       settings.retirementSpend * Math.pow(1 + settings.inflationRate / 100, targetYears);
@@ -197,11 +210,13 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       plannerAssumptions,
     );
     const baselineAtTarget = firstMonthReaching(baseSimulation, requiredNestEgg);
+    const minimumMusicAtTarget = firstMonthReaching(minimumMusicSimulation, requiredNestEgg);
     const milestoneRows = wealthMilestones(baseSimulation, requiredNestEgg);
     const currentWealth = baseSimulation[0]
       ? baseSimulation[0].safetyStartAmount + baseSimulation[0].investmentStartAmount
       : 0;
     const latestProjectedWealth = baseSimulation.at(-1)?.wealthEndAmount ?? 0;
+    const latestMinimumMusicWealth = minimumMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
     const constantMusicNeeded = targetRun?.constantMusicGrossPerMonth ?? 0;
     const targetPathAverageGross =
       targetRun?.simulation.length
@@ -212,6 +227,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         ? targetRun.simulation.reduce((sum, row) => sum + row.musicNetAvailable, 0) / targetRun.simulation.length
         : 0;
     const targetResult = targetRun?.simulation.at(-1) ?? null;
+    const minimumMusicResult = minimumMusicSimulation.at(-1) ?? null;
     const yearBreakdown = buildRetirementYearBreakdown(
       importDraft,
       monthlyPlan,
@@ -225,9 +241,9 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     );
 
     assumptionsTarget.textContent =
-      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
+      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} % und mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} Musik brutto pro Monat im Szenario. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
     retirementProjectionMetaTarget.textContent =
-      `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} % und Investment-Ertrag 6,0 % p.a.`;
+      `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} %, Musik-Szenario mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat und Investment-Ertrag 6,0 % p.a.`;
 
     summaryTarget.innerHTML = renderDetailEntries([
       ["Startvermögen", euro.format(currentWealth)],
@@ -243,6 +259,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         formula: `(${euro.format(retirementSpendAtTarget)} * 12) / ${settings.withdrawalRate.toFixed(1)} % = ${euro.format(requiredNestEgg)}`,
       },
       ["Vermögen im Zielmonat", euro.format(latestProjectedWealth)],
+      ["Vermögen im Zielmonat mit Musik-Szenario", euro.format(latestMinimumMusicWealth)],
+      ["Musik-Szenario pro Monat", euro.format(settings.minimumMusicGrossPerMonth)],
       ["Musik konstant nötig", euro.format(constantMusicNeeded)],
       ["Musik brutto im Zielpfad", euro.format(targetPathAverageGross)],
       ["Musik netto im Zielpfad", euro.format(targetPathAverageNet)],
@@ -285,6 +303,24 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       `);
     }
 
+    if (settings.minimumMusicGrossPerMonth > 0) {
+      if (minimumMusicAtTarget) {
+        retirementItems.push(`
+          <li>
+            <strong>Mit deinem Musik-Szenario erreichbar</strong>
+            <p>Wenn du ab jetzt mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat mit Musik erreichst, klappt das Rentenziel voraussichtlich in ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.</p>
+          </li>
+        `);
+      } else {
+        retirementItems.push(`
+          <li>
+            <strong>Mit deinem Musik-Szenario noch nicht erreichbar</strong>
+            <p>Selbst mit mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wird das Ziel bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz erreicht.</p>
+          </li>
+        `);
+      }
+    }
+
     if (targetRun) {
       retirementItems.push(`
         <li>
@@ -309,6 +345,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       ["Heute", `${settings.currentAge.toFixed(0)} Jahre`],
       ["Zielalter", `${settings.targetAge.toFixed(0)} Jahre`],
       ["Zielmonat", formatMonthLabel(targetMonthKey)],
+      ["Musik-Szenario", euro.format(settings.minimumMusicGrossPerMonth)],
+      ["Ziel mit Musik-Szenario", minimumMusicAtTarget ? formatMonthLabel(minimumMusicAtTarget.monthKey) : "Noch nicht erreicht"],
       ["Konstante Musik nötig", euro.format(constantMusicNeeded)],
       ["Steuer auf Musik", `${settings.musicTaxRate.toFixed(1)} %`],
       ["Cash im ersten Zieljahr", euro.format(yearBreakdown[0]?.cashEndAmount ?? 0)],
@@ -320,6 +358,12 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       title: "Ohne Musik sichtbar machen",
       body: "Die Jahrestabelle blendet Musik absichtlich aus. Damit siehst du, wie stark dein Sockel allein durch Gehalt, Kostensteigerungen und Sparlogik trägt.",
     });
+    if (settings.minimumMusicGrossPerMonth > 0) {
+      signalItems.push({
+        title: "Dein Musik-Szenario",
+        body: `Zusätzlich zur reinen Sockel-Sicht rechnet der Reiter gerade mit mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto Musik pro Monat. So siehst du direkt, ob dein Wunschwert schon reicht oder ob die Lücke bis zur Rente noch größer ist.`,
+      });
+    }
     if (yearBreakdown.length > 1) {
       const first = yearBreakdown[0];
       const last = yearBreakdown.at(-1);

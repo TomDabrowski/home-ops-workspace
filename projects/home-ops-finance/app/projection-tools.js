@@ -200,6 +200,7 @@ export function createProjectionTools(deps) {
       expenseGrowthRate: plannerSettings.expenseGrowthRate,
       musicGrowthRate: plannerSettings.musicGrowthRate,
       musicTaxRate: plannerSettings.musicTaxRate,
+      minimumMusicGrossPerMonth: plannerSettings.minimumMusicGrossPerMonth,
       investmentAnnualReturn: 0.06,
     };
     const currentYear = Number(currentMonthKey().slice(0, 4));
