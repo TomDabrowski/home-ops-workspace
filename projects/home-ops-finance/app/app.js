@@ -411,61 +411,134 @@ function joinMoneyDeltas(parts) {
 }
 
 function monthEndSafetyFormula({
+  monthKey,
+  importDraft,
   latestSnapshot,
   reviewRow,
   safetyAnchorAmount,
   startSafetyAmount,
   endSafetyAmount,
   projectionExpenseAmount,
+  importedExpenseAmount,
+  manualExpenseAmount,
+  importedExpenseConsumedAmount,
+  manualExpenseConsumedAmount,
+  salarySafetyConsumedAmount,
+  musicSafetyConsumedAmount,
+  musicSafetyRemainingAmount,
+  musicIncomeEntries,
+  musicNetConsumedAmount,
 }) {
   if (reviewRow.anchorAppliesWithinMonth && reviewRow.safetyBucketAnchorAmount !== undefined) {
-    const remaining = joinMoneyDeltas([
-      moneyDeltaLabel(reviewRow.projectionSalaryAllocationToSafetyAmount, "verbleibend aus Gehalt"),
-      moneyDeltaLabel(reviewRow.musicAllocationToSafetyAmount, "aus Musik nach Steuer"),
-      moneyDeltaLabel(projectionExpenseAmount, "Ausgaben nach dem Stichtag"),
-    ]);
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
-    if (!remaining) {
-      return `${snapshotDate} ist der aktive Ist-Stand fuer Cash. Nach dem Stichtag sind aktuell keine weiteren Cash-Bewegungen eingeplant, deshalb bleibt es bei ${euro.format(endSafetyAmount)}.`;
-    }
-    return `${snapshotDate} ist der aktive Ist-Stand fuer Cash mit ${euro.format(safetyAnchorAmount)}. Danach wirken noch ${remaining}. Das ergibt ${euro.format(endSafetyAmount)} Cash am Monatsende.`;
+    const thresholdAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
+    const thresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
+    const thresholdTargetLabel = thresholdAccountLabel(importDraft, thresholdAccountId);
+    const musicDateLabel = entryDatesLabel(musicIncomeEntries);
+    const remaining = joinMoneyDeltas([
+      moneyDeltaLabel(reviewRow.projectionSalaryAllocationToSafetyAmount, "noch aus Gehalt ins Cash"),
+      moneyDeltaLabel(musicSafetyRemainingAmount, "noch aus Musik ins Cash-Ziel"),
+      projectionExpenseAmount > 0 ? `${euro.format(projectionExpenseAmount)} noch offene Zusatz-Ausgaben` : "",
+    ]);
+    return joinTooltipLines([
+      `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
+      `${snapshotDate} ist der aktive Ist-Stand fuer Cash mit ${euro.format(safetyAnchorAmount)}.`,
+      `Bis zu diesem Stichtag stecken bereits ${euro.format(salarySafetyConsumedAmount)} aus Gehalt und ${euro.format(musicSafetyConsumedAmount)} aus Musik netto im Cash.`,
+      musicSafetyConsumedAmount > 0
+        ? `${euro.format(musicSafetyConsumedAmount)} davon wurden ins Cash-Ziel ${thresholdTargetLabel} gelenkt, um es wieder Richtung ${euro.format(thresholdAmount)} zu bringen.`
+        : "",
+      musicNetConsumedAmount > 0 && musicDateLabel
+        ? `Die beruecksichtigte Musik stammt aus ${musicDateLabel} und war bis zum Stichtag bereits verarbeitet.`
+        : "",
+      `Bis zum Stichtag waren ausserdem ${euro.format(importedExpenseConsumedAmount)} importierte und ${euro.format(manualExpenseConsumedAmount)} manuelle Zusatz-Ausgaben schon drin.`,
+      remaining
+        ? `Nach dem Stichtag sind noch ${remaining}. Daraus ergibt sich ${euro.format(endSafetyAmount)} Cash am Monatsende.`
+        : `Nach dem Stichtag sind keine weiteren Cash-Bewegungen mehr offen. Deshalb bleibt Cash am Monatsende bei ${euro.format(endSafetyAmount)}.`,
+    ]);
   }
 
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.safetyBucketAnchorAmount !== undefined) {
-    return `${euro.format(safetyAnchorAmount)} Monatsanfang, plus ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer, minus ${euro.format(projectionExpenseAmount)} Ausgaben. Ergibt ${euro.format(endSafetyAmount)} Cash am Monatsende.`;
+    return joinTooltipLines([
+      `${monthKey}: Start-Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
+      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik netto ins Cash.`,
+      `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+      `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
+    ]);
   }
 
-  return `${euro.format(startSafetyAmount)} Start-Cash, plus ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik nach Steuer, minus ${euro.format(projectionExpenseAmount)} Ausgaben. Ergibt ${euro.format(endSafetyAmount)} Cash am Monatsende.`;
+  return joinTooltipLines([
+    `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
+    `Dazu kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik netto ins Cash.`,
+    `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+    `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
+  ]);
 }
 
 function monthEndInvestmentFormula({
+  monthKey,
   latestSnapshot,
   reviewRow,
   investmentAnchorAmount,
   startInvestmentAmount,
   endInvestmentAmount,
+  salaryInvestmentConsumedAmount,
+  musicInvestmentConsumedAmount,
+  musicInvestmentRemainingAmount,
+  musicIncomeEntries,
+  musicNetConsumedAmount,
 }) {
   if (reviewRow.anchorAppliesWithinMonth && reviewRow.investmentBucketAnchorAmount !== undefined) {
-    const remaining = joinMoneyDeltas([
-      moneyDeltaLabel(reviewRow.projectionSalaryAllocationToInvestmentAmount, "verbleibendes Basis-Investment"),
-      moneyDeltaLabel(reviewRow.musicAllocationToInvestmentAmount, "aus Musik nach Steuer"),
-    ]);
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
-    if (!remaining) {
-      return `${snapshotDate} ist der aktive Ist-Stand fuer Investment. Nach dem Stichtag ist aktuell kein weiteres Investment geplant, deshalb bleibt es bei ${euro.format(endInvestmentAmount)}.`;
-    }
-    return `${snapshotDate} ist der aktive Ist-Stand fuer Investment mit ${euro.format(investmentAnchorAmount)}. Danach kommen noch ${remaining}. Das ergibt ${euro.format(endInvestmentAmount)} Investment am Monatsende.`;
+    const musicDateLabel = entryDatesLabel(musicIncomeEntries);
+    const remaining = joinMoneyDeltas([
+      moneyDeltaLabel(reviewRow.projectionSalaryAllocationToInvestmentAmount, "noch offenes Basis-Investment"),
+      moneyDeltaLabel(musicInvestmentRemainingAmount, "noch aus Musik ins Investment"),
+    ]);
+    return joinTooltipLines([
+      `${monthKey}: Start-Investment ${euro.format(startInvestmentAmount)}.`,
+      `${snapshotDate} ist der aktive Ist-Stand fuer Investment mit ${euro.format(investmentAnchorAmount)}.`,
+      `Bis zu diesem Stichtag kamen bereits ${euro.format(salaryInvestmentConsumedAmount)} aus Basis-Investment und ${euro.format(musicInvestmentConsumedAmount)} aus Musik netto ins Investment.`,
+      musicInvestmentConsumedAmount > 0 && musicNetConsumedAmount > 0 && musicDateLabel
+        ? `Der Musik-Anteil stammt aus ${musicDateLabel}. Von den bis dahin schon verarbeiteten ${euro.format(musicNetConsumedAmount)} netto gingen ${euro.format(musicInvestmentConsumedAmount)} ins Investment.`
+        : "",
+      remaining
+        ? `Nach dem Stichtag sind noch ${remaining}. Daraus ergibt sich ${euro.format(endInvestmentAmount)} Investment am Monatsende.`
+        : `Nach dem Stichtag ist kein weiteres Investment mehr offen. Deshalb bleibt Investment am Monatsende bei ${euro.format(endInvestmentAmount)}.`,
+    ]);
   }
 
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.investmentBucketAnchorAmount !== undefined) {
-    return `${euro.format(investmentAnchorAmount)} Monatsanfang, plus ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer. Ergibt ${euro.format(endInvestmentAmount)} Investment am Monatsende.`;
+    return joinTooltipLines([
+      `${monthKey}: Start-Investment ${euro.format(investmentAnchorAmount)} durch den gesetzten Monatsanfang.`,
+      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+      `So entstehen ${euro.format(endInvestmentAmount)} Investment am Monatsende.`,
+    ]);
   }
 
-  return `${euro.format(startInvestmentAmount)} Start-Investment, plus ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik nach Steuer. Ergibt ${euro.format(endInvestmentAmount)} Investment am Monatsende.`;
+  return joinTooltipLines([
+    `${monthKey}: Start-Investment ${euro.format(startInvestmentAmount)}.`,
+    `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+    `So entstehen ${euro.format(endInvestmentAmount)} Investment am Monatsende.`,
+  ]);
 }
 
 function joinTooltipLines(lines) {
   return lines.filter(Boolean).join("\n");
+}
+
+function entryDatesLabel(entries) {
+  const uniqueDates = [...new Set((entries ?? []).map((entry) => String(entry.entryDate ?? "")).filter(Boolean))];
+  if (uniqueDates.length === 0) {
+    return "";
+  }
+  const labels = uniqueDates.map((value) => formatDisplayDate(value));
+  if (labels.length === 1) {
+    return labels[0];
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} und ${labels[1]}`;
+  }
+  return `${labels.slice(0, -1).join(", ")} und ${labels.at(-1)}`;
 }
 
 function movementVisualState(remainingAmount, totalAmount, enabled = true) {
@@ -942,6 +1015,29 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicGrossConsumedAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount));
     const musicReserveConsumedAmount = roundCurrency(Math.max(0, musicReserveTotalAmount - musicReserveRemainingAmount));
     const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
+    const salarySafetyConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(
+        Math.max(0, Number(review.row.salaryAllocationToSafetyAmount ?? 0) - Number(review.row.projectionSalaryAllocationToSafetyAmount ?? 0)),
+      )
+      : Number(review.row.salaryAllocationToSafetyAmount ?? 0);
+    const salaryInvestmentConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(
+        Math.max(0, basisInvestmentTotalAmount - Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)),
+      )
+      : basisInvestmentTotalAmount;
+    const musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(
+        Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount),
+      )
+      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    const musicInvestmentRemainingAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, musicNetRemainingAmount - Number(review.row.musicAllocationToSafetyAmount ?? 0)))
+      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, musicNetConsumedAmount - musicInvestmentConsumedAmount))
+      : Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    const musicSafetyTotalAmount = roundCurrency(musicSafetyConsumedAmount + Number(review.row.musicAllocationToSafetyAmount ?? 0));
+    const musicInvestmentTotalAmount = roundCurrency(musicInvestmentConsumedAmount + musicInvestmentRemainingAmount);
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
     const basisInvestmentState = movementVisualState(basisInvestmentRemainingAmount, basisInvestmentTotalAmount, hasActiveInMonthSnapshot);
@@ -965,11 +1061,11 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         formula: joinTooltipLines([
           `Geplantes Basis-Investment im Monat: ${euro.format(basisInvestmentTotalAmount)}`,
           hasActiveInMonthSnapshot
-            ? `Davon nach dem Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} noch offen: ${euro.format(basisInvestmentRemainingAmount)}`
+            ? `Davon bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits im Investment enthalten: ${euro.format(basisInvestmentConsumedAmount)}`
             : `Ohne aktiven Ist-Stand wird der volle Monatswert weitergerechnet.`,
           hasActiveInMonthSnapshot
-            ? `Schon im Ist-Stand enthalten: ${euro.format(basisInvestmentConsumedAmount)}`
-            : "",
+            ? `Nach dem Ist-Stand noch offen: ${euro.format(basisInvestmentRemainingAmount)}`
+            : `Ohne aktiven Ist-Stand wird der volle Monatswert weitergerechnet.`,
         ]),
         note: basisInvestmentState.note,
         itemClass: basisInvestmentState.itemClass,
@@ -979,15 +1075,21 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         label: "Musik brutto",
         value: euro.format(musicGrossTotalAmount),
         formula: joinTooltipLines([
-          `Musik brutto im Monat: ${euro.format(musicGrossTotalAmount)}`,
+          `Musik brutto im Monat: ${euro.format(musicGrossTotalAmount)}${entryDatesLabel(musicIncomeEntries) ? ` aus ${entryDatesLabel(musicIncomeEntries)}` : ""}.`,
           `${euro.format(musicGrossTotalAmount)} brutto - ${euro.format(musicReserveTotalAmount)} Steuer/Ruecklage = ${euro.format(musicNetTotalAmount)} netto verfuegbar`,
           hasAnyActiveSnapshot
-            ? `Schon im Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} enthalten: ${euro.format(musicGrossConsumedAmount)} brutto (${euro.format(musicReserveConsumedAmount)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmount)} netto)`
+            ? `Bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits verarbeitet: ${euro.format(musicGrossConsumedAmount)} brutto (${euro.format(musicReserveConsumedAmount)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmount)} netto)`
             : "",
           hasAnyActiveSnapshot
             ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmount)} brutto (${euro.format(musicReserveRemainingAmount)} Steuer/Ruecklage, ${euro.format(musicNetRemainingAmount)} netto)`
             : `Ohne aktiven Ist-Stand ist der volle Monatsblock offen.`,
-          `Vom noch offenen Netto laufen ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} in Cash/Threshold und ${euro.format(review.row.musicAllocationToInvestmentAmount ?? 0)} ins Investment.`,
+          hasAnyActiveSnapshot
+            ? `Vom bereits verarbeiteten Netto gingen ${euro.format(musicSafetyConsumedAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentConsumedAmount)} ins Investment.`
+            : "",
+          `Insgesamt sind fuer diesen Monat ${euro.format(musicSafetyTotalAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentTotalAmount)} ins Investment geroutet.`,
+          hasAnyActiveSnapshot
+            ? `Davon sind nach dem Ist-Stand noch ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} ins Cash/Threshold und ${euro.format(musicInvestmentRemainingAmount)} ins Investment offen.`
+            : "",
         ]),
         note: musicIncomeState.note,
         itemClass: musicIncomeState.itemClass,
@@ -1030,6 +1132,42 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   }
 
   if (endSummary) {
+    const basisInvestmentTotalAmount = Number(review.row.plannedSavingsAmount ?? 0);
+    const hasAnyActiveSnapshot = Boolean(review.row.wealthAnchorApplied && latestSnapshotDate);
+    const musicIncomeEntries = (review.incomeEntries ?? []).filter((entry) => entry.incomeStreamId === "music-income");
+    const musicGrossTotalAmount = roundCurrency(Number(review.row.musicIncomeAmount ?? 0));
+    const musicReserveTotalAmount = sumEntryAmounts(musicIncomeEntries, (entry) => entry.reserveAmount ?? 0);
+    const musicNetTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicReserveTotalAmount));
+    const musicNetRemainingAmount = hasAnyActiveSnapshot
+      ? amountsAfterSnapshot(
+        musicIncomeEntries,
+        latestSnapshotDate,
+        (entry) => entry.availableAmount ?? (Number(entry.amount ?? 0) - Number(entry.reserveAmount ?? 0)),
+      )
+      : musicNetTotalAmount;
+    const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
+    const basisInvestmentRemainingAmount = hasActiveInMonthSnapshot
+      ? Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)
+      : basisInvestmentTotalAmount;
+    const salaryInvestmentConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, basisInvestmentTotalAmount - basisInvestmentRemainingAmount))
+      : basisInvestmentTotalAmount;
+    const salarySafetyConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(
+        Math.max(0, Number(review.row.salaryAllocationToSafetyAmount ?? 0) - Number(review.row.projectionSalaryAllocationToSafetyAmount ?? 0)),
+      )
+      : Number(review.row.salaryAllocationToSafetyAmount ?? 0);
+    const musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount))
+      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    const musicInvestmentRemainingAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, musicNetRemainingAmount - Number(review.row.musicAllocationToSafetyAmount ?? 0)))
+      : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(Math.max(0, musicNetConsumedAmount - musicInvestmentConsumedAmount))
+      : Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
+    const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
     const entries = [
       {
         label: "Cash am Ende des geöffneten Monats",
@@ -1037,12 +1175,23 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         formula:
           review.row.safetyBucketEndAmount !== undefined
             ? monthEndSafetyFormula({
+              monthKey,
+              importDraft,
               latestSnapshot,
               reviewRow: review.row,
               safetyAnchorAmount,
               startSafetyAmount,
               endSafetyAmount,
               projectionExpenseAmount,
+              importedExpenseAmount,
+              manualExpenseAmount,
+              importedExpenseConsumedAmount,
+              manualExpenseConsumedAmount,
+              salarySafetyConsumedAmount,
+              musicSafetyConsumedAmount,
+              musicSafetyRemainingAmount: Number(review.row.musicAllocationToSafetyAmount ?? 0),
+              musicIncomeEntries,
+              musicNetConsumedAmount,
             })
             : "",
       },
@@ -1052,11 +1201,17 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         formula:
           review.row.investmentBucketEndAmount !== undefined
             ? monthEndInvestmentFormula({
+              monthKey,
               latestSnapshot,
               reviewRow: review.row,
               investmentAnchorAmount,
               startInvestmentAmount,
               endInvestmentAmount,
+              salaryInvestmentConsumedAmount,
+              musicInvestmentConsumedAmount,
+              musicInvestmentRemainingAmount,
+              musicIncomeEntries,
+              musicNetConsumedAmount,
             })
             : "",
       },
