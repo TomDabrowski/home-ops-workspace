@@ -1151,6 +1151,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicGrossTotalAmount = roundCurrency(Number(review.row.musicIncomeAmount ?? 0));
     const musicReserveTotalAmount = sumEntryAmounts(musicIncomeEntries, (entry) => entry.reserveAmount ?? 0);
     const musicNetTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicReserveTotalAmount));
+    const musicGrossRemainingAmount = hasAnyActiveSnapshot
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0)
+      : musicGrossTotalAmount;
     const musicNetRemainingAmount = hasAnyActiveSnapshot
       ? amountsAfterSnapshot(
         musicIncomeEntries,
