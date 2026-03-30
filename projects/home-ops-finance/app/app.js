@@ -882,8 +882,15 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const importedExpenseAmount = roundCurrency(
     Math.max(0, Number(review.row.importedExpenseAmount ?? 0) - manualExpenseAmount),
   );
-  const startWealthAmount =
-    Number(review.row.safetyBucketStartAmount ?? 0) + Number(review.row.investmentBucketStartAmount ?? 0);
+  const displayStartSafetyAmount =
+    review.row.anchorAppliesAtMonthStart && review.row.safetyBucketAnchorAmount !== undefined
+      ? Number(review.row.safetyBucketAnchorAmount)
+      : Number(review.row.safetyBucketStartAmount ?? 0);
+  const displayStartInvestmentAmount =
+    review.row.anchorAppliesAtMonthStart && review.row.investmentBucketAnchorAmount !== undefined
+      ? Number(review.row.investmentBucketAnchorAmount)
+      : Number(review.row.investmentBucketStartAmount ?? 0);
+  const startWealthAmount = displayStartSafetyAmount + displayStartInvestmentAmount;
   const endWealthAmount =
     Number(review.row.safetyBucketEndAmount ?? 0) + Number(review.row.investmentBucketEndAmount ?? 0);
   const startSafetyAmount = Number(review.row.safetyBucketStartAmount ?? 0);
@@ -922,9 +929,12 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const entries = [
       {
         label: "Cash zu Beginn des geöffneten Monats",
-        value: review.row.safetyBucketStartAmount !== undefined ? euro.format(review.row.safetyBucketStartAmount) : "-",
+        value:
+          review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined
+            ? euro.format(displayStartSafetyAmount)
+            : "-",
         formula:
-          review.row.safetyBucketStartAmount !== undefined
+          review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined
             ? monthStartCarryForwardFormula({
               monthKey,
               previousRow,
@@ -940,9 +950,12 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       },
       {
         label: "Investment zu Beginn des geöffneten Monats",
-        value: review.row.investmentBucketStartAmount !== undefined ? euro.format(review.row.investmentBucketStartAmount) : "-",
+        value:
+          review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined
+            ? euro.format(displayStartInvestmentAmount)
+            : "-",
         formula:
-          review.row.investmentBucketStartAmount !== undefined
+          review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined
             ? monthStartCarryForwardFormula({
               monthKey,
               previousRow,
@@ -959,12 +972,14 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       {
         label: "Gesamtvermögen zu Beginn des geöffneten Monats",
         value:
-          review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
+          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
+          (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
             ? euro.format(startWealthAmount)
             : "-",
         formula:
-          review.row.safetyBucketStartAmount !== undefined && review.row.investmentBucketStartAmount !== undefined
-            ? `${euro.format(startSafetyAmount)} + ${euro.format(startInvestmentAmount)} = ${euro.format(startWealthAmount)}`
+          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
+            (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
+            ? `${euro.format(displayStartSafetyAmount)} + ${euro.format(displayStartInvestmentAmount)} = ${euro.format(startWealthAmount)}`
             : "",
       },
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
