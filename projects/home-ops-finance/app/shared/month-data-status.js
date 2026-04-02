@@ -14,6 +14,7 @@ export function buildMonthDataStatus(input) {
   const snapshotMonthKey = String(latestSnapshot?.snapshotDate ?? "").slice(0, 7);
   const snapshotMatchesMonth = snapshotMonthKey === monthKey;
   const snapshotAnchorsThisMonth = latestSnapshot?.anchorMonthKey === monthKey;
+  const explicitMonthStart = Boolean(row?.anchorAppliesAtMonthStart || snapshotAnchorsThisMonth);
   const sourceLabel = latestSnapshot
     ? (wealthSnapshotPersistence === "project" ? "Projektdatei" : "Browser-Fallback")
     : "Kein Ist-Stand";
@@ -24,7 +25,12 @@ export function buildMonthDataStatus(input) {
 
   let status = "Passt";
   let detail = "Die Monatskette wirkt konsistent.";
-  if (!chainOk) {
+  if (!chainOk && explicitMonthStart) {
+    status = "Info";
+    detail =
+      `Für ${monthKey} ist ein expliziter Monatsanfang gesetzt. ` +
+      "Darum darf der Startwert bewusst vom Monatsende des Vormonats abweichen.";
+  } else if (!chainOk) {
     status = "Prüfen";
     detail = "Der Monatsanfang passt nicht sauber zum Monatsende des Vormonats.";
   } else if (isFutureMonth && latestSnapshot && !snapshotAnchorsThisMonth) {
@@ -57,7 +63,7 @@ export function buildMonthDataStatus(input) {
       ["Letzter Ist-Stand", latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner"],
       ["Quelle", sourceLabel],
       ["Monatsanfang gesetzt", snapshotAnchorsThisMonth ? "Ja" : "Nein"],
-      ["Kette Vormonat → Monat", chainOk ? "Passt" : "Auffällig"],
+      ["Kette Vormonat → Monat", !chainOk && explicitMonthStart ? "Expliziter Monatsanfang" : chainOk ? "Passt" : "Auffällig"],
     ],
     status,
     detail,
