@@ -115,6 +115,11 @@ export interface ForecastWealthAnchor {
   sourceRowNumber: number;
   isManualAnchor: boolean;
   snapshotDate?: string;
+  monthlyStatus?: {
+    fixedExpensesIncluded?: boolean;
+    basisInvestmentState?: "open" | "included" | "pending_cash";
+    extraExpensesIncluded?: boolean;
+  };
   notes?: string;
 }
 

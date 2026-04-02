@@ -94,6 +94,7 @@ export interface MonthlyPlanRow {
   anchorAppliesWithinMonth?: boolean;
   projectionIncomeAvailableAmount?: number;
   projectionExpenseAmount?: number;
+  salaryInvestmentTransferFromSafetyAmount?: number;
   safetyBucketStartAmount?: number;
   safetyBucketCalculatedEndAmount?: number;
   safetyBucketAnchorAmount?: number;
@@ -347,6 +348,8 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       incomeAvailableAfterAnchorAmount: incomeAvailableForProjection,
       incomeReserveAfterAnchorAmount: incomeReserveForProjection,
       expenseAfterAnchorAmount: expenseAmountForProjection,
+      basisInvestmentState: explicitWealthAnchor?.monthlyStatus?.basisInvestmentState,
+      extraExpensesIncluded: explicitWealthAnchor?.monthlyStatus?.extraExpensesIncluded === true,
     });
     const thresholdAccountExpenseAmount = musicThresholdAccountId
       ? snapshotDate
@@ -418,6 +421,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       projectionIncomeAvailableAmount: forecastRouting.projectionIncomeAvailableAmount,
       projectionIncomeReserveAmount: forecastRouting.projectionIncomeReserveAmount,
       projectionExpenseAmount: forecastRouting.projectionExpenseAmount,
+      salaryInvestmentTransferFromSafetyAmount: forecastRouting.salaryInvestmentTransferFromSafetyAmount,
       safetyBucketStartAmount,
       safetyBucketCalculatedEndAmount: forecastRouting.safetyBucketCalculatedEndAmount,
       safetyBucketAnchorAmount: forecastRouting.safetyBucketAnchorAmount,

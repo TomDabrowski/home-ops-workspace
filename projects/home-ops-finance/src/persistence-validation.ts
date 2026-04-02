@@ -115,6 +115,11 @@ export interface WealthSnapshotState {
   };
   cashAmount?: number;
   investmentAmount: number;
+  monthlyStatus?: {
+    fixedExpensesIncluded?: boolean;
+    basisInvestmentState?: "open" | "included" | "pending_cash";
+    extraExpensesIncluded?: boolean;
+  };
   notes?: string;
   updatedAt?: string;
   isActive?: boolean;
@@ -227,6 +232,23 @@ function asOptionalEnum<T extends string>(value: unknown, allowed: readonly T[],
   }
 
   return next as T;
+}
+
+function parseOptionalWealthSnapshotMonthlyStatus(value: unknown, path: string): WealthSnapshotState["monthlyStatus"] {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const item = asObject(value, path);
+  return {
+    fixedExpensesIncluded: asOptionalBoolean(item.fixedExpensesIncluded, `${path}.fixedExpensesIncluded`),
+    basisInvestmentState: asOptionalEnum(
+      item.basisInvestmentState,
+      ["open", "included", "pending_cash"],
+      `${path}.basisInvestmentState`,
+    ),
+    extraExpensesIncluded: asOptionalBoolean(item.extraExpensesIncluded, `${path}.extraExpensesIncluded`),
+  };
 }
 
 function parseActionState(value: unknown, path: string): ReconciliationActionState {
@@ -411,6 +433,10 @@ export function parseWealthSnapshotCollection(value: unknown): WealthSnapshotCol
         : undefined,
       cashAmount: asOptionalNumber(item.cashAmount, `wealthSnapshots[${index}].cashAmount`),
       investmentAmount: asNumber(item.investmentAmount, `wealthSnapshots[${index}].investmentAmount`),
+      monthlyStatus: parseOptionalWealthSnapshotMonthlyStatus(
+        item.monthlyStatus,
+        `wealthSnapshots[${index}].monthlyStatus`,
+      ),
       notes: asOptionalString(item.notes, `wealthSnapshots[${index}].notes`),
       updatedAt: asOptionalString(item.updatedAt, `wealthSnapshots[${index}].updatedAt`),
       isActive: asOptionalBoolean(item.isActive, `wealthSnapshots[${index}].isActive`),

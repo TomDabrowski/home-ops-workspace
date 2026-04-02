@@ -152,6 +152,36 @@ export function validateWealthSnapshotsPayload(payload: unknown): unknown[] {
     const cashAmount = assertOptionalNumber(entry.cashAmount, `wealth snapshot ${index}.cashAmount`, { min: 0 });
     assert(cashAccounts !== undefined || cashAmount !== undefined, `wealth snapshot ${index} must include cashAccounts or cashAmount`);
 
+    const monthlyStatus = entry.monthlyStatus === undefined
+      ? undefined
+      : (() => {
+        assert(isPlainObject(entry.monthlyStatus), `wealth snapshot ${index}.monthlyStatus must be an object`);
+        return {
+          fixedExpensesIncluded:
+            entry.monthlyStatus.fixedExpensesIncluded === undefined
+              ? undefined
+              : assertOptionalBoolean(
+                entry.monthlyStatus.fixedExpensesIncluded,
+                `wealth snapshot ${index}.monthlyStatus.fixedExpensesIncluded`,
+              ),
+          basisInvestmentState:
+            entry.monthlyStatus.basisInvestmentState === undefined
+              ? undefined
+              : assertEnum(
+                entry.monthlyStatus.basisInvestmentState,
+                `wealth snapshot ${index}.monthlyStatus.basisInvestmentState`,
+                ["open", "included", "pending_cash"],
+              ),
+          extraExpensesIncluded:
+            entry.monthlyStatus.extraExpensesIncluded === undefined
+              ? undefined
+              : assertOptionalBoolean(
+                entry.monthlyStatus.extraExpensesIncluded,
+                `wealth snapshot ${index}.monthlyStatus.extraExpensesIncluded`,
+              ),
+        };
+      })();
+
     return {
       id: assertString(entry.id, `wealth snapshot ${index}.id`),
       snapshotDate: assertDateLike(entry.snapshotDate, `wealth snapshot ${index}.snapshotDate`),
@@ -159,6 +189,7 @@ export function validateWealthSnapshotsPayload(payload: unknown): unknown[] {
       cashAmount,
       investmentAmount: assertNumber(entry.investmentAmount, `wealth snapshot ${index}.investmentAmount`, { min: 0 }),
       anchorMonthKey: entry.anchorMonthKey === undefined ? undefined : assertMonthKey(entry.anchorMonthKey, `wealth snapshot ${index}.anchorMonthKey`),
+      monthlyStatus,
       notes: normalizeOptionalNotes(entry.notes, `wealth snapshot ${index}.notes`),
       isActive: assertOptionalBoolean(entry.isActive, `wealth snapshot ${index}.isActive`),
       updatedAt: normalizeOptionalTimestamp(entry.updatedAt, `wealth snapshot ${index}.updatedAt`),

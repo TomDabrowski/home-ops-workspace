@@ -196,3 +196,74 @@ test("fills the threshold with music gross first and then salary remainder if ne
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
   assert.equal(result.salaryAllocationToThresholdAmount, 99);
 });
+
+test("keeps pending basis investment wealth-neutral when it is still sitting in cash", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-04",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    safetyMonthlyReturn: 0,
+    investmentMonthlyReturn: 0,
+    salaryAllocationToSafetyAmount: 0,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 0,
+    importedIncomeReserveAmount: 0,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 7000,
+    investmentBucketStartAmount: 12000,
+    explicitWealthAnchor: {
+      monthKey: "2026-04",
+      safetyBucketAmount: 7000,
+      investmentBucketAmount: 12000,
+      totalWealthAmount: 19000,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-04-02T10:00",
+    },
+    basisInvestmentState: "pending_cash",
+    incomeAvailableAfterAnchorAmount: 0,
+    incomeReserveAfterAnchorAmount: 0,
+    expenseAfterAnchorAmount: 0,
+  });
+
+  assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 1050);
+  assert.equal(result.salaryInvestmentTransferFromSafetyAmount, 1050);
+  assert.equal(result.safetyBucketEndAmount, 5950);
+  assert.equal(result.investmentBucketEndAmount, 13050);
+  assert.equal(result.projectedWealthEndAmount, 19000);
+});
+
+test("can mark extra expenses as already included in the snapshot state", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-04",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    safetyMonthlyReturn: 0,
+    investmentMonthlyReturn: 0,
+    salaryAllocationToSafetyAmount: 0,
+    salaryAllocationToInvestmentAmount: 0,
+    importedIncomeAvailableAmount: 0,
+    importedIncomeReserveAmount: 0,
+    importedExpenseAmount: 300,
+    safetyBucketStartAmount: 7000,
+    investmentBucketStartAmount: 12000,
+    explicitWealthAnchor: {
+      monthKey: "2026-04",
+      safetyBucketAmount: 7000,
+      investmentBucketAmount: 12000,
+      totalWealthAmount: 19000,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-04-02T10:00",
+    },
+    extraExpensesIncluded: true,
+    incomeAvailableAfterAnchorAmount: 0,
+    incomeReserveAfterAnchorAmount: 0,
+    expenseAfterAnchorAmount: 300,
+  });
+
+  assert.equal(result.projectionExpenseAmount, 0);
+  assert.equal(result.safetyBucketEndAmount, 7000);
+});

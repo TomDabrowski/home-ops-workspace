@@ -189,6 +189,20 @@
                 <span>Gilt als Monatsanfang für</span>
                 <input id="wealthSnapshotMonthStartMonth" type="month" disabled>
               </label>
+              <label class="select-wrap planner-span-two">
+                <span><input id="wealthSnapshotFixedExpensesIncluded" type="checkbox"> Fixkosten dieses Monats sind im Ist-Stand schon drin</span>
+              </label>
+              <label class="select-wrap">
+                <span>Basis-Investment dieses Monats</span>
+                <select id="wealthSnapshotBasisInvestmentState">
+                  <option value="open">Noch offen</option>
+                  <option value="pending_cash">Liegt noch im Cash</option>
+                  <option value="included">Schon im Investment</option>
+                </select>
+              </label>
+              <label class="select-wrap planner-span-two">
+                <span><input id="wealthSnapshotExtraExpensesIncluded" type="checkbox"> Zusatz-Ausgaben dieses Monats sind im Ist-Stand schon drin</span>
+              </label>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="wealthSnapshotMeta" data-dev-only="true">Noch kein manueller Vermögensstand gespeichert.</p>

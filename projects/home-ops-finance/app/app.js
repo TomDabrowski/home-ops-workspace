@@ -428,6 +428,7 @@ function monthEndSafetyFormula({
   musicSafetyRemainingAmount,
   musicIncomeEntries,
   musicNetConsumedAmount,
+  salaryInvestmentTransferFromSafetyAmount,
 }) {
   if (reviewRow.anchorAppliesWithinMonth && reviewRow.safetyBucketAnchorAmount !== undefined) {
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
@@ -439,6 +440,9 @@ function monthEndSafetyFormula({
       moneyDeltaLabel(reviewRow.projectionSalaryAllocationToSafetyAmount, "noch aus Gehalt ins Cash"),
       moneyDeltaLabel(musicSafetyRemainingAmount, "noch aus Musik ins Cash-Ziel"),
       projectionExpenseAmount > 0 ? `${euro.format(projectionExpenseAmount)} noch offene Zusatz-Ausgaben` : "",
+      salaryInvestmentTransferFromSafetyAmount > 0
+        ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} gehen noch aus Cash ins Investment`
+        : "",
     ]);
     return joinTooltipLines([
       `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
@@ -462,6 +466,9 @@ function monthEndSafetyFormula({
       `${monthKey}: Start-Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
       `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
       `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+      salaryInvestmentTransferFromSafetyAmount > 0
+        ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} liegen zuerst im Cash und werden spaeter noch ins Investment umgebucht.`
+        : "",
       `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
     ]);
   }
@@ -470,6 +477,9 @@ function monthEndSafetyFormula({
     `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
     `Dazu kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
     `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+    salaryInvestmentTransferFromSafetyAmount > 0
+      ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} werden aus dem Cash noch ins Investment verschoben.`
+      : "",
     `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
   ]);
 }
@@ -1053,6 +1063,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicSafetyTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicInvestmentTotalAmount));
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
+    const basisInvestmentSnapshotState = latestSnapshot?.monthlyStatus?.basisInvestmentState ?? "open";
     const basisInvestmentState = movementVisualState(basisInvestmentRemainingAmount, basisInvestmentTotalAmount, hasActiveInMonthSnapshot);
     const musicIncomeState = movementVisualState(musicGrossRemainingAmount, musicGrossTotalAmount, hasAnyActiveSnapshot);
     const importedExpenseState = movementVisualState(remainingImportedExpenseAmount, importedExpenseAmount, hasActiveInMonthSnapshot);
@@ -1079,6 +1090,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           hasActiveInMonthSnapshot
             ? `Nach dem Ist-Stand noch offen: ${euro.format(basisInvestmentRemainingAmount)}`
             : `Ohne aktiven Ist-Stand wird der volle Monatswert weitergerechnet.`,
+          basisInvestmentSnapshotState === "pending_cash"
+            ? `Der offene Betrag liegt laut Ist-Stand aktuell noch im Cash und wird nur noch ins Investment umgeschichtet.`
+            : "",
         ]),
         note: basisInvestmentState.note,
         itemClass: basisInvestmentState.itemClass,
@@ -1206,6 +1220,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
               musicSafetyRemainingAmount: Number(review.row.musicAllocationToSafetyAmount ?? 0),
               musicIncomeEntries,
               musicNetConsumedAmount,
+              salaryInvestmentTransferFromSafetyAmount: Number(review.row.salaryInvestmentTransferFromSafetyAmount ?? 0),
             })
             : "",
       },

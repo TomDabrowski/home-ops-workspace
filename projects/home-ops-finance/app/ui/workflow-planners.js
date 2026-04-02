@@ -394,6 +394,9 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   const notesField = document.getElementById("wealthSnapshotNotes");
   const monthStartEnabledField = document.getElementById("wealthSnapshotMonthStartEnabled");
   const monthStartMonthField = document.getElementById("wealthSnapshotMonthStartMonth");
+  const fixedExpensesIncludedField = document.getElementById("wealthSnapshotFixedExpensesIncluded");
+  const basisInvestmentStateField = document.getElementById("wealthSnapshotBasisInvestmentState");
+  const extraExpensesIncludedField = document.getElementById("wealthSnapshotExtraExpensesIncluded");
   const metaTarget = document.getElementById("wealthSnapshotMeta");
   const listTarget = document.getElementById("wealthSnapshotList");
   const historySummaryTarget = document.getElementById("wealthSnapshotHistorySummary");
@@ -403,6 +406,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   if (
     !dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField ||
     !cashTotalField || !notesField || !monthStartEnabledField || !monthStartMonthField ||
+    !fixedExpensesIncludedField || !basisInvestmentStateField || !extraExpensesIncludedField ||
     !metaTarget || !listTarget || !saveButton || !clearButton
   ) {
     return;
@@ -475,6 +479,9 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     monthStartEnabledField.checked = false;
     monthStartMonthField.value = currentSelectedMonthKey();
     monthStartMonthField.disabled = true;
+    fixedExpensesIncludedField.checked = false;
+    basisInvestmentStateField.value = "open";
+    extraExpensesIncludedField.checked = false;
     saveButton.dataset.editingId = "";
     saveButton.textContent = "Ist-Stand speichern";
     snapshotNote.refresh(true);
@@ -501,11 +508,34 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
         Number(scalableField.value || 0),
       );
       const investmentAmount = Number(investmentField.value || 0);
+      const fixedExpensesIncluded = fixedExpensesIncludedField.checked;
+      const basisInvestmentState = basisInvestmentStateField.value || "open";
+      const extraExpensesIncluded = extraExpensesIncludedField.checked;
+      const statusParts = [
+        fixedExpensesIncluded ? "Fixkosten schon enthalten" : "",
+        basisInvestmentState === "pending_cash"
+          ? "Basis-Investment liegt noch im Cash"
+          : basisInvestmentState === "included"
+            ? "Basis-Investment schon im Depot"
+            : "",
+        extraExpensesIncluded ? "Zusatz-Ausgaben schon enthalten" : "",
+      ].filter(Boolean);
       return anchorMonthKey
-        ? `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment, gilt als Monatsanfang für ${anchorMonthKey}.`
-        : `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment.`;
+        ? `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment, gilt als Monatsanfang für ${anchorMonthKey}.${statusParts.length > 0 ? ` ${statusParts.join(" · ")}.` : ""}`
+        : `Ist-Stand vom ${formatDisplayDate(snapshotDate)}: ${euro.format(cashAmount)} Cash und ${euro.format(investmentAmount)} Investment.${statusParts.length > 0 ? ` ${statusParts.join(" · ")}.` : ""}`;
     },
-    [dateField, giroField, tradeRepublicField, scalableField, investmentField, monthStartEnabledField, monthStartMonthField],
+    [
+      dateField,
+      giroField,
+      tradeRepublicField,
+      scalableField,
+      investmentField,
+      monthStartEnabledField,
+      monthStartMonthField,
+      fixedExpensesIncludedField,
+      basisInvestmentStateField,
+      extraExpensesIncludedField,
+    ],
   );
   if (!saveButton.dataset.editingId) {
     snapshotNote.refresh(true);
@@ -521,6 +551,15 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
             <div>
               <strong>${formatDisplayDate(entry.snapshotDate)}${entry.anchorMonthKey ? ` · Monatsanfang ${entry.anchorMonthKey}` : " · Normaler Ist-Stand"}</strong>
               <p>CHECK24 ${euro.format(wealthSnapshotCashAccounts(entry).giro)} · TR Cash ${euro.format(wealthSnapshotCashAccounts(entry).cash)} · Scalable ${euro.format(wealthSnapshotCashAccounts(entry).savings)} · Investment ${euro.format(entry.investmentAmount)} · Wirkt für ${entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)}</p>
+              <p class="section-copy">${[
+                entry.monthlyStatus?.fixedExpensesIncluded ? "Fixkosten enthalten" : "",
+                entry.monthlyStatus?.basisInvestmentState === "pending_cash"
+                  ? "Basis-Investment noch im Cash"
+                  : entry.monthlyStatus?.basisInvestmentState === "included"
+                    ? "Basis-Investment schon im Depot"
+                    : "",
+                entry.monthlyStatus?.extraExpensesIncluded ? "Zusatz-Ausgaben enthalten" : "",
+              ].filter(Boolean).join(" · ") || "Keine Zusatz-Status gesetzt."}</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-wealth-snapshot-edit="${entry.id}">Bearbeiten</button>
@@ -567,6 +606,9 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       monthStartEnabledField.checked = Boolean(entry.anchorMonthKey);
       monthStartMonthField.value = entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate) ?? currentSelectedMonthKey();
       monthStartMonthField.disabled = !monthStartEnabledField.checked;
+      fixedExpensesIncludedField.checked = entry.monthlyStatus?.fixedExpensesIncluded === true;
+      basisInvestmentStateField.value = entry.monthlyStatus?.basisInvestmentState ?? "open";
+      extraExpensesIncludedField.checked = entry.monthlyStatus?.extraExpensesIncluded === true;
       saveButton.dataset.editingId = entry.id;
       saveButton.textContent = "Ist-Stand aktualisieren";
       updateCashTotalField();
@@ -620,6 +662,11 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     const anchorMonthKey = monthStartEnabledField.checked
       ? (monthStartMonthField.value || monthFromDate(snapshotDate) || currentSelectedMonthKey())
       : "";
+    const monthlyStatus = {
+      fixedExpensesIncluded: fixedExpensesIncludedField.checked,
+      basisInvestmentState: basisInvestmentStateField.value || "open",
+      extraExpensesIncluded: extraExpensesIncludedField.checked,
+    };
 
     if (
       !snapshotDate ||
@@ -653,6 +700,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       cashAmount,
       investmentAmount,
       anchorMonthKey: anchorMonthKey || undefined,
+      monthlyStatus,
       notes,
       isActive: true,
       updatedAt: new Date().toISOString(),

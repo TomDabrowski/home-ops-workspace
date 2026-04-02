@@ -549,10 +549,21 @@ export function createLocalFinanceStateTools(deps) {
       const expenseAmountForProjection = anchorUsesSnapshotCutoff
         ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
         : importedExpenseAmount;
+      const effectiveExpenseAmountForProjection =
+        anchorUsesSnapshotCutoff && explicitWealthAnchor?.monthlyStatus?.extraExpensesIncluded === true
+          ? 0
+          : expenseAmountForProjection;
       const projectionSalaryAllocationToSafetyAmount =
         anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToSafetyAmount;
+      const basisInvestmentHandledInSnapshot =
+        explicitWealthAnchor?.monthlyStatus?.basisInvestmentState === "included" ||
+        (anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate));
       const projectionSalaryAllocationToInvestmentAmount =
-        anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToInvestmentAmount;
+        basisInvestmentHandledInSnapshot ? 0 : salaryAllocationToInvestmentAmount;
+      const salaryInvestmentTransferFromSafetyAmount =
+        explicitWealthAnchor?.monthlyStatus?.basisInvestmentState === "pending_cash"
+          ? roundCurrency(salaryAllocationToInvestmentAmount)
+          : 0;
       const thresholdAccountExpenseAmount = musicThresholdAccountId
         ? roundCurrency(
             (importDraft.expenseEntries ?? [])
@@ -593,7 +604,8 @@ export function createLocalFinanceStateTools(deps) {
             (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
               projectionSalaryAllocationToSafetyAmount +
               musicAllocationToSafetyAmount -
-              expenseAmountForProjection,
+              effectiveExpenseAmountForProjection -
+              salaryInvestmentTransferFromSafetyAmount,
           )
         : undefined;
       const investmentBucketProjectedEndAmount = useForecastRouting
@@ -613,7 +625,8 @@ export function createLocalFinanceStateTools(deps) {
               safetyBucketAnchorAmount +
                 projectionSalaryAllocationToSafetyAmount +
                 musicAllocationToSafetyAmount -
-                expenseAmountForProjection,
+                effectiveExpenseAmountForProjection -
+                salaryInvestmentTransferFromSafetyAmount,
             )
           : undefined;
       const anchoredInvestmentEndAmount =
@@ -687,12 +700,13 @@ export function createLocalFinanceStateTools(deps) {
         salaryAllocationToThresholdAmount,
         projectionSalaryAllocationToSafetyAmount,
         projectionSalaryAllocationToInvestmentAmount,
+        salaryInvestmentTransferFromSafetyAmount,
         anchorAppliesWithinMonth,
         anchorMode: explicitWealthAnchorMode,
         anchorAppliesAtMonthStart,
         projectionIncomeAvailableAmount: incomeAvailableForProjection,
         projectionIncomeReserveAmount: incomeReserveForProjection,
-        projectionExpenseAmount: expenseAmountForProjection,
+        projectionExpenseAmount: effectiveExpenseAmountForProjection,
         safetyBucketStartAmount,
         thresholdAccountStartAmount: musicThresholdAccountId ? currentMusicThresholdAccountAmount : undefined,
         safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
@@ -849,6 +863,7 @@ export function createLocalFinanceStateTools(deps) {
         anchorMode: anchorMonthKey ? "month_start" : "in_month_snapshot",
         snapshotDate: entry.snapshotDate,
         anchorMonthKey: anchorMonthKey || undefined,
+        monthlyStatus: entry.monthlyStatus,
         notes: entry.notes,
       }));
   }
