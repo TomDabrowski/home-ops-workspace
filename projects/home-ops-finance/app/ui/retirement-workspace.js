@@ -219,11 +219,15 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     const firstForecastMonthKey = futureForecastRows(monthlyPlan)[0]?.monthKey ?? "2026-03";
     const targetMonthKey = targetMonthFromAges(settings.currentAge, settings.targetAge, firstForecastMonthKey);
     const retirementMonths = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
-    const baseSimulation = simulateForecast(importDraft, monthlyPlan, { months: retirementMonths, ...plannerAssumptions });
-    const minimumMusicSimulation = simulateForecast(importDraft, monthlyPlan, {
+    const noMusicSimulation = simulateForecast(importDraft, monthlyPlan, {
       months: retirementMonths,
       ...plannerAssumptions,
-      minimumMusicGrossPerMonth: settings.minimumMusicGrossPerMonth,
+      constantMusicGrossPerMonth: 0,
+    });
+    const musicScenarioSimulation = simulateForecast(importDraft, monthlyPlan, {
+      months: retirementMonths,
+      ...plannerAssumptions,
+      constantMusicGrossPerMonth: settings.minimumMusicGrossPerMonth,
     });
     const targetYears = Math.max(0, settings.targetAge - settings.currentAge);
     const retirementSpendAtTarget =
@@ -236,16 +240,16 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       requiredNestEgg,
       plannerAssumptions,
     );
-    const baselineAtTarget = firstMonthReaching(baseSimulation, requiredNestEgg);
-    const minimumMusicAtTarget = firstMonthReaching(minimumMusicSimulation, requiredNestEgg);
+    const baselineAtTarget = firstMonthReaching(noMusicSimulation, requiredNestEgg);
+    const minimumMusicAtTarget = firstMonthReaching(musicScenarioSimulation, requiredNestEgg);
     const baselineRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, baselineAtTarget?.monthKey);
     const minimumMusicRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, minimumMusicAtTarget?.monthKey);
-    const milestoneRows = wealthMilestones(baseSimulation, requiredNestEgg);
-    const currentWealth = baseSimulation[0]
-      ? baseSimulation[0].safetyStartAmount + baseSimulation[0].investmentStartAmount
+    const milestoneRows = wealthMilestones(noMusicSimulation, requiredNestEgg);
+    const currentWealth = noMusicSimulation[0]
+      ? noMusicSimulation[0].safetyStartAmount + noMusicSimulation[0].investmentStartAmount
       : 0;
-    const latestProjectedWealth = baseSimulation.at(-1)?.wealthEndAmount ?? 0;
-    const latestMinimumMusicWealth = minimumMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
+    const latestProjectedWealth = noMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
+    const latestMinimumMusicWealth = musicScenarioSimulation.at(-1)?.wealthEndAmount ?? 0;
     const constantMusicNeeded = targetRun?.constantMusicGrossPerMonth ?? 0;
     const targetPathAverageGross =
       targetRun?.simulation.length
@@ -256,7 +260,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         ? targetRun.simulation.reduce((sum, row) => sum + row.musicNetAvailable, 0) / targetRun.simulation.length
         : 0;
     const targetResult = targetRun?.simulation.at(-1) ?? null;
-    const minimumMusicResult = minimumMusicSimulation.at(-1) ?? null;
+    const minimumMusicResult = musicScenarioSimulation.at(-1) ?? null;
     const yearBreakdown = buildRetirementYearBreakdown(
       importDraft,
       monthlyPlan,
@@ -270,9 +274,9 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     );
 
     assumptionsTarget.textContent =
-      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} % und mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} Musik brutto pro Monat im Szenario. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
+      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. In diesem Reiter bedeutet 'ohne Musik' wirklich ab jetzt 0 € Musik, und 'mit Musik' rechnet mit ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat im Szenario. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
     retirementProjectionMetaTarget.textContent =
-      `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} %, Musik-Szenario mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat und Investment-Ertrag 6,0 % p.a.`;
+      `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} %, ohne Musik = ab jetzt 0 € und mit Musik-Szenario = ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat, Investment-Ertrag 6,0 % p.a.`;
 
     summaryTarget.innerHTML = renderDetailEntries([
       ["Startvermögen", euro.format(currentWealth)],
@@ -301,7 +305,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         value: euro.format(requiredNestEgg),
         formula: `(${euro.format(retirementSpendAtTarget)} * 12) / ${settings.withdrawalRate.toFixed(1)} % = ${euro.format(requiredNestEgg)}`,
       },
-      ["Vermögen im Zielmonat", euro.format(latestProjectedWealth)],
+      ["Vermögen im Zielmonat ohne Musik", euro.format(latestProjectedWealth)],
       ["Vermögen im Zielmonat mit Musik-Szenario", euro.format(latestMinimumMusicWealth)],
       ["Musik-Szenario pro Monat", euro.format(settings.minimumMusicGrossPerMonth)],
       ["Musik konstant nötig", euro.format(constantMusicNeeded)],
@@ -326,11 +330,11 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     retirementItems.push(`
       <li>
         <strong>Voraussichtlicher Rentenzeitpunkt</strong>
-        <p>Ohne Musik-Szenario erreichst du das Ziel ${baselineAtTarget ? `voraussichtlich mit ${formatAgeLabel(baselineRetirementAge)} im ${formatMonthLabel(baselineAtTarget.monthKey)}` : `bis ${formatMonthLabel(targetMonthKey)} noch nicht`}. ${
-          settings.minimumMusicGrossPerMonth > 0
-            ? (minimumMusicAtTarget
-                ? `Mit deinem Musik-Szenario von mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wäre es voraussichtlich ${formatAgeLabel(minimumMusicRetirementAge)} im ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.`
-                : `Mit deinem Musik-Szenario von mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat reicht es bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz.`)
+          <p>Ohne Musik ab jetzt erreichst du das Ziel ${baselineAtTarget ? `voraussichtlich mit ${formatAgeLabel(baselineRetirementAge)} im ${formatMonthLabel(baselineAtTarget.monthKey)}` : `bis ${formatMonthLabel(targetMonthKey)} noch nicht`}. ${
+            settings.minimumMusicGrossPerMonth > 0
+              ? (minimumMusicAtTarget
+                ? `Mit deinem Musik-Szenario von ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wäre es voraussichtlich ${formatAgeLabel(minimumMusicRetirementAge)} im ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.`
+                : `Mit deinem Musik-Szenario von ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat reicht es bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz.`)
             : "Sobald du unten ein Musik-Szenario einträgst und übernimmst, erscheint hier direkt der Vergleich mit Musik."
         }</p>
       </li>
@@ -345,15 +349,15 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     if (baselineAtTarget) {
       retirementItems.push(`
         <li>
-          <strong>Mit aktuellem Plan erreichbar</strong>
-          <p>Ohne zusätzliche Musikannahme wird das Ziel voraussichtlich in ${formatMonthLabel(baselineAtTarget.monthKey)} erreicht.</p>
+          <strong>Ohne Musik erreichbar</strong>
+          <p>Wenn ab jetzt keine Musik mehr dazukommt, wird das Ziel voraussichtlich in ${formatMonthLabel(baselineAtTarget.monthKey)} erreicht.</p>
         </li>
       `);
     } else {
       retirementItems.push(`
         <li>
-          <strong>Mit aktuellem Plan noch nicht erreichbar</strong>
-          <p>Bis ${formatMonthLabel(targetMonthKey)} reicht der heutige Forecast allein noch nicht aus.</p>
+          <strong>Ohne Musik noch nicht erreichbar</strong>
+          <p>Wenn ab jetzt keine Musik mehr dazukommt, reicht der Forecast bis ${formatMonthLabel(targetMonthKey)} noch nicht aus.</p>
         </li>
       `);
     }
@@ -363,14 +367,14 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         retirementItems.push(`
           <li>
             <strong>Mit deinem Musik-Szenario erreichbar</strong>
-            <p>Wenn du ab jetzt mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat mit Musik erreichst, klappt das Rentenziel voraussichtlich in ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.</p>
+            <p>Wenn du ab jetzt konstant ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat mit Musik erreichst, klappt das Rentenziel voraussichtlich in ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.</p>
           </li>
         `);
       } else {
         retirementItems.push(`
           <li>
             <strong>Mit deinem Musik-Szenario noch nicht erreichbar</strong>
-            <p>Selbst mit mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wird das Ziel bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz erreicht.</p>
+            <p>Selbst mit konstant ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wird das Ziel bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz erreicht.</p>
           </li>
         `);
       }
@@ -416,7 +420,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     if (settings.minimumMusicGrossPerMonth > 0) {
       signalItems.push({
         title: "Dein Musik-Szenario",
-        body: `Zusätzlich zur reinen Sockel-Sicht rechnet der Reiter gerade mit mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto Musik pro Monat. So siehst du direkt, ob dein Wunschwert schon reicht oder ob die Lücke bis zur Rente noch größer ist.`,
+        body: `Zusätzlich zur Sicht ohne Musik rechnet der Reiter gerade mit konstant ${euro.format(settings.minimumMusicGrossPerMonth)} brutto Musik pro Monat. So siehst du direkt, ob dein Wunschwert schon reicht oder ob die Lücke bis zur Rente noch größer ist.`,
       });
     }
     if (yearBreakdown.length > 1) {
@@ -424,7 +428,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       const last = yearBreakdown.at(-1);
       signalItems.push({
         title: "Vermögenspfad ohne Musik",
-        body: `Ohne zusätzliche Musik steigt das Vermögen in dieser Sicht von ${euro.format(first?.wealthEndAmount ?? 0)} auf ${euro.format(last?.wealthEndAmount ?? 0)} bis ${last?.year}. Daran misst die App dann die noch nötige Musiklücke.`,
+        body: `Ohne Musik ab jetzt steigt das Vermögen in dieser Sicht von ${euro.format(first?.wealthEndAmount ?? 0)} auf ${euro.format(last?.wealthEndAmount ?? 0)} bis ${last?.year}. Daran misst die App dann die noch nötige Musiklücke.`,
       });
     }
     signalItems.push({
