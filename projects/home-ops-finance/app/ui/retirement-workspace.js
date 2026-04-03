@@ -97,6 +97,33 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     errorBox.innerHTML = `<strong>Bitte prüfen:</strong><br>${messages.join("<br>")}`;
   }
 
+  function ageAtMonth(startMonthKey, currentAge, reachedMonthKey) {
+    if (!reachedMonthKey) {
+      return null;
+    }
+    const startYear = Number(String(startMonthKey).slice(0, 4));
+    const startMonth = Number(String(startMonthKey).slice(5, 7));
+    const reachedYear = Number(String(reachedMonthKey).slice(0, 4));
+    const reachedMonth = Number(String(reachedMonthKey).slice(5, 7));
+    if (
+      !Number.isFinite(startYear) ||
+      !Number.isFinite(startMonth) ||
+      !Number.isFinite(reachedYear) ||
+      !Number.isFinite(reachedMonth)
+    ) {
+      return null;
+    }
+    const monthDelta = ((reachedYear - startYear) * 12) + (reachedMonth - startMonth);
+    return currentAge + (monthDelta / 12);
+  }
+
+  function formatAgeLabel(age) {
+    if (!Number.isFinite(age)) {
+      return "noch nicht erreicht";
+    }
+    return `${age.toFixed(1).replace(".", ",")} Jahre`;
+  }
+
   function readPlannerFormValues() {
     return {
       currentAge: Number(currentAgeInput.value),
@@ -211,6 +238,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     );
     const baselineAtTarget = firstMonthReaching(baseSimulation, requiredNestEgg);
     const minimumMusicAtTarget = firstMonthReaching(minimumMusicSimulation, requiredNestEgg);
+    const baselineRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, baselineAtTarget?.monthKey);
+    const minimumMusicRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, minimumMusicAtTarget?.monthKey);
     const milestoneRows = wealthMilestones(baseSimulation, requiredNestEgg);
     const currentWealth = baseSimulation[0]
       ? baseSimulation[0].safetyStartAmount + baseSimulation[0].investmentStartAmount
@@ -248,6 +277,20 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     summaryTarget.innerHTML = renderDetailEntries([
       ["Startvermögen", euro.format(currentWealth)],
       ["Zielmonat Rente", formatMonthLabel(targetMonthKey)],
+      [
+        "Voraussichtlich ohne Musik",
+        baselineAtTarget
+          ? `${formatAgeLabel(baselineRetirementAge)} (${formatMonthLabel(baselineAtTarget.monthKey)})`
+          : `Nicht bis ${formatMonthLabel(targetMonthKey)}`,
+      ],
+      [
+        "Voraussichtlich mit Musik",
+        settings.minimumMusicGrossPerMonth > 0
+          ? minimumMusicAtTarget
+            ? `${formatAgeLabel(minimumMusicRetirementAge)} (${formatMonthLabel(minimumMusicAtTarget.monthKey)})`
+            : `Nicht bis ${formatMonthLabel(targetMonthKey)}`
+          : "Kein Musik-Szenario gesetzt",
+      ],
       {
         label: "Bedarf in Zieljahren",
         value: euro.format(retirementSpendAtTarget),
@@ -280,6 +323,18 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       .join("");
 
     const retirementItems = [];
+    retirementItems.push(`
+      <li>
+        <strong>Voraussichtlicher Rentenzeitpunkt</strong>
+        <p>Ohne Musik-Szenario erreichst du das Ziel ${baselineAtTarget ? `voraussichtlich mit ${formatAgeLabel(baselineRetirementAge)} im ${formatMonthLabel(baselineAtTarget.monthKey)}` : `bis ${formatMonthLabel(targetMonthKey)} noch nicht`}. ${
+          settings.minimumMusicGrossPerMonth > 0
+            ? (minimumMusicAtTarget
+                ? `Mit deinem Musik-Szenario von mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat wäre es voraussichtlich ${formatAgeLabel(minimumMusicRetirementAge)} im ${formatMonthLabel(minimumMusicAtTarget.monthKey)}.`
+                : `Mit deinem Musik-Szenario von mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat reicht es bis ${formatMonthLabel(targetMonthKey)} noch nicht ganz.`)
+            : "Sobald du unten ein Musik-Szenario einträgst und übernimmst, erscheint hier direkt der Vergleich mit Musik."
+        }</p>
+      </li>
+    `);
     retirementItems.push(`
       <li>
         <strong>Rentenziel: ${formatMonthLabel(targetMonthKey)}</strong>

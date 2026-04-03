@@ -445,8 +445,8 @@ function monthEndSafetyFormula({
         : "",
     ]);
     return joinTooltipLines([
-      `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
-      `${snapshotDate} ist der aktive Ist-Stand fuer Cash mit ${euro.format(safetyAnchorAmount)}.`,
+      `${monthKey}: Monatsanfang Cash ${euro.format(startSafetyAmount)}.`,
+      `Aktiver Ist-Stand am ${snapshotDate}: ${euro.format(safetyAnchorAmount)} Cash.`,
       `Bis zu diesem Stichtag stecken bereits ${euro.format(salarySafetyConsumedAmount)} aus Gehalt und ${euro.format(musicSafetyConsumedAmount)} aus Musik im Cash.`,
       musicSafetyConsumedAmount > 0
         ? `${euro.format(musicSafetyConsumedAmount)} davon wurden ins Cash-Ziel ${thresholdTargetLabel} gelenkt, um es wieder Richtung ${euro.format(thresholdAmount)} zu bringen.`
@@ -454,33 +454,33 @@ function monthEndSafetyFormula({
       musicNetConsumedAmount > 0 && musicDateLabel
         ? `Die beruecksichtigte Musik stammt aus ${musicDateLabel} und war bis zum Stichtag bereits verarbeitet.`
         : "",
-      `Bis zum Stichtag waren ausserdem ${euro.format(importedExpenseConsumedAmount)} importierte und ${euro.format(manualExpenseConsumedAmount)} manuelle Zusatz-Ausgaben schon drin.`,
+      `Bis zum Stichtag waren ausserdem ${euro.format(importedExpenseConsumedAmount)} importierte und ${euro.format(manualExpenseConsumedAmount)} manuelle Zusatz-Ausgaben schon im Snapshot enthalten.`,
       remaining
-        ? `Nach dem Stichtag sind noch ${remaining}. Daraus ergibt sich ${euro.format(endSafetyAmount)} Cash am Monatsende.`
-        : `Nach dem Stichtag sind keine weiteren Cash-Bewegungen mehr offen. Deshalb bleibt Cash am Monatsende bei ${euro.format(endSafetyAmount)}.`,
+        ? `Nach dem Stichtag sind bis Monatsende noch ${remaining}. Daraus ergibt sich ein prognostizierter Cash-Stand von ${euro.format(endSafetyAmount)} am Monatsende.`
+        : `Nach dem Stichtag sind bis Monatsende keine weiteren Cash-Bewegungen mehr offen. Deshalb bleibt der prognostizierte Cash-Stand am Monatsende bei ${euro.format(endSafetyAmount)}.`,
     ]);
   }
 
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.safetyBucketAnchorAmount !== undefined) {
     return joinTooltipLines([
-      `${monthKey}: Start-Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
-      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
-      `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+      `${monthKey}: Monatsanfang Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
+      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
+      `Bis Monatsende gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
       salaryInvestmentTransferFromSafetyAmount > 0
-        ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} liegen zuerst im Cash und werden spaeter noch ins Investment umgebucht.`
+        ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} liegen zuerst im Cash und werden bis Monatsende noch ins Investment umgebucht.`
         : "",
-      `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
+      `So entsteht ein prognostizierter Cash-Stand von ${euro.format(endSafetyAmount)} am Monatsende.`,
     ]);
   }
 
   return joinTooltipLines([
-    `${monthKey}: Start-Cash ${euro.format(startSafetyAmount)}.`,
-    `Dazu kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
-    `Davon gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
+    `${monthKey}: Monatsanfang Cash ${euro.format(startSafetyAmount)}.`,
+    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
+    `Bis Monatsende gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
     salaryInvestmentTransferFromSafetyAmount > 0
-      ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} werden aus dem Cash noch ins Investment verschoben.`
+      ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} werden bis Monatsende noch aus dem Cash ins Investment verschoben.`
       : "",
-    `So entstehen ${euro.format(endSafetyAmount)} Cash am Monatsende.`,
+    `So entsteht ein prognostizierter Cash-Stand von ${euro.format(endSafetyAmount)} am Monatsende.`,
   ]);
 }
 
@@ -505,30 +505,30 @@ function monthEndInvestmentFormula({
       moneyDeltaLabel(musicInvestmentRemainingAmount, "noch aus Musik ins Investment"),
     ]);
     return joinTooltipLines([
-      `${monthKey}: Start-Investment ${euro.format(startInvestmentAmount)}.`,
-      `${snapshotDate} ist der aktive Ist-Stand fuer Investment mit ${euro.format(investmentAnchorAmount)}.`,
+      `${monthKey}: Monatsanfang Investment ${euro.format(startInvestmentAmount)}.`,
+      `Aktiver Ist-Stand am ${snapshotDate}: ${euro.format(investmentAnchorAmount)} Investment.`,
       `Bis zu diesem Stichtag kamen bereits ${euro.format(salaryInvestmentConsumedAmount)} aus Basis-Investment und ${euro.format(musicInvestmentConsumedAmount)} aus Musik netto ins Investment.`,
       musicInvestmentConsumedAmount > 0 && musicNetConsumedAmount > 0 && musicDateLabel
         ? `Der Musik-Anteil stammt aus ${musicDateLabel}. Von den bis dahin schon verarbeiteten ${euro.format(musicNetConsumedAmount)} netto gingen ${euro.format(musicInvestmentConsumedAmount)} ins Investment.`
         : "",
       remaining
-        ? `Nach dem Stichtag sind noch ${remaining}. Daraus ergibt sich ${euro.format(endInvestmentAmount)} Investment am Monatsende.`
-        : `Nach dem Stichtag ist kein weiteres Investment mehr offen. Deshalb bleibt Investment am Monatsende bei ${euro.format(endInvestmentAmount)}.`,
+        ? `Nach dem Stichtag sind bis Monatsende noch ${remaining}. Daraus ergibt sich ein prognostizierter Investment-Stand von ${euro.format(endInvestmentAmount)} am Monatsende.`
+        : `Nach dem Stichtag ist bis Monatsende kein weiteres Investment mehr offen. Deshalb bleibt der prognostizierte Investment-Stand am Monatsende bei ${euro.format(endInvestmentAmount)}.`,
     ]);
   }
 
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.investmentBucketAnchorAmount !== undefined) {
     return joinTooltipLines([
-      `${monthKey}: Start-Investment ${euro.format(investmentAnchorAmount)} durch den gesetzten Monatsanfang.`,
-      `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
-      `So entstehen ${euro.format(endInvestmentAmount)} Investment am Monatsende.`,
+      `${monthKey}: Monatsanfang Investment ${euro.format(investmentAnchorAmount)} durch den gesetzten Monatsanfang.`,
+      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+      `So entsteht ein prognostizierter Investment-Stand von ${euro.format(endInvestmentAmount)} am Monatsende.`,
     ]);
   }
 
   return joinTooltipLines([
-    `${monthKey}: Start-Investment ${euro.format(startInvestmentAmount)}.`,
-    `Im Monat kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
-    `So entstehen ${euro.format(endInvestmentAmount)} Investment am Monatsende.`,
+    `${monthKey}: Monatsanfang Investment ${euro.format(startInvestmentAmount)}.`,
+    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+    `So entsteht ein prognostizierter Investment-Stand von ${euro.format(endInvestmentAmount)} am Monatsende.`,
   ]);
 }
 
