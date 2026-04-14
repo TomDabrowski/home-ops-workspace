@@ -28,6 +28,8 @@ Recommended exposed port:
 - `deploy/docker-compose.synology.yml`
 - `scripts/deploy-synology.sh`
 - `scripts/check-server-runtime.sh`
+- `docs/deployment-macos-setup.md`
+- `docs/private-device-setup.template.md`
 
 ## Recommended Deploy Flow
 
@@ -53,6 +55,11 @@ For macOS there is also a one-click deploy path:
 4. use `Home Ops Finance Deploy.app` from `~/Applications`
 
 The macOS launcher asks only for the Synology sudo password and then runs the same repo-based deploy flow without opening a terminal.
+
+For additional Macs, use:
+
+- `docs/deployment-macos-setup.md` for the generic setup steps
+- `docs/private-device-setup.template.md` as a private checklist outside the repo
 
 This keeps a clear split:
 

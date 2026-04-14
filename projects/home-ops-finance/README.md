@@ -42,6 +42,7 @@ The current spreadsheet already combines income, expenses, asset tracking, and m
 - `docs/data-model.md`: first draft of the core entities
 - `docs/architecture-guidelines.md`: target architecture for keeping the project business-system-first instead of frontend-first
 - `docs/deployment-pi.md`: recommended first deployment path for a central Pi-hosted setup
+- `docs/deployment-macos-setup.md`: generic setup for making another Mac deploy-capable
 - `deploy/docker-compose.synology.yml`: Synology-oriented container starter for the app server
 - `scripts/deploy-synology.sh`: repo-driven Synology deploy script that syncs code and restarts the container
 - `docs/workbook-analysis.md`: reverse-engineered notes from the current spreadsheet
