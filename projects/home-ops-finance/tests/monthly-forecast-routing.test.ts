@@ -197,6 +197,29 @@ test("fills the threshold with music gross first and then salary remainder if ne
   assert.equal(result.salaryAllocationToThresholdAmount, 99);
 });
 
+test("includes threshold-account expenses when filling the 10k target", () => {
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-05",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    thresholdAccountCurrentAmount: 9800,
+    thresholdAccountExpenseAmount: 300,
+    safetyMonthlyReturn: 0,
+    investmentMonthlyReturn: 0,
+    salaryAllocationToSafetyAmount: 250,
+    salaryAllocationToInvestmentAmount: 1050,
+    importedIncomeAvailableAmount: 200,
+    importedIncomeReserveAmount: 0,
+    importedExpenseAmount: 300,
+    safetyBucketStartAmount: 12000,
+    investmentBucketStartAmount: 15000,
+  });
+
+  assert.equal(result.musicAllocationToSafetyAmount, 200);
+  assert.equal(result.musicAllocationToInvestmentAmount, 0);
+  assert.equal(result.salaryAllocationToThresholdAmount, 250);
+});
+
 test("keeps pending basis investment wealth-neutral when it is still sitting in cash", () => {
   const result = buildMonthlyForecastRouting({
     monthKey: "2026-04",

@@ -330,11 +330,17 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
             )
         : musicThresholdAccountEndAmount
       : Number(safetyBucketStartAmount ?? 0);
+    const thresholdAccountExpenseAmount = musicThresholdAccountId
+      ? snapshotDate
+        ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
+        : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
+      : expenseAmountForProjection;
     const forecastRouting = buildMonthlyForecastRouting({
       monthKey,
       useForecastRouting,
       musicThreshold,
       thresholdAccountCurrentAmount: currentMusicThresholdAccountAmount,
+      thresholdAccountExpenseAmount,
       safetyMonthlyReturn,
       investmentMonthlyReturn,
       salaryAllocationToSafetyAmount,
@@ -351,11 +357,6 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       basisInvestmentState: explicitWealthAnchor?.monthlyStatus?.basisInvestmentState,
       extraExpensesIncluded: explicitWealthAnchor?.monthlyStatus?.extraExpensesIncluded === true,
     });
-    const thresholdAccountExpenseAmount = musicThresholdAccountId
-      ? snapshotDate
-        ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
-        : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
-      : expenseAmountForProjection;
     const musicThresholdAccountProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +

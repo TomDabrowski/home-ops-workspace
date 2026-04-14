@@ -582,7 +582,10 @@ export function createLocalFinanceStateTools(deps) {
             ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
-      const musicSafetyGapAmount = Math.max(0, musicThreshold - currentMusicThresholdAccountAmount);
+      const thresholdAmountAfterExpenses = roundCurrency(
+        Math.max(0, currentMusicThresholdAccountAmount - thresholdAccountExpenseAmount),
+      );
+      const musicSafetyGapAmount = Math.max(0, musicThreshold - thresholdAmountAfterExpenses);
       const musicNetNeededForThresholdAmount = roundCurrency(
         Math.max(0, Math.min(incomeAvailableForProjection, musicSafetyGapAmount - incomeReserveForProjection)),
       );
