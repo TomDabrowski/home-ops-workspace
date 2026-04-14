@@ -68,8 +68,7 @@ export function buildMonthlyForecastRouting(
   const projectionExpenseAmount = snapshotDate
     ? roundCurrency(input.expenseAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedExpenseAmount);
-  const effectiveProjectionExpenseAmount =
-    snapshotDate && input.extraExpensesIncluded ? 0 : projectionExpenseAmount;
+  const effectiveProjectionExpenseAmount = projectionExpenseAmount;
   const projectionSalaryAllocationToSafetyAmount =
     anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate)
       ? 0

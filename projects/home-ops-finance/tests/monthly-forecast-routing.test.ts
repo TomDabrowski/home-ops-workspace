@@ -234,7 +234,7 @@ test("keeps pending basis investment wealth-neutral when it is still sitting in 
   assert.equal(result.projectedWealthEndAmount, 19000);
 });
 
-test("can mark extra expenses as already included in the snapshot state", () => {
+test("keeps later month expenses active even when earlier expenses were already in the snapshot", () => {
   const result = buildMonthlyForecastRouting({
     monthKey: "2026-04",
     useForecastRouting: true,
@@ -264,6 +264,6 @@ test("can mark extra expenses as already included in the snapshot state", () => 
     expenseAfterAnchorAmount: 300,
   });
 
-  assert.equal(result.projectionExpenseAmount, 0);
-  assert.equal(result.safetyBucketEndAmount, 7000);
+  assert.equal(result.projectionExpenseAmount, 300);
+  assert.equal(result.safetyBucketEndAmount, 6700);
 });

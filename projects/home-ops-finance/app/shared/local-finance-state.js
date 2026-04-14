@@ -549,10 +549,7 @@ export function createLocalFinanceStateTools(deps) {
       const expenseAmountForProjection = anchorUsesSnapshotCutoff
         ? sumExpensesAfterDate(importDraft.expenseEntries, monthKey, snapshotDate)
         : importedExpenseAmount;
-      const effectiveExpenseAmountForProjection =
-        anchorUsesSnapshotCutoff && explicitWealthAnchor?.monthlyStatus?.extraExpensesIncluded === true
-          ? 0
-          : expenseAmountForProjection;
+      const effectiveExpenseAmountForProjection = expenseAmountForProjection;
       const projectionSalaryAllocationToSafetyAmount =
         anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToSafetyAmount;
       const basisInvestmentHandledInSnapshot =
