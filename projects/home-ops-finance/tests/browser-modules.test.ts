@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { createPlannerSettingsStore } from "../app/browser/planner-settings.js";
 // @ts-ignore
 import { createReviewStateTools } from "../app/browser/review-state.js";
+// @ts-ignore
+import { renderMonthlyExpenseEditor } from "../app/ui/workflow-planners.js";
 
 test("planner settings store falls back to derived defaults and persists updates", () => {
   const storage = new Map<string, string>();
@@ -134,6 +136,79 @@ test("review state tools merge saved reconciliation actions and persist mapping 
       typeof (currentMappings["income-1"] as { updatedAt?: string } | undefined)?.updatedAt,
       "string",
     );
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("monthly expense editor defaults to today and stores the month derived from the entered date", async () => {
+  const originalDocument = globalThis.document;
+  const field = (value: unknown, extra: Record<string, unknown> = {}) => ({
+    value,
+    dataset: {},
+    addEventListener() {},
+    ...extra,
+  });
+
+  const elements = new Map<string, Record<string, unknown>>([
+    ["monthlyExpenseDescription", field("Konzertticket", { oninput: null })],
+    ["monthlyExpenseAmount", field("42.5", { oninput: null })],
+    ["monthlyExpenseDate", field("", { oninput: null })],
+    ["monthlyExpenseCategory", field("other", { innerHTML: "", onchange: null })],
+    ["monthlyExpenseAccount", field("giro", { innerHTML: "", onchange: null })],
+    ["monthlyExpenseNotes", field("Testnotiz")],
+    ["monthlyExpenseMeta", { textContent: "" }],
+    ["monthlyExpenseWarnings", {}],
+    ["saveMonthlyExpenseButton", { dataset: {}, textContent: "Ausgabe speichern", onclick: null }],
+  ]);
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return elements.get(id) ?? null;
+    },
+  } as typeof globalThis.document;
+
+  let savedState: Record<string, unknown>[] = [];
+  let refreshStatus: Record<string, unknown> | null = null;
+
+  try {
+    renderMonthlyExpenseEditor({ expenseCategories: [] }, "2026-03", {
+      manualExpensesForMonth: () => [],
+      optionMarkup: () => "",
+      buildCategoryOptions: () => [],
+      accountOptions: [],
+      todayIsoDate: () => "2026-04-14",
+      monthFromDate: (value: string) => String(value).slice(0, 7),
+      euro: new Intl.NumberFormat("de-DE", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 2,
+      }),
+      formatDisplayDate: (value: string) => value,
+      monthlyExpensePersistence: "project",
+      renderSignalInline: () => {},
+      expenseWarningsForInput: () => [],
+      confirmAction: () => true,
+      readMonthlyExpenseOverrides: () => [],
+      async saveMonthlyExpenseOverrides(nextState: Record<string, unknown>[]) {
+        savedState = nextState;
+        return { mode: "project" };
+      },
+      async refreshFinanceView(status: Record<string, unknown>) {
+        refreshStatus = status;
+      },
+      statusDetailForMode: () => "Projektdatei",
+    });
+
+    assert.equal(elements.get("monthlyExpenseDate")?.value, "2026-04-14");
+
+    const saveButton = elements.get("saveMonthlyExpenseButton") as { onclick?: () => Promise<void> };
+    await saveButton.onclick?.();
+
+    assert.equal(savedState.length, 1);
+    assert.equal(savedState[0]?.entryDate, "2026-04-14");
+    assert.equal(savedState[0]?.monthKey, "2026-04");
+    assert.equal(refreshStatus?.title, "Ausgabe gespeichert");
   } finally {
     globalThis.document = originalDocument;
   }

@@ -119,7 +119,7 @@ export function createMonthReviewDataTools(deps) {
     const amount = Number(draftValue.amount);
     const entryMonthKey = monthFromDate(draftValue.entryDate || `${monthKey}-01`);
     const normalizedDescription = description.toLowerCase();
-    const review = buildMonthReviewData(importDraft, currentMonthlyPlan(), monthKey);
+    const review = buildMonthReviewData(importDraft, currentMonthlyPlan(), entryMonthKey);
     const allMonthExpenses = review?.expenseEntries ?? [];
 
     if (!description || !Number.isFinite(amount) || amount <= 0) {
@@ -143,7 +143,7 @@ export function createMonthReviewDataTools(deps) {
       warnings.push({
         severity: "info",
         title: "Datum liegt in einem anderen Monat",
-        detail: `Die Ausgabe wird unter ${entryMonthKey} gespeichert, nicht unter ${monthKey}.`,
+        detail: `Die Monatsansicht bleibt auf ${monthKey}, gespeichert wird diese Ausgabe aber unter ${entryMonthKey}.`,
       });
     }
 

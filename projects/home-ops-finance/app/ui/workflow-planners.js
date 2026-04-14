@@ -232,7 +232,9 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     optionMarkup,
     buildCategoryOptions,
     accountOptions,
-    defaultDateTimeForMonth,
+    todayIsoDate,
+    monthFromDate,
+    euro,
     formatDisplayDate,
     monthlyExpensePersistence,
     renderSignalInline,
@@ -271,7 +273,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   categoryField.innerHTML = optionMarkup(buildCategoryOptions(importDraft.expenseCategories), categoryField.value || "other");
   accountField.innerHTML = optionMarkup(accountOptions, accountField.value || "giro");
   if (!(saveButton.dataset.editingId ?? "")) {
-    dateField.value = defaultDateTimeForMonth(monthKey);
+    dateField.value = todayIsoDate();
   }
 
   const expenseNote = bindAutoNote(
@@ -279,9 +281,10 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     () => {
       const description = descriptionField.value.trim();
       const amount = Number(amountField.value);
-      const entryDate = dateField.value || defaultDateTimeForMonth(monthKey);
+      const entryDate = dateField.value || todayIsoDate();
+      const targetMonthKey = monthFromDate(entryDate) || monthKey;
       const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
-      return `${description || "Manuelle Monatsausgabe"} am ${formatDisplayDate(entryDate)} für ${monthKey}: ${amountLabel}.`;
+      return `${description || "Manuelle Ausgabe"} am ${formatDisplayDate(entryDate)} für ${targetMonthKey}: ${amountLabel}.`;
     },
     [descriptionField, amountField, dateField, categoryField, accountField],
   );
@@ -292,7 +295,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   const persistenceLabel = monthlyExpensePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = items.length > 0
     ? `${items.length} manuelle Ausgaben im Monat · Speicherort: ${persistenceLabel}`
-    : `Noch keine manuelle Monatsausgabe gespeichert · Speicherort: ${persistenceLabel}`;
+    : `Noch keine manuelle Ausgabe gespeichert · Speicherort: ${persistenceLabel}`;
 
   const updateWarnings = () => {
     renderSignalInline(warningsTarget, expenseWarningsForInput(importDraft, monthKey, {
@@ -315,7 +318,8 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     const editingId = saveButton.dataset.editingId ?? "";
     const description = descriptionField.value.trim();
     const amount = Number(amountField.value);
-    const entryDate = dateField.value || `${monthKey}-01`;
+    const entryDate = dateField.value || todayIsoDate();
+    const selectedMonthKey = monthFromDate(entryDate) || monthKey;
     const notes = notesField.value.trim();
 
     if (!description || !Number.isFinite(amount) || amount <= 0) {
@@ -325,14 +329,14 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
 
     const isEditing = Boolean(editingId);
     if (!confirmAction(isEditing
-      ? `Monatsausgabe "${description}" für ${entryDate} wirklich aktualisieren?`
-      : `Monatsausgabe "${description}" für ${entryDate} wirklich speichern?`)) {
+      ? `Ausgabe "${description}" für ${entryDate} wirklich aktualisieren?`
+      : `Ausgabe "${description}" für ${entryDate} wirklich speichern?`)) {
       return;
     }
 
     const nextEntry = {
       id: editingId || `manual-expense-${Date.now()}`,
-      monthKey,
+      monthKey: selectedMonthKey,
       entryDate,
       description,
       amount,
@@ -352,12 +356,12 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     saveButton.dataset.editingId = "";
     descriptionField.value = "";
     amountField.value = "";
-    dateField.value = defaultDateTimeForMonth(monthKey);
+    dateField.value = todayIsoDate();
     categoryField.value = "other";
     accountField.value = "giro";
     expenseNote.refresh(true);
     await refreshFinanceView({
-      title: isEditing ? "Monatsausgabe aktualisiert" : "Monatsausgabe gespeichert",
+      title: isEditing ? "Ausgabe aktualisiert" : "Ausgabe gespeichert",
       detail: statusDetailForMode(result.mode),
       tone: result.mode === "project" ? "success" : "warn",
     });
