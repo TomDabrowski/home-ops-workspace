@@ -1,0 +1,132 @@
+# Generic Home Ops project inventory.
+# Keep this file free of private hostnames, IPs, account names, and secrets.
+
+workspace:
+  name: personal-devops-workspace
+  root: "."
+  scope: "This file covers projects in this workspace. Use a private filled repo registry for repos outside this workspace."
+  privacy:
+    public_safe: "Code, sanitized examples, generic docs, and templates only."
+    private_elsewhere: "Real data, hostnames, LAN IPs, credentials, and filled local configs."
+
+projects:
+  - id: home-ops-finance
+    path: projects/home-ops-finance
+    priority: 1
+    status: active
+    purpose: "Local-first finance tracker, month review, forecasting, and Synology-hosted app."
+    primary_roles:
+      - platform-engineer
+      - product
+      - reviewer
+      - docs
+      - ops
+      - release-manager
+    common_checks:
+      - "npm run typecheck"
+      - "npm test"
+    deploy:
+      type: synology-container
+      docs:
+        - projects/home-ops-finance/docs/deployment-synology.md
+        - projects/home-ops-finance/docs/deployment-macos-setup.md
+      command_hint: "Use the local macOS deploy app or npm run deploy:synology after local setup."
+    privacy_notes:
+      - "Live finance JSON lives outside Git."
+      - "Do not commit private data paths or filled deploy configs."
+
+  - id: home-ops-subscriptions
+    path: projects/home-ops-subscriptions
+    priority: 2
+    status: early
+    purpose: "Subscription, invoice, renewal, and cancellation tracking."
+    primary_roles:
+      - platform-engineer
+      - product
+      - docs
+      - reviewer
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Real subscriptions and invoices should stay out of Git unless sanitized."
+
+  - id: home-ops-backup-control
+    path: projects/home-ops-backup-control
+    priority: 3
+    status: early
+    purpose: "Backup verification and stale backup detection."
+    primary_roles:
+      - platform-engineer
+      - ops
+      - reviewer
+      - docs
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Backup targets, private mount names, and device names should be templated."
+
+  - id: home-ops-watcher
+    path: projects/home-ops-watcher
+    priority: 4
+    status: early
+    purpose: "Home lab device and service health monitoring."
+    primary_roles:
+      - platform-engineer
+      - ops
+      - reviewer
+      - docs
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Do not commit private service URLs, IPs, or notification credentials."
+
+  - id: home-ops-mail-sorter
+    path: projects/home-ops-mail-sorter
+    priority: 5
+    status: early
+    purpose: "Mailbox classification and suggested sorting actions."
+    primary_roles:
+      - platform-engineer
+      - product
+      - reviewer
+      - docs
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Email samples must be sanitized before committing."
+
+  - id: home-ops-dashboard
+    path: projects/home-ops-dashboard
+    priority: 6
+    status: dormant
+    purpose: "Unified dashboard for finance, home lab, and household signals."
+    primary_roles:
+      - platform-engineer
+      - product
+      - design
+      - docs
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Should consume sanitized summaries or private runtime data, not committed raw data."
+
+  - id: home-ops-media-organizer
+    path: projects/home-ops-media-organizer
+    priority: 7
+    status: dormant
+    purpose: "Downloads, scans, photos, and household media organization."
+    primary_roles:
+      - platform-engineer
+      - product
+      - reviewer
+      - docs
+    common_checks: []
+    deploy:
+      type: none-yet
+    privacy_notes:
+      - "Real filenames and personal documents should not be committed."

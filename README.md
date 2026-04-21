@@ -6,6 +6,7 @@ The repository contains code, example data, and project notes only. Real spreads
 
 ## Layout
 
+- `ops`: personal DevOps platform docs for agent roles, repo inventory, NAS runtime, workflows, and reports
 - `projects/home-ops-finance`: finance tracker, import tooling, reports, and local dashboard
 - `projects/home-ops-subscriptions`: recurring cost and invoice tracking
 - `projects/home-ops-backup-control`: backup verification tooling
@@ -19,6 +20,7 @@ The repository contains code, example data, and project notes only. Real spreads
 - Example paths in this repo are placeholders.
 - Example JSON and mail samples are sanitized for development and testing.
 - See `.gitignore` for the default local-only files that should stay untracked.
+- See `ops/` for cross-project operating rules and role playbooks.
 
 ## Local Finance Data
 

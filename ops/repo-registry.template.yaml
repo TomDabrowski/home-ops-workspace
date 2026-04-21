@@ -1,0 +1,48 @@
+# Copy this file to a private location and fill in real values there.
+# Do not commit a filled version.
+
+platform:
+  name: personal-devops
+  private_notes_location: ""
+
+repos:
+  - id: example-repo
+    name: "Example Repo"
+    git_remote: "git@example.com:owner/repo.git"
+    local_path: "/private/local/path"
+    default_branch: main
+    purpose: "Short public-safe purpose."
+    status: active
+    check_commands:
+      - "npm test"
+    deploy:
+      enabled: false
+      type: none
+      target: ""
+      command: ""
+      health_url: ""
+    privacy:
+      contains_private_data: false
+      notes: ""
+
+nas:
+  enabled: true
+  host_label: "private"
+  connection:
+    lan_host: ""
+    tailscale_host: ""
+    ssh_user: ""
+    ssh_identity_path: ""
+  conventions:
+    code_root: ""
+    data_root: ""
+    container_runtime: "docker"
+
+policies:
+  auto_deploy_from_main: false
+  require_tests_before_deploy: true
+  require_manual_approval_for:
+    - data_migrations
+    - destructive_actions
+    - first_service_deploy
+    - secret_changes
