@@ -119,6 +119,11 @@ export interface WealthSnapshotState {
     fixedExpensesIncluded?: boolean;
     basisInvestmentState?: "open" | "included" | "pending_cash";
     extraExpensesIncluded?: boolean;
+    salaryIncluded?: boolean;
+    musicIncluded?: boolean;
+    salaryIncludedForMonthKey?: string;
+    musicIncludedForMonthKey?: string;
+    musicThresholdBeforeAmount?: number;
   };
   notes?: string;
   updatedAt?: string;
@@ -248,6 +253,11 @@ function parseOptionalWealthSnapshotMonthlyStatus(value: unknown, path: string):
       `${path}.basisInvestmentState`,
     ),
     extraExpensesIncluded: asOptionalBoolean(item.extraExpensesIncluded, `${path}.extraExpensesIncluded`),
+    salaryIncluded: asOptionalBoolean(item.salaryIncluded, `${path}.salaryIncluded`),
+    musicIncluded: asOptionalBoolean(item.musicIncluded, `${path}.musicIncluded`),
+    salaryIncludedForMonthKey: asOptionalString(item.salaryIncludedForMonthKey, `${path}.salaryIncludedForMonthKey`),
+    musicIncludedForMonthKey: asOptionalString(item.musicIncludedForMonthKey, `${path}.musicIncludedForMonthKey`),
+    musicThresholdBeforeAmount: asOptionalNumber(item.musicThresholdBeforeAmount, `${path}.musicThresholdBeforeAmount`),
   };
 }
 

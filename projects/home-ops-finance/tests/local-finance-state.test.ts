@@ -738,3 +738,123 @@ test("month-start anchors without threshold-account detail keep routing against 
   assert.equal(aprilRow.musicAllocationToSafetyAmount, 1642.65);
   assert.equal(aprilRow.musicAllocationToInvestmentAmount, 0);
 });
+
+test("local music overrides use only the newest active entry for a month", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys(incomeEntries: Array<{ monthKey?: string; entryDate?: string }>, expenseEntries: Array<{ entryDate?: string }>) {
+      return [...new Set([
+        ...incomeEntries.map((entry) => entry.monthKey || String(entry.entryDate ?? "").slice(0, 7)),
+        ...expenseEntries.map((entry) => String(entry.entryDate ?? "").slice(0, 7)),
+      ])].sort((left, right) => String(left).localeCompare(String(right)));
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, _key: string, fallback: string) {
+      return fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [
+        {
+          id: "manual-music-income-old",
+          monthKey: "2026-05",
+          entryDate: "2026-05-01T12:00",
+          amount: 900,
+          reserveAmount: 0,
+          availableAmount: 900,
+          accountId: "giro",
+          isActive: true,
+          updatedAt: "2026-03-20T10:00:00.000Z",
+        },
+        {
+          id: "manual-music-income-new",
+          monthKey: "2026-05",
+          entryDate: "2026-05-02T12:00",
+          amount: 1300,
+          reserveAmount: 0,
+          availableAmount: 1300,
+          accountId: "giro",
+          isActive: true,
+          updatedAt: "2026-03-21T10:00:00.000Z",
+        },
+      ];
+    },
+    readMusicForecastSettings() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "music-2026-05",
+          incomeStreamId: "music-income",
+          monthKey: "2026-05",
+          entryDate: "2026-05-01",
+          amount: 500,
+          reserveAmount: 150,
+          availableAmount: 350,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [],
+      debtSnapshots: [],
+      forecastAssumptions: [],
+      wealthBuckets: [],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-05",
+          netSalaryAmount: 2920,
+          fixedExpensesAmount: 1266.49,
+          baselineVariableAmount: 320,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1050,
+          availableBeforeIrregulars: 283.51,
+        },
+      ],
+      baselineLineItems: [],
+      forecastWealthAnchors: [],
+    },
+  });
+
+  const musicEntries = state.importDraft.incomeEntries.filter((entry: { incomeStreamId?: string; monthKey?: string }) =>
+    entry.incomeStreamId === "music-income" && entry.monthKey === "2026-05");
+  assert.equal(musicEntries.length, 1);
+  assert.equal(musicEntries[0]?.amount, 1300);
+  assert.equal(musicEntries[0]?.availableAmount, 1300);
+});

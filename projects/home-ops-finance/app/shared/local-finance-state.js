@@ -532,6 +532,17 @@ export function createLocalFinanceStateTools(deps) {
       const anchorAppliesAtMonthStart = explicitWealthAnchorMode === "month_start";
       const anchorAppliesWithinMonth = !anchorAppliesAtMonthStart && Boolean(snapshotDate && monthFromDate(snapshotDate) === monthKey);
       const anchorUsesSnapshotCutoff = Boolean(snapshotDate);
+      const effectiveAnchorMonthKey = explicitWealthAnchor?.monthKey ?? explicitWealthAnchor?.anchorMonthKey ?? monthFromDate(snapshotDate ?? "");
+      const salaryIncludedMonthKey = explicitWealthAnchor?.monthlyStatus?.salaryIncludedForMonthKey;
+      const salaryIncludedInSnapshot =
+        salaryIncludedMonthKey
+          ? salaryIncludedMonthKey === monthKey
+          : (explicitWealthAnchor?.monthlyStatus?.salaryIncluded === true && Boolean(effectiveAnchorMonthKey && effectiveAnchorMonthKey === monthKey));
+      const musicIncludedMonthKey = explicitWealthAnchor?.monthlyStatus?.musicIncludedForMonthKey;
+      const musicIncludedInSnapshot =
+        musicIncludedMonthKey
+          ? musicIncludedMonthKey === monthKey
+          : (explicitWealthAnchor?.monthlyStatus?.musicIncluded === true && Boolean(effectiveAnchorMonthKey && effectiveAnchorMonthKey === monthKey));
       const safetyBucketAnchorAmount = explicitWealthAnchor?.safetyBucketAmount;
       const investmentBucketAnchorAmount = explicitWealthAnchor?.investmentBucketAmount;
       const safetyBucketStartAmount = useForecastRouting
@@ -551,7 +562,9 @@ export function createLocalFinanceStateTools(deps) {
         : importedExpenseAmount;
       const effectiveExpenseAmountForProjection = expenseAmountForProjection;
       const projectionSalaryAllocationToSafetyAmount =
-        anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate) ? 0 : salaryAllocationToSafetyAmount;
+        ((anchorAppliesWithinMonth || anchorAppliesAtMonthStart) && (salaryIncludedInSnapshot || snapshotCapturesBaseInvestment(snapshotDate)))
+          ? 0
+          : salaryAllocationToSafetyAmount;
       const basisInvestmentHandledInSnapshot =
         explicitWealthAnchor?.monthlyStatus?.basisInvestmentState === "included" ||
         (anchorAppliesWithinMonth && snapshotCapturesBaseInvestment(snapshotDate));
@@ -582,6 +595,11 @@ export function createLocalFinanceStateTools(deps) {
             ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
+      const thresholdAccountInstructionStartAmount =
+        typeof explicitWealthAnchor?.monthlyStatus?.musicThresholdBeforeAmount === "number" &&
+        Number.isFinite(explicitWealthAnchor.monthlyStatus.musicThresholdBeforeAmount)
+          ? explicitWealthAnchor.monthlyStatus.musicThresholdBeforeAmount
+          : currentMusicThresholdAccountAmount;
       const thresholdAmountAfterExpenses = roundCurrency(
         Math.max(0, currentMusicThresholdAccountAmount - thresholdAccountExpenseAmount),
       );
@@ -589,12 +607,16 @@ export function createLocalFinanceStateTools(deps) {
       const musicNetNeededForThresholdAmount = roundCurrency(
         Math.max(0, Math.min(incomeAvailableForProjection, musicSafetyGapAmount - incomeReserveForProjection)),
       );
-      const musicAllocationToSafetyAmount = roundCurrency(
+      const rawMusicAllocationToSafetyAmount = roundCurrency(
         !useForecastRouting ? 0 : incomeReserveForProjection + musicNetNeededForThresholdAmount,
       );
-      const musicAllocationToInvestmentAmount = roundCurrency(
+      const rawMusicAllocationToInvestmentAmount = roundCurrency(
         !useForecastRouting ? 0 : Math.max(0, incomeAvailableForProjection - musicNetNeededForThresholdAmount),
       );
+      const musicAlreadyHandledBySnapshot =
+        (anchorAppliesWithinMonth || anchorAppliesAtMonthStart) && musicIncludedInSnapshot;
+      const musicAllocationToSafetyAmount = musicAlreadyHandledBySnapshot ? 0 : rawMusicAllocationToSafetyAmount;
+      const musicAllocationToInvestmentAmount = musicAlreadyHandledBySnapshot ? 0 : rawMusicAllocationToInvestmentAmount;
       const salarySafetyGapAmount = Math.max(0, musicSafetyGapAmount - musicAllocationToSafetyAmount);
       const salaryAllocationToThresholdAmount = roundCurrency(
         !useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
@@ -709,6 +731,7 @@ export function createLocalFinanceStateTools(deps) {
         projectionExpenseAmount: effectiveExpenseAmountForProjection,
         safetyBucketStartAmount,
         thresholdAccountStartAmount: musicThresholdAccountId ? currentMusicThresholdAccountAmount : undefined,
+        thresholdAccountInstructionStartAmount: musicThresholdAccountId ? thresholdAccountInstructionStartAmount : undefined,
         safetyBucketCalculatedEndAmount: safetyBucketProjectedEndAmount,
         safetyBucketAnchorAmount,
         safetyBucketEndAmount: safetyBucketResolvedEndAmount,
@@ -769,6 +792,24 @@ export function createLocalFinanceStateTools(deps) {
       }));
   }
 
+  function latestActiveMusicIncomeOverrides() {
+    const latestByMonth = new Map();
+
+    for (const entry of readMonthlyMusicIncomeOverrides().filter((item) => item.isActive !== false)) {
+      const monthKey = entry.monthKey ?? monthFromDate(entry.entryDate);
+      const current = latestByMonth.get(monthKey);
+      const entryRank = `${entry.updatedAt ?? ""}|${entry.entryDate ?? ""}|${entry.id ?? ""}`;
+      const currentRank = current ? `${current.updatedAt ?? ""}|${current.entryDate ?? ""}|${current.id ?? ""}` : "";
+      if (!current || entryRank.localeCompare(currentRank) >= 0) {
+        latestByMonth.set(monthKey, entry);
+      }
+    }
+
+    return [...latestByMonth.entries()]
+      .sort(([left], [right]) => compareMonthKeys(left, right))
+      .map(([, entry]) => entry);
+  }
+
   function buildLocalMusicIncomeOverrides(importDraft) {
     const musicTemplates = [...(importDraft?.incomeEntries ?? [])]
       .filter((entry) => entry.incomeStreamId === "music-income")
@@ -811,8 +852,7 @@ export function createLocalFinanceStateTools(deps) {
       })
       .filter(Boolean);
 
-    const explicitOverrides = readMonthlyMusicIncomeOverrides()
-      .filter((entry) => entry.isActive !== false)
+    const explicitOverrides = latestActiveMusicIncomeOverrides()
       .map((entry) => ({
         id: entry.id,
         monthKey: entry.monthKey ?? monthFromDate(entry.entryDate),
@@ -820,8 +860,8 @@ export function createLocalFinanceStateTools(deps) {
         accountId: entry.accountId ?? "giro",
         entryDate: entry.entryDate,
         amount: Number(entry.amount ?? 0),
-        reserveAmount: Number(entry.reserveAmount ?? 0),
-        availableAmount: roundCurrency(Number(entry.availableAmount ?? (entry.amount ?? 0) - (entry.reserveAmount ?? 0))),
+        reserveAmount: 0,
+        availableAmount: roundCurrency(Number(entry.amount ?? 0)),
         kind: "music",
         isRecurring: false,
         isPlanned: entry.monthKey >= "2026-01",

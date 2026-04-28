@@ -198,8 +198,45 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
       <td>${euro.format(row.expenses)}</td>
       <td>${euro.format(row.estimatedTax)}</td>
       <td>${euro.format(row.afterTaxAmount)}</td>
+      <td><button class="pill" type="button" data-music-month-edit="${row.monthKey}" data-music-month-gross="${row.gross}">Im Editor öffnen</button></td>
     </tr>
   `);
+
+  for (const button of document.querySelectorAll("[data-music-month-edit]")) {
+    button.addEventListener("click", () => {
+      const targetMonthKey = button.getAttribute("data-music-month-edit");
+      const suggestedGross = Number(button.getAttribute("data-music-month-gross") ?? 0);
+      if (!targetMonthKey) {
+        return;
+      }
+
+      const applyEditorValues = () => {
+        const amountField = document.getElementById("musicIncomeActualAmount");
+        const dateField = document.getElementById("musicIncomeActualDate");
+        if (!(amountField instanceof HTMLInputElement) || !(dateField instanceof HTMLInputElement)) {
+          return;
+        }
+
+        amountField.value = suggestedGross > 0 ? String(suggestedGross) : "";
+        dateField.value = `${targetMonthKey}-01T12:00`;
+        amountField.dispatchEvent(new Event("input", { bubbles: true }));
+        dateField.dispatchEvent(new Event("input", { bubbles: true }));
+        amountField.scrollIntoView({ behavior: "smooth", block: "center" });
+        amountField.focus();
+        amountField.select();
+      };
+
+      const monthSelect = document.getElementById("monthReviewSelect");
+      if (monthSelect instanceof HTMLSelectElement && monthSelect.value !== targetMonthKey) {
+        monthSelect.value = targetMonthKey;
+        monthSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        window.setTimeout(applyEditorValues, 0);
+        return;
+      }
+
+      applyEditorValues();
+    });
+  }
 
   const incomeTarget = document.getElementById("musicIncomeEntries");
   if (incomeTarget) {

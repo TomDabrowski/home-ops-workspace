@@ -79,7 +79,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
             ? `
               <div class="mapping-fields month-inline-form">
                 <label class="select-wrap currency-wrap">
-                  <span>Musik brutto</span>
+                  <span>Musik netto</span>
                   <input type="number" min="0" step="0.01" data-month-income-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
                 </label>
                 <label class="select-wrap">
@@ -126,25 +126,37 @@ export function renderMonthIncomeList(importDraft, review, deps) {
         return;
       }
 
-      const profile = musicIncomeProfileForMonth(importDraft, selectedMonthKey);
-      const reserveAmount = profile.reserveAmountForGross(amount);
-      const availableAmount = roundCurrency(amount - reserveAmount);
+      const collidingEntry = readMonthlyMusicIncomeOverrides().find((item) =>
+        item.id !== id &&
+        item.isActive !== false &&
+        (item.monthKey ?? monthFromDate(item.entryDate)) === selectedMonthKey,
+      );
       const nextEntry = {
         ...source,
+        id: collidingEntry?.id ?? source.id,
         monthKey: selectedMonthKey,
         entryDate: `${selectedMonthKey}-01`,
         amount,
-        reserveAmount,
-        availableAmount,
+        reserveAmount: 0,
+        availableAmount: amount,
         notes,
         updatedAt: new Date().toISOString(),
       };
-      const nextState = readMonthlyMusicIncomeOverrides().map((item) => (item.id === id ? nextEntry : item));
+      const nextState = readMonthlyMusicIncomeOverrides().map((item) => {
+        const itemMonthKey = item.monthKey ?? monthFromDate(item.entryDate);
+        if (item.id === nextEntry.id) {
+          return nextEntry;
+        }
+        if (item.id !== nextEntry.id && item.isActive !== false && itemMonthKey === selectedMonthKey) {
+          return { ...item, isActive: false, updatedAt: nextEntry.updatedAt };
+        }
+        return item.id === id ? { ...item, isActive: false, updatedAt: nextEntry.updatedAt } : item;
+      });
       const result = await saveMonthlyMusicIncomeOverrides(nextState);
       setExpandedMonthIncomeId(null);
       await refreshFinanceView({
         title: "Musik-Istwert aktualisiert",
-        detail: `${statusDetailForMode(result.mode)} Reserve ${euro.format(reserveAmount)}, frei ${euro.format(availableAmount)}.`,
+        detail: `${statusDetailForMode(result.mode)} ${euro.format(amount)} netto gespeichert.`,
         tone: result.mode === "project" ? "success" : "warn",
       });
     });

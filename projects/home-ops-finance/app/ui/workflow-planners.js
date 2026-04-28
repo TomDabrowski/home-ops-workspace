@@ -46,12 +46,18 @@ function bindAutoNote(notesField, buildSuggestion, watchTargets = []) {
   };
 }
 
+function parseLocaleNumber(value) {
+  const normalized = String(value ?? "").trim().replace(",", ".");
+  if (!normalized) {
+    return NaN;
+  }
+  return Number(normalized);
+}
+
 export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
   const {
     manualMusicIncomeOverridesForMonth,
     musicIncomeProfileForMonth,
-    roundCurrency,
-    formatPercent,
     euro,
     monthlyMusicIncomePersistence,
     formatDisplayDate,
@@ -79,10 +85,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
 
   const items = manualMusicIncomeOverridesForMonth(monthKey);
   const profile = musicIncomeProfileForMonth(importDraft, monthKey);
-  const referenceGross = Number(profile.source?.amount ?? 0);
-  const referenceReserve = Number(profile.source?.reserveAmount ?? 0);
-  const referenceFree = Number(profile.source?.availableAmount ?? roundCurrency(referenceGross - referenceReserve));
-  const reserveRateLabel = formatPercent(profile.reserveRate ?? 0);
+  const referenceNet = Number(profile.source?.availableAmount ?? profile.source?.amount ?? 0);
 
   if (!(saveButton.dataset.editingId ?? "")) {
     dateField.value = defaultDateTimeForMonth(monthKey);
@@ -95,7 +98,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
       const selectedDateTime = dateField.value || defaultDateTimeForMonth(monthKey);
       const selectedMonthKey = monthFromDate(selectedDateTime) || monthKey;
       const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
-      return `Musik-Istwert für ${selectedMonthKey} am ${formatDisplayDate(selectedDateTime)}: ${amountLabel} brutto.`;
+      return `Musik-Istwert für ${selectedMonthKey} am ${formatDisplayDate(selectedDateTime)}: ${amountLabel} netto.`;
     },
     [amountField, dateField],
   );
@@ -104,9 +107,9 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
   }
 
   summaryTarget.innerHTML = [
-    `<div class="mapping-card"><strong>Forecast aktuell</strong><p>${referenceGross > 0 ? `${euro.format(referenceGross)} brutto` : "Noch kein Musik-Forecast für diesen Monat."}</p></div>`,
-    `<div class="mapping-card"><strong>Automatische Ableitung</strong><p>${referenceGross > 0 ? `Aktuell rechnet die App mit ${reserveRateLabel} Steuer-Rücklage. Beim Forecast sind das ${euro.format(referenceReserve)} Reserve und ${euro.format(referenceFree)} frei verfügbar.` : `Wenn du einen Ist-Wert speicherst, nutzt die App für ${monthKey} den aktuellen Steuer-Satz aus deiner Jahreslogik: ${reserveRateLabel}.`}</p></div>`,
-    `<div class="mapping-card"><strong>Wirkung</strong><p>Dein Ist-Wert ersetzt den Forecast nur für diesen Monat. Andere Monate bleiben unverändert.</p></div>`,
+    `<div class="mapping-card"><strong>Aktuell hinterlegt</strong><p>${referenceNet > 0 ? `${euro.format(referenceNet)} netto` : "Noch kein Musikwert für diesen Monat."}</p></div>`,
+    `<div class="mapping-card"><strong>Wirkung</strong><p>Dein gespeicherter Musik-Istwert ersetzt den Monatswert nur für diesen Monat. Andere Monate bleiben unverändert.</p></div>`,
+    `<div class="mapping-card"><strong>Hinweis</strong><p>Im Musik-Reiter wird der Betrag jetzt direkt als Netto gespeichert, ohne automatische Rücklagen-Ableitung.</p></div>`,
   ].join("");
 
   if (items.length === 0) {
@@ -117,8 +120,8 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
         <div class="mapping-card">
           <div class="mapping-card-head">
             <div>
-              <strong>${euro.format(entry.amount)} brutto</strong>
-              <p>${formatDisplayDate(entry.entryDate)} · Reserve ${euro.format(entry.reserveAmount ?? 0)} · frei ${euro.format(entry.availableAmount ?? 0)}</p>
+              <strong>${euro.format(entry.amount)} netto</strong>
+              <p>${formatDisplayDate(entry.entryDate)} · direkt verfügbar</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-music-income-edit="${entry.id}">Bearbeiten</button>
@@ -146,7 +149,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
       amountField.value = String(entry.amount);
       dateField.value = String(entry.entryDate ?? "").slice(0, 16) || defaultDateTimeForMonth(monthKey);
       musicNote.setManualValue(entry.notes || "");
-      metaTarget.textContent = `Bearbeitungsmodus aktiv für ${euro.format(entry.amount)} brutto`;
+      metaTarget.textContent = `Bearbeitungsmodus aktiv für ${euro.format(entry.amount)} netto`;
       amountField.scrollIntoView({ behavior: "smooth", block: "center" });
       focusAndSelectField(amountField);
     });
@@ -181,36 +184,52 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
     const notes = notesField.value.trim();
 
     if (!Number.isFinite(amount) || amount < 0) {
-      metaTarget.textContent = "Bitte einen gültigen Bruttobetrag eintragen.";
+      metaTarget.textContent = "Bitte einen gültigen Nettobetrag eintragen.";
       return;
     }
 
-    const reserveAmount = profile.reserveAmountForGross(amount);
-    const availableAmount = roundCurrency(amount - reserveAmount);
-    const isEditing = Boolean(editingId);
+    const existingForMonth = readMonthlyMusicIncomeOverrides().find((item) =>
+      item.id !== editingId &&
+      item.isActive !== false &&
+      (item.monthKey ?? monthFromDate(item.entryDate)) === selectedMonthKey,
+    );
+    const targetId = editingId || existingForMonth?.id || `manual-music-income-${Date.now()}`;
+    const isEditing = Boolean(editingId || existingForMonth);
 
     if (!confirmAction(isEditing
-      ? `Musik-Istwert ${euro.format(amount)} für ${formatDisplayDate(selectedDateTime)} wirklich aktualisieren?`
-      : `Musik-Istwert ${euro.format(amount)} für ${formatDisplayDate(selectedDateTime)} wirklich speichern?`)) {
+      ? `Musik-Istwert ${euro.format(amount)} netto für ${formatDisplayDate(selectedDateTime)} wirklich aktualisieren?`
+      : `Musik-Istwert ${euro.format(amount)} netto für ${formatDisplayDate(selectedDateTime)} wirklich speichern?`)) {
       return;
     }
 
     const nextEntry = {
-      id: editingId || `manual-music-income-${Date.now()}`,
+      id: targetId,
       monthKey: selectedMonthKey,
       entryDate: selectedDateTime,
       amount,
-      reserveAmount,
-      availableAmount,
+      reserveAmount: 0,
+      availableAmount: amount,
       accountId: "giro",
       isActive: true,
       notes,
       updatedAt: new Date().toISOString(),
     };
 
-    const nextState = editingId
-      ? readMonthlyMusicIncomeOverrides().map((item) => (item.id === editingId ? nextEntry : item))
-      : [...readMonthlyMusicIncomeOverrides(), nextEntry];
+    const nextState = (() => {
+      let replaced = false;
+      const nextItems = readMonthlyMusicIncomeOverrides().map((item) => {
+        const itemMonthKey = item.monthKey ?? monthFromDate(item.entryDate);
+        if (item.id === targetId) {
+          replaced = true;
+          return nextEntry;
+        }
+        if (item.id !== targetId && item.isActive !== false && itemMonthKey === selectedMonthKey) {
+          return { ...item, isActive: false, updatedAt: nextEntry.updatedAt };
+        }
+        return item;
+      });
+      return replaced ? nextItems : [...nextItems, nextEntry];
+    })();
 
     const result = await saveMonthlyMusicIncomeOverrides(nextState);
     saveButton.dataset.editingId = "";
@@ -220,7 +239,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
     musicNote.refresh(true);
     await refreshFinanceView({
       title: isEditing ? "Musik-Istwert aktualisiert" : "Musik-Istwert gespeichert",
-      detail: `${statusDetailForMode(result.mode)} Reserve ${euro.format(reserveAmount)}, frei ${euro.format(availableAmount)}.`,
+      detail: `${statusDetailForMode(result.mode)} ${euro.format(amount)} netto gespeichert.`,
       tone: result.mode === "project" ? "success" : "warn",
     });
   };
@@ -399,6 +418,11 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   const monthStartEnabledField = document.getElementById("wealthSnapshotMonthStartEnabled");
   const monthStartMonthField = document.getElementById("wealthSnapshotMonthStartMonth");
   const fixedExpensesIncludedField = document.getElementById("wealthSnapshotFixedExpensesIncluded");
+  const salaryIncludedField = document.getElementById("wealthSnapshotSalaryIncluded");
+  const salaryIncludedForMonthField = document.getElementById("wealthSnapshotSalaryIncludedForMonth");
+  const musicIncludedField = document.getElementById("wealthSnapshotMusicIncluded");
+  const musicIncludedForMonthField = document.getElementById("wealthSnapshotMusicIncludedForMonth");
+  const musicThresholdBeforeAmountField = document.getElementById("wealthSnapshotMusicThresholdBeforeAmount");
   const basisInvestmentStateField = document.getElementById("wealthSnapshotBasisInvestmentState");
   const extraExpensesIncludedField = document.getElementById("wealthSnapshotExtraExpensesIncluded");
   const metaTarget = document.getElementById("wealthSnapshotMeta");
@@ -410,7 +434,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   if (
     !dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField ||
     !cashTotalField || !notesField || !monthStartEnabledField || !monthStartMonthField ||
-    !fixedExpensesIncludedField || !basisInvestmentStateField || !extraExpensesIncludedField ||
+    !fixedExpensesIncludedField || !salaryIncludedField || !salaryIncludedForMonthField || !musicIncludedField || !musicIncludedForMonthField || !musicThresholdBeforeAmountField || !basisInvestmentStateField || !extraExpensesIncludedField ||
     !metaTarget || !listTarget || !saveButton || !clearButton
   ) {
     return;
@@ -477,6 +501,29 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     cashTotalField.value = euro.format(cashAmount);
   }
 
+  function effectiveIncludedMonthKey() {
+    if (monthStartEnabledField.checked) {
+      return monthStartMonthField.value || currentSelectedMonthKey();
+    }
+
+    const snapshotDate = dateField.value || fallbackDate;
+    return monthFromDate(snapshotDate) || currentSelectedMonthKey();
+  }
+
+  function syncIncludedMonthFields() {
+    salaryIncludedForMonthField.disabled = !salaryIncludedField.checked;
+    musicIncludedForMonthField.disabled = !musicIncludedField.checked;
+    musicThresholdBeforeAmountField.disabled = !musicIncludedField.checked;
+
+    const targetMonthKey = effectiveIncludedMonthKey();
+    if (salaryIncludedField.checked && !salaryIncludedForMonthField.value) {
+      salaryIncludedForMonthField.value = targetMonthKey;
+    }
+    if (musicIncludedField.checked && !musicIncludedForMonthField.value) {
+      musicIncludedForMonthField.value = targetMonthKey;
+    }
+  }
+
   function resetForm() {
     dateField.value = fallbackDate;
     applySuggestedSnapshotValues(fallbackDate);
@@ -484,6 +531,14 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     monthStartMonthField.value = currentSelectedMonthKey();
     monthStartMonthField.disabled = true;
     fixedExpensesIncludedField.checked = false;
+    salaryIncludedField.checked = false;
+    salaryIncludedForMonthField.value = currentSelectedMonthKey();
+    salaryIncludedForMonthField.disabled = true;
+    musicIncludedField.checked = false;
+    musicIncludedForMonthField.value = currentSelectedMonthKey();
+    musicIncludedForMonthField.disabled = true;
+    musicThresholdBeforeAmountField.value = "";
+    musicThresholdBeforeAmountField.disabled = true;
     basisInvestmentStateField.value = "open";
     extraExpensesIncludedField.checked = false;
     saveButton.dataset.editingId = "";
@@ -513,10 +568,18 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       );
       const investmentAmount = Number(investmentField.value || 0);
       const fixedExpensesIncluded = fixedExpensesIncludedField.checked;
+      const salaryIncludedMonthKey = salaryIncludedField.checked ? (salaryIncludedForMonthField.value || "") : "";
+      const musicIncludedMonthKey = musicIncludedField.checked ? (musicIncludedForMonthField.value || "") : "";
+      const musicThresholdBeforeAmount = musicIncludedField.checked && musicThresholdBeforeAmountField.value
+        ? parseLocaleNumber(musicThresholdBeforeAmountField.value)
+        : undefined;
       const basisInvestmentState = basisInvestmentStateField.value || "open";
       const extraExpensesIncluded = extraExpensesIncludedField.checked;
       const statusParts = [
         fixedExpensesIncluded ? "Fixkosten schon enthalten" : "",
+        salaryIncludedMonthKey ? `Gehalt (${salaryIncludedMonthKey}) schon enthalten` : "",
+        musicIncludedMonthKey ? `Musik (${musicIncludedMonthKey}) schon enthalten` : "",
+        Number.isFinite(musicThresholdBeforeAmount) ? `Threshold vor Musik: ${euro.format(musicThresholdBeforeAmount)}` : "",
         basisInvestmentState === "pending_cash"
           ? "Basis-Investment liegt noch im Cash"
           : basisInvestmentState === "included"
@@ -537,6 +600,11 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       monthStartEnabledField,
       monthStartMonthField,
       fixedExpensesIncludedField,
+      salaryIncludedField,
+      salaryIncludedForMonthField,
+      musicIncludedField,
+      musicIncludedForMonthField,
+      musicThresholdBeforeAmountField,
       basisInvestmentStateField,
       extraExpensesIncludedField,
     ],
@@ -557,6 +625,12 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
               <p>CHECK24 ${euro.format(wealthSnapshotCashAccounts(entry).giro)} · TR Cash ${euro.format(wealthSnapshotCashAccounts(entry).cash)} · Scalable ${euro.format(wealthSnapshotCashAccounts(entry).savings)} · Investment ${euro.format(entry.investmentAmount)} · Wirkt für ${entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)}</p>
               <p class="section-copy">${[
                 entry.monthlyStatus?.fixedExpensesIncluded ? "Fixkosten enthalten" : "",
+                entry.monthlyStatus?.salaryIncludedForMonthKey
+                  ? `Gehalt ${entry.monthlyStatus.salaryIncludedForMonthKey} enthalten`
+                  : (entry.monthlyStatus?.salaryIncluded ? "Gehalt enthalten" : ""),
+                entry.monthlyStatus?.musicIncludedForMonthKey
+                  ? `Musik ${entry.monthlyStatus.musicIncludedForMonthKey} enthalten`
+                  : (entry.monthlyStatus?.musicIncluded ? "Musik enthalten" : ""),
                 entry.monthlyStatus?.basisInvestmentState === "pending_cash"
                   ? "Basis-Investment noch im Cash"
                   : entry.monthlyStatus?.basisInvestmentState === "included"
@@ -611,11 +685,26 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       monthStartMonthField.value = entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate) ?? currentSelectedMonthKey();
       monthStartMonthField.disabled = !monthStartEnabledField.checked;
       fixedExpensesIncludedField.checked = entry.monthlyStatus?.fixedExpensesIncluded === true;
+      salaryIncludedField.checked = entry.monthlyStatus?.salaryIncluded === true;
+      salaryIncludedForMonthField.value =
+        entry.monthlyStatus?.salaryIncludedForMonthKey ??
+        (entry.monthlyStatus?.salaryIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
+        "";
+      musicIncludedField.checked = entry.monthlyStatus?.musicIncluded === true;
+      musicIncludedForMonthField.value =
+        entry.monthlyStatus?.musicIncludedForMonthKey ??
+        (entry.monthlyStatus?.musicIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
+        "";
+      musicThresholdBeforeAmountField.value =
+        typeof entry.monthlyStatus?.musicThresholdBeforeAmount === "number"
+          ? String(entry.monthlyStatus.musicThresholdBeforeAmount)
+          : "";
       basisInvestmentStateField.value = entry.monthlyStatus?.basisInvestmentState ?? "open";
       extraExpensesIncludedField.checked = entry.monthlyStatus?.extraExpensesIncluded === true;
       saveButton.dataset.editingId = entry.id;
       saveButton.textContent = "Ist-Stand aktualisieren";
       updateCashTotalField();
+      syncIncludedMonthFields();
     });
   }
 
@@ -632,11 +721,38 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     if (monthStartEnabledField.checked && !monthStartMonthField.value) {
       monthStartMonthField.value = monthFromDate(dateField.value || fallbackDate) || currentSelectedMonthKey();
     }
+    syncIncludedMonthFields();
+  };
+
+  monthStartMonthField.onchange = () => {
+    syncIncludedMonthFields();
+    snapshotNote.refresh(true);
   };
 
   giroField.oninput = updateCashTotalField;
   tradeRepublicField.oninput = updateCashTotalField;
   scalableField.oninput = updateCashTotalField;
+
+  salaryIncludedField.onchange = () => {
+    if (salaryIncludedField.checked && !salaryIncludedForMonthField.value) {
+      salaryIncludedForMonthField.value = effectiveIncludedMonthKey();
+    }
+    syncIncludedMonthFields();
+    snapshotNote.refresh(true);
+  };
+  salaryIncludedForMonthField.onchange = () => snapshotNote.refresh(true);
+
+  musicIncludedField.onchange = () => {
+    if (musicIncludedField.checked && !musicIncludedForMonthField.value) {
+      musicIncludedForMonthField.value = effectiveIncludedMonthKey();
+    }
+    syncIncludedMonthFields();
+    snapshotNote.refresh(true);
+  };
+  musicIncludedForMonthField.onchange = () => snapshotNote.refresh(true);
+  musicThresholdBeforeAmountField.onchange = () => snapshotNote.refresh(true);
+
+  syncIncludedMonthFields();
 
   for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-toggle]")) {
     button.addEventListener("click", async () => {
@@ -668,6 +784,17 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       : "";
     const monthlyStatus = {
       fixedExpensesIncluded: fixedExpensesIncludedField.checked,
+      salaryIncluded: salaryIncludedField.checked,
+      musicIncluded: musicIncludedField.checked,
+      salaryIncludedForMonthKey: salaryIncludedField.checked ? (salaryIncludedForMonthField.value || undefined) : undefined,
+      musicIncludedForMonthKey: musicIncludedField.checked ? (musicIncludedForMonthField.value || undefined) : undefined,
+      musicThresholdBeforeAmount: (() => {
+        if (!(musicIncludedField.checked && musicThresholdBeforeAmountField.value)) {
+          return undefined;
+        }
+        const parsed = parseLocaleNumber(musicThresholdBeforeAmountField.value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      })(),
       basisInvestmentState: basisInvestmentStateField.value || "open",
       extraExpensesIncluded: extraExpensesIncludedField.checked,
     };
@@ -678,9 +805,12 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       !Number.isFinite(tradeRepublicAmount) || tradeRepublicAmount < 0 ||
       !Number.isFinite(scalableAmount) || scalableAmount < 0 ||
       !Number.isFinite(investmentAmount) || investmentAmount < 0 ||
-      (monthStartEnabledField.checked && !anchorMonthKey)
+      (monthStartEnabledField.checked && !anchorMonthKey) ||
+      (salaryIncludedField.checked && !salaryIncludedForMonthField.value) ||
+      (musicIncludedField.checked && !musicIncludedForMonthField.value) ||
+      (musicIncludedField.checked && musicThresholdBeforeAmountField.value && !Number.isFinite(parseLocaleNumber(musicThresholdBeforeAmountField.value)))
     ) {
-      metaTarget.textContent = "Bitte Datum sowie gültige Cash-, Investment- und Monatsstart-Werte eintragen.";
+      metaTarget.textContent = "Bitte Datum sowie gueltige Cash-, Investment- und Monatsstart-Werte eintragen (Threshold vor Musik mit Punkt oder Komma ist erlaubt).";
       return;
     }
 

@@ -112,3 +112,43 @@ test("applies reviewed entry mappings and month reconciliation to the draft", ()
   assert.equal(reviewed.expenseEntries[1]?.description, "Train ticket");
   assert.equal(reviewed.expenseEntries[1]?.amount, 35);
 });
+
+test("manual music income keeps only the latest active value per month", () => {
+  const reviewed = applyReviewState(
+    createDraft(),
+    {},
+    {},
+    [],
+    [],
+    [
+      {
+        id: "manual-music-income-old",
+        monthKey: "2026-03",
+        entryDate: "2026-03-01T12:00",
+        amount: 800,
+        reserveAmount: 0,
+        availableAmount: 800,
+        accountId: "giro",
+        isActive: true,
+        updatedAt: "2026-03-20T10:00:00.000Z",
+      },
+      {
+        id: "manual-music-income-new",
+        monthKey: "2026-03",
+        entryDate: "2026-03-02T12:00",
+        amount: 1300,
+        reserveAmount: 0,
+        availableAmount: 1300,
+        accountId: "giro",
+        isActive: true,
+        updatedAt: "2026-03-21T10:00:00.000Z",
+      },
+    ],
+  );
+
+  const musicEntries = reviewed.incomeEntries.filter((entry) => entry.incomeStreamId === "music-income");
+  assert.equal(musicEntries.length, 1);
+  assert.equal(musicEntries[0]?.amount, 1300);
+  assert.equal(musicEntries[0]?.availableAmount, 1300);
+  assert.equal(musicEntries[0]?.reserveAmount, 0);
+});

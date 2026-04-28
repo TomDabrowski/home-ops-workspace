@@ -68,7 +68,7 @@ export function renderWorkflowHistory(importDraft, deps) {
     entries.push({
       area: "Musik-Istwert",
       title: `${entry.monthKey}`,
-      detail: `${euro.format(Number(entry.amount ?? 0))} brutto`,
+      detail: `${euro.format(Number(entry.amount ?? 0))} netto`,
       updatedAt: entry.updatedAt ?? null,
       notes: entry.notes ?? "",
     });

@@ -156,6 +156,26 @@ function applyMusicForecastSettings(
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 }
 
+function latestActiveMonthlyMusicIncomeOverrides(
+  overrides: MonthlyMusicIncomeOverrideCollection,
+): MonthlyMusicIncomeOverrideCollection {
+  const latestByMonth = new Map<string, MonthlyMusicIncomeOverrideCollection[number]>();
+
+  for (const entry of overrides.filter((item) => item.isActive !== false)) {
+    const monthKey = entry.monthKey ?? entry.entryDate.slice(0, 7);
+    const current = latestByMonth.get(monthKey);
+    const entryRank = `${entry.updatedAt ?? ""}|${entry.entryDate ?? ""}|${entry.id ?? ""}`;
+    const currentRank = current ? `${current.updatedAt ?? ""}|${current.entryDate ?? ""}|${current.id ?? ""}` : "";
+    if (!current || entryRank.localeCompare(currentRank) >= 0) {
+      latestByMonth.set(monthKey, entry);
+    }
+  }
+
+  return [...latestByMonth.entries()]
+    .sort((left, right) => compareMonthKeys(left[0], right[0]))
+    .map(([, entry]) => entry);
+}
+
 function applySalarySettingsToBaselines(
   baselines: MonthlyBaseline[],
   salarySettings: SalarySettingCollection = [],
@@ -339,27 +359,33 @@ export function applyReviewState(
       ]),
     }));
   const generatedMusicForecastOverrides = applyMusicForecastSettings(draft, musicForecastSettings);
+  const explicitMonthlyMusicIncomeOverrides = latestActiveMonthlyMusicIncomeOverrides(monthlyMusicIncomeOverrides);
+  const explicitMusicOverrideMonths = new Set(explicitMonthlyMusicIncomeOverrides.map((entry) => entry.monthKey));
   const activeMonthlyMusicIncomeOverrides = [
-    ...generatedMusicForecastOverrides,
-    ...monthlyMusicIncomeOverrides,
+    ...generatedMusicForecastOverrides.filter((entry) => !explicitMusicOverrideMonths.has(entry.monthKey)),
+    ...explicitMonthlyMusicIncomeOverrides,
   ]
-    .filter((entry) => entry.isActive !== false)
-    .map((entry) => ({
-      monthKey: entry.monthKey,
-      id: entry.id,
-      incomeStreamId: "music-income",
-      accountId: entry.accountId ?? "giro",
-      entryDate: entry.entryDate,
-      amount: entry.amount,
-      reserveAmount: entry.reserveAmount ?? 0,
-      availableAmount: entry.availableAmount ?? roundCurrency(entry.amount - (entry.reserveAmount ?? 0)),
-      kind: "music" as const,
-      isRecurring: false,
-      isPlanned: entry.monthKey >= "2026-01",
-      notes: mergeNotes(entry.notes, [
-        entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
-      ]),
-    }));
+    .map((entry) => {
+      const isManualMusicIncome = String(entry.id ?? "").startsWith("manual-music-income-");
+      return {
+        monthKey: entry.monthKey,
+        id: entry.id,
+        incomeStreamId: "music-income",
+        accountId: entry.accountId ?? "giro",
+        entryDate: entry.entryDate,
+        amount: entry.amount,
+        reserveAmount: isManualMusicIncome ? 0 : (entry.reserveAmount ?? 0),
+        availableAmount: isManualMusicIncome
+          ? roundCurrency(entry.amount)
+          : (entry.availableAmount ?? roundCurrency(entry.amount - (entry.reserveAmount ?? 0))),
+        kind: "music" as const,
+        isRecurring: false,
+        isPlanned: entry.monthKey >= "2026-01",
+        notes: mergeNotes(entry.notes, [
+          entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
+        ]),
+      };
+    });
   const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.monthKey));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
   const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>

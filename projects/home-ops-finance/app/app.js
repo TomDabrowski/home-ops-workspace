@@ -430,11 +430,19 @@ function monthEndSafetyFormula({
   musicNetConsumedAmount,
   salaryInvestmentTransferFromSafetyAmount,
 }) {
+  const thresholdAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
+  const thresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
+  const thresholdTargetLabel = thresholdAccountLabel(accountOptions, thresholdAccountId);
+  const thresholdStartAmount = Number(reviewRow.thresholdAccountStartAmount ?? 0);
+  const thresholdEndAmount = Number(reviewRow.thresholdAccountEndAmount ?? 0);
+  const salaryToThresholdAmount = Number(reviewRow.salaryAllocationToThresholdAmount ?? 0);
+  const thresholdRoutingLine =
+    reviewRow.thresholdAccountEndAmount !== undefined
+      ? `${thresholdTargetLabel} läuft separat vom Gesamt-Cash: Start ${euro.format(thresholdStartAmount)}, ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik und ${euro.format(salaryToThresholdAmount)} aus Gehalt Richtung ${euro.format(thresholdAmount)}, Ende ${euro.format(thresholdEndAmount)}.`
+      : "";
+
   if (reviewRow.anchorAppliesWithinMonth && reviewRow.safetyBucketAnchorAmount !== undefined) {
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
-    const thresholdAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
-    const thresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
-    const thresholdTargetLabel = thresholdAccountLabel(accountOptions, thresholdAccountId);
     const musicDateLabel = entryDatesLabel(musicIncomeEntries);
     const remaining = joinMoneyDeltas([
       moneyDeltaLabel(reviewRow.projectionSalaryAllocationToSafetyAmount, "noch aus Gehalt ins Cash"),
@@ -455,6 +463,7 @@ function monthEndSafetyFormula({
         ? `Die beruecksichtigte Musik stammt aus ${musicDateLabel} und war bis zum Stichtag bereits verarbeitet.`
         : "",
       `Bis zum Stichtag waren ausserdem ${euro.format(importedExpenseConsumedAmount)} importierte und ${euro.format(manualExpenseConsumedAmount)} manuelle Zusatz-Ausgaben schon im Snapshot enthalten.`,
+      thresholdRoutingLine,
       remaining
         ? `Nach dem Stichtag sind bis Monatsende noch ${remaining}. Daraus ergibt sich ein prognostizierter Cash-Stand von ${euro.format(endSafetyAmount)} am Monatsende.`
         : `Nach dem Stichtag sind bis Monatsende keine weiteren Cash-Bewegungen mehr offen. Deshalb bleibt der prognostizierte Cash-Stand am Monatsende bei ${euro.format(endSafetyAmount)}.`,
@@ -464,7 +473,8 @@ function monthEndSafetyFormula({
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.safetyBucketAnchorAmount !== undefined) {
     return joinTooltipLines([
       `${monthKey}: Monatsanfang Cash ${euro.format(safetyAnchorAmount)} durch den gesetzten Monatsanfang.`,
-      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
+      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(musicSafetyRemainingAmount ?? 0)} aus Musik ins Cash.`,
+      thresholdRoutingLine,
       `Bis Monatsende gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
       salaryInvestmentTransferFromSafetyAmount > 0
         ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} liegen zuerst im Cash und werden bis Monatsende noch ins Investment umgebucht.`
@@ -475,7 +485,8 @@ function monthEndSafetyFormula({
 
   return joinTooltipLines([
     `${monthKey}: Monatsanfang Cash ${euro.format(startSafetyAmount)}.`,
-    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(reviewRow.musicAllocationToSafetyAmount ?? 0)} aus Musik ins Cash.`,
+    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToSafetyAmount ?? 0)} aus Gehalt und ${euro.format(musicSafetyRemainingAmount ?? 0)} aus Musik ins Cash.`,
+    thresholdRoutingLine,
     `Bis Monatsende gehen ${euro.format(importedExpenseAmount)} importierte und ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben wieder ab.`,
     salaryInvestmentTransferFromSafetyAmount > 0
       ? `${euro.format(salaryInvestmentTransferFromSafetyAmount)} werden bis Monatsende noch aus dem Cash ins Investment verschoben.`
@@ -520,14 +531,14 @@ function monthEndInvestmentFormula({
   if (reviewRow.anchorAppliesAtMonthStart && reviewRow.investmentBucketAnchorAmount !== undefined) {
     return joinTooltipLines([
       `${monthKey}: Monatsanfang Investment ${euro.format(investmentAnchorAmount)} durch den gesetzten Monatsanfang.`,
-      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+      `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(musicInvestmentRemainingAmount ?? 0)} aus Musik netto ins Investment.`,
       `So entsteht ein prognostizierter Investment-Stand von ${euro.format(endInvestmentAmount)} am Monatsende.`,
     ]);
   }
 
   return joinTooltipLines([
     `${monthKey}: Monatsanfang Investment ${euro.format(startInvestmentAmount)}.`,
-    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(reviewRow.musicAllocationToInvestmentAmount ?? 0)} aus Musik netto ins Investment.`,
+    `Bis Monatsende kommen ${euro.format(reviewRow.salaryAllocationToInvestmentAmount ?? 0)} Basis-Investment und ${euro.format(musicInvestmentRemainingAmount ?? 0)} aus Musik netto ins Investment.`,
     `So entsteht ein prognostizierter Investment-Stand von ${euro.format(endInvestmentAmount)} am Monatsende.`,
   ]);
 }
@@ -1042,6 +1053,15 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicGrossConsumedAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount));
     const musicReserveConsumedAmount = roundCurrency(Math.max(0, musicReserveTotalAmount - musicReserveRemainingAmount));
     const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
+    const thresholdTargetAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
+    const musicIncludedForMonthKey = latestSnapshot?.monthlyStatus?.musicIncludedForMonthKey;
+    const hasMusicThresholdBeforeOverride =
+      hasAnyActiveSnapshot &&
+      musicIncludedForMonthKey === monthKey &&
+      Number.isFinite(Number(latestSnapshot?.monthlyStatus?.musicThresholdBeforeAmount));
+    const musicThresholdBeforeAmount = hasMusicThresholdBeforeOverride
+      ? Number(latestSnapshot?.monthlyStatus?.musicThresholdBeforeAmount)
+      : undefined;
     const salarySafetyConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(
         Math.max(0, Number(review.row.salaryAllocationToSafetyAmount ?? 0) - Number(review.row.projectionSalaryAllocationToSafetyAmount ?? 0)),
@@ -1052,16 +1072,40 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         Math.max(0, basisInvestmentTotalAmount - Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)),
       )
       : basisInvestmentTotalAmount;
-    const musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
+    let musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(
         Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount),
       )
       : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicInvestmentTotalAmount = roundCurrency(musicInvestmentConsumedAmount + musicInvestmentRemainingAmount);
-    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
+    let musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    let musicSafetyConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(Math.max(0, musicGrossConsumedAmount - musicInvestmentConsumedAmount))
       : Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    let musicGrossRemainingAmountDisplay = musicGrossRemainingAmount;
+    let musicReserveRemainingAmountDisplay = musicReserveRemainingAmount;
+    let musicNetRemainingAmountDisplay = musicNetRemainingAmount;
+    let musicGrossConsumedAmountDisplay = musicGrossConsumedAmount;
+    let musicReserveConsumedAmountDisplay = musicReserveConsumedAmount;
+    let musicNetConsumedAmountDisplay = musicNetConsumedAmount;
+    let musicSafetyRemainingAmountDisplay = Number(review.row.musicAllocationToSafetyAmount ?? 0);
+
+    if (hasMusicThresholdBeforeOverride && Number.isFinite(musicThresholdBeforeAmount)) {
+      const musicSafetyConsumedOverride = roundCurrency(
+        Math.max(0, Math.min(musicNetTotalAmount, thresholdTargetAmount - musicThresholdBeforeAmount)),
+      );
+      musicSafetyConsumedAmount = musicSafetyConsumedOverride;
+      musicInvestmentConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicSafetyConsumedOverride));
+      musicInvestmentRemainingAmount = 0;
+      musicSafetyRemainingAmountDisplay = 0;
+      musicGrossRemainingAmountDisplay = 0;
+      musicReserveRemainingAmountDisplay = 0;
+      musicNetRemainingAmountDisplay = 0;
+      musicGrossConsumedAmountDisplay = musicGrossTotalAmount;
+      musicReserveConsumedAmountDisplay = musicReserveTotalAmount;
+      musicNetConsumedAmountDisplay = musicNetTotalAmount;
+    }
+
+    const musicInvestmentTotalAmount = roundCurrency(musicInvestmentConsumedAmount + musicInvestmentRemainingAmount);
     const musicSafetyTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicInvestmentTotalAmount));
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
@@ -1101,23 +1145,25 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         valueClass: basisInvestmentState.valueClass,
       },
       {
-        label: "Musik brutto",
+        label: "Musik-Einnahmen",
         value: euro.format(musicGrossTotalAmount),
         formula: joinTooltipLines([
-          `Musik brutto im Monat: ${euro.format(musicGrossTotalAmount)}${entryDatesLabel(musicIncomeEntries) ? ` aus ${entryDatesLabel(musicIncomeEntries)}` : ""}.`,
-          `${euro.format(musicGrossTotalAmount)} brutto - ${euro.format(musicReserveTotalAmount)} Steuer/Ruecklage = ${euro.format(musicNetTotalAmount)} netto verfuegbar`,
+          `Musik-Einnahmen im Monat: ${euro.format(musicGrossTotalAmount)}${entryDatesLabel(musicIncomeEntries) ? ` aus ${entryDatesLabel(musicIncomeEntries)}` : ""}.`,
+          musicReserveTotalAmount > 0
+            ? `${euro.format(musicReserveTotalAmount)} davon sind als Steuer/Ruecklage markiert. Netto verfuegbar bleiben ${euro.format(musicNetTotalAmount)}.`
+            : `Der gespeicherte Monatswert wird direkt als netto verfuegbar behandelt.`,
           hasAnyActiveSnapshot
-            ? `Bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits verarbeitet: ${euro.format(musicGrossConsumedAmount)} brutto (${euro.format(musicReserveConsumedAmount)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmount)} netto)`
+            ? `Bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits verarbeitet: ${euro.format(musicGrossConsumedAmountDisplay)} Gesamtwert (${euro.format(musicReserveConsumedAmountDisplay)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmountDisplay)} netto)`
             : "",
           hasAnyActiveSnapshot
-            ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmount)} brutto (${euro.format(musicReserveRemainingAmount)} Steuer/Ruecklage, ${euro.format(musicNetRemainingAmount)} netto)`
+            ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmountDisplay)} Gesamtwert (${euro.format(musicReserveRemainingAmountDisplay)} Steuer/Ruecklage, ${euro.format(musicNetRemainingAmountDisplay)} netto)`
             : `Ohne aktiven Ist-Stand ist der volle Monatsblock offen.`,
           hasAnyActiveSnapshot
             ? `Vom bereits verarbeiteten Netto gingen ${euro.format(musicSafetyConsumedAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentConsumedAmount)} ins Investment.`
             : "",
           `Insgesamt sind fuer diesen Monat ${euro.format(musicSafetyTotalAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentTotalAmount)} ins Investment geroutet.`,
           hasAnyActiveSnapshot
-            ? `Davon sind nach dem Ist-Stand noch ${euro.format(review.row.musicAllocationToSafetyAmount ?? 0)} ins Cash/Threshold und ${euro.format(musicInvestmentRemainingAmount)} ins Investment offen.`
+            ? `Davon sind nach dem Ist-Stand noch ${euro.format(musicSafetyRemainingAmountDisplay)} ins Cash/Threshold und ${euro.format(musicInvestmentRemainingAmount)} ins Investment offen.`
             : "",
         ]),
         note: musicIncomeState.note,
@@ -1178,6 +1224,15 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       )
       : musicNetTotalAmount;
     const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
+    const thresholdTargetAmount = assumptionNumber(importDraft, "music_threshold", assumptionNumber(importDraft, "safety_threshold", 10000));
+    const musicIncludedForMonthKey = latestSnapshot?.monthlyStatus?.musicIncludedForMonthKey;
+    const hasMusicThresholdBeforeOverride =
+      hasAnyActiveSnapshot &&
+      musicIncludedForMonthKey === monthKey &&
+      Number.isFinite(Number(latestSnapshot?.monthlyStatus?.musicThresholdBeforeAmount));
+    const musicThresholdBeforeAmount = hasMusicThresholdBeforeOverride
+      ? Number(latestSnapshot?.monthlyStatus?.musicThresholdBeforeAmount)
+      : undefined;
     const basisInvestmentRemainingAmount = hasActiveInMonthSnapshot
       ? Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)
       : basisInvestmentTotalAmount;
@@ -1189,15 +1244,38 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         Math.max(0, Number(review.row.salaryAllocationToSafetyAmount ?? 0) - Number(review.row.projectionSalaryAllocationToSafetyAmount ?? 0)),
       )
       : Number(review.row.salaryAllocationToSafetyAmount ?? 0);
-    const musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
+    let musicInvestmentConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(Math.max(0, investmentAnchorAmount - startInvestmentAmount - salaryInvestmentConsumedAmount))
       : Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
-    const musicSafetyConsumedAmount = hasActiveInMonthSnapshot
+    let musicInvestmentRemainingAmount = Number(review.row.musicAllocationToInvestmentAmount ?? 0);
+    let musicSafetyConsumedAmount = hasActiveInMonthSnapshot
       ? roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount - musicInvestmentConsumedAmount))
       : Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    let musicSafetyRemainingAmountDisplay = Number(review.row.musicAllocationToSafetyAmount ?? 0);
+    let musicNetConsumedAmountDisplay = musicNetConsumedAmount;
+
+    if (hasMusicThresholdBeforeOverride && Number.isFinite(musicThresholdBeforeAmount)) {
+      const musicSafetyConsumedOverride = roundCurrency(
+        Math.max(0, Math.min(musicNetTotalAmount, thresholdTargetAmount - musicThresholdBeforeAmount)),
+      );
+      musicSafetyConsumedAmount = musicSafetyConsumedOverride;
+      musicInvestmentConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicSafetyConsumedOverride));
+      musicSafetyRemainingAmountDisplay = 0;
+      musicInvestmentRemainingAmount = 0;
+      musicNetConsumedAmountDisplay = musicNetTotalAmount;
+    }
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
+    const thresholdTargetLabel = thresholdAccountLabel(
+      accountOptions,
+      review.row.thresholdAccountId ?? assumptionString(importDraft, "music_threshold_account_id", "savings"),
+    );
+    const thresholdStartAmount = Number(review.row.thresholdAccountStartAmount ?? 0);
+    const thresholdEndAmount = Number(review.row.thresholdAccountEndAmount ?? 0);
+    const thresholdDeltaAmount =
+      review.row.thresholdAccountEndAmount !== undefined
+        ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
+        : 0;
     const entries = [
       {
         label: "Cash am Ende des geöffneten Monats",
@@ -1219,13 +1297,40 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
               manualExpenseConsumedAmount,
               salarySafetyConsumedAmount,
               musicSafetyConsumedAmount,
-              musicSafetyRemainingAmount: Number(review.row.musicAllocationToSafetyAmount ?? 0),
+              musicSafetyRemainingAmount: musicSafetyRemainingAmountDisplay,
               musicIncomeEntries,
-              musicNetConsumedAmount,
+              musicNetConsumedAmount: musicNetConsumedAmountDisplay,
               salaryInvestmentTransferFromSafetyAmount: Number(review.row.salaryInvestmentTransferFromSafetyAmount ?? 0),
             })
             : "",
       },
+      ...(review.row.thresholdAccountEndAmount !== undefined
+        ? [
+          {
+            label: `${thresholdTargetLabel}: Aktion in diesem Monat`,
+            value: thresholdDeltaAmount < -0.009
+              ? `${euro.format(Math.abs(thresholdDeltaAmount))} entnehmen`
+              : thresholdDeltaAmount > 0.009
+                ? `${euro.format(thresholdDeltaAmount)} einzahlen`
+                : "Keine Bewegung nötig",
+            formula: joinTooltipLines([
+              `${thresholdTargetLabel}: Start ${euro.format(thresholdStartAmount)} · Ende ${euro.format(thresholdEndAmount)}.`,
+              `Delta: ${thresholdDeltaAmount < 0 ? "-" : "+"}${euro.format(Math.abs(thresholdDeltaAmount))}.`,
+              `Hinweis: Das ist die Netto-Veränderung des Schwellenkontos (z. B. durch Ausgaben, Musik-Routing, Gehalt-Routing).`,
+            ]),
+          },
+          {
+            label: `${thresholdTargetLabel} am Ende des geöffneten Monats`,
+            value: euro.format(review.row.thresholdAccountEndAmount),
+            formula:
+              `${euro.format(review.row.thresholdAccountStartAmount ?? 0)} Start + ` +
+              `${euro.format(musicSafetyRemainingAmountDisplay)} aus Musik + ` +
+              `${euro.format(review.row.salaryAllocationToThresholdAmount ?? 0)} aus Gehalt - ` +
+              `${euro.format(importedExpenseAmount)} Ausgaben = ` +
+              `${euro.format(review.row.thresholdAccountEndAmount)}`,
+          },
+        ]
+        : []),
       {
         label: "Investment am Ende des geöffneten Monats",
         value: review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
