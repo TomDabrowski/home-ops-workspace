@@ -213,9 +213,9 @@ export function renderSalaryPlanner(importDraft, deps) {
       const amount = Number(amountField.value);
       const effectiveFrom = effectiveFromField.value || suggestedMonth;
       if (Number.isFinite(amount) && amount > 0) {
-        return `Gehaltsstand ab ${effectiveFrom}: ${euro.format(amount)} netto pro Monat.`;
+        return `Gehalt für ${effectiveFrom}: ${euro.format(amount)} netto.`;
       }
-      return `Gehaltsstand ab ${effectiveFrom}.`;
+      return `Gehalt für ${effectiveFrom}.`;
     },
     [amountField, effectiveFromField],
   );
@@ -232,7 +232,7 @@ export function renderSalaryPlanner(importDraft, deps) {
           <div class="mapping-card-head">
             <div>
               <strong>${euro.format(entry.netSalaryAmount)} netto</strong>
-              <p>Ab ${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
+              <p>${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
             </div>
             <div class="filter-group">
               <button class="pill" type="button" data-salary-edit="${entry.id}">Bearbeiten</button>
@@ -255,7 +255,7 @@ export function renderSalaryPlanner(importDraft, deps) {
     const latestEntry = [...settings]
       .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
     historySummaryTarget.textContent = latestEntry
-      ? `Zuletzt geändert: ${formatHistoryTimestamp(latestEntry.updatedAt)} · ${euro.format(latestEntry.netSalaryAmount)} ab ${latestEntry.effectiveFrom}`
+      ? `Zuletzt geändert: ${formatHistoryTimestamp(latestEntry.updatedAt)} · ${euro.format(latestEntry.netSalaryAmount)} für ${latestEntry.effectiveFrom}`
       : "Noch keine Gehaltsänderung gespeichert.";
   }
 
@@ -270,7 +270,7 @@ export function renderSalaryPlanner(importDraft, deps) {
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
       salaryNote.setManualValue(entry.notes ?? "");
       saveButton.textContent = "Gehaltsstand aktualisieren";
-      metaTarget.textContent = `Bearbeite gerade: ${euro.format(entry.netSalaryAmount)} ab ${entry.effectiveFrom}`;
+      metaTarget.textContent = `Bearbeite gerade: ${euro.format(entry.netSalaryAmount)} für ${entry.effectiveFrom}`;
     });
   }
 
@@ -279,7 +279,7 @@ export function renderSalaryPlanner(importDraft, deps) {
       const id = button.getAttribute("data-salary-toggle");
       if (!id) return;
       const entry = readSalarySettings().find((item) => item.id === id);
-      if (!entry || !confirmAction(`Gehaltsstand ${euro.format(entry.netSalaryAmount)} ab ${entry.effectiveFrom} wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
+    if (!entry || !confirmAction(`Gehalt ${euro.format(entry.netSalaryAmount)} für ${entry.effectiveFrom} wirklich ${entry.isActive === false ? "aktivieren" : "deaktivieren"}?`)) {
         return;
       }
 
@@ -291,7 +291,7 @@ export function renderSalaryPlanner(importDraft, deps) {
 
       const result = await saveSalarySettings(nextState);
       await refreshFinanceView({
-        title: `Gehaltsstand ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
+        title: `Gehalt ${entry.isActive === false ? "aktiviert" : "deaktiviert"}`,
         detail: statusDetailForMode(result.mode),
         tone: result.mode === "project" ? "success" : "warn",
       });
@@ -305,19 +305,25 @@ export function renderSalaryPlanner(importDraft, deps) {
     const notes = notesField.value.trim();
 
     if (!Number.isFinite(netSalaryAmount) || netSalaryAmount <= 0 || !effectiveFrom) {
-      metaTarget.textContent = "Bitte Nettogehalt und gültig-ab-Monat eintragen.";
+      metaTarget.textContent = "Bitte Nettogehalt und Monat eintragen.";
       return;
     }
 
-    const isEditing = Boolean(editingId);
+    const existingForMonth = readSalarySettings().find((item) =>
+      item.id !== editingId &&
+      item.isActive !== false &&
+      String(item.effectiveFrom ?? "") === String(effectiveFrom),
+    );
+    const targetId = editingId || existingForMonth?.id || `salary-${Date.now()}`;
+    const isEditing = Boolean(editingId || existingForMonth);
     if (!confirmAction(isEditing
-      ? `Gehaltsstand ${euro.format(netSalaryAmount)} ab ${effectiveFrom} wirklich aktualisieren?`
-      : `Gehaltsstand ${euro.format(netSalaryAmount)} ab ${effectiveFrom} wirklich speichern?`)) {
+      ? `Gehalt ${euro.format(netSalaryAmount)} für ${effectiveFrom} wirklich aktualisieren?`
+      : `Gehalt ${euro.format(netSalaryAmount)} für ${effectiveFrom} wirklich speichern?`)) {
       return;
     }
 
     const nextEntry = {
-      id: editingId || `salary-${Date.now()}`,
+      id: targetId,
       netSalaryAmount,
       effectiveFrom,
       notes,
@@ -325,14 +331,25 @@ export function renderSalaryPlanner(importDraft, deps) {
       updatedAt: new Date().toISOString(),
     };
 
-    const nextState = editingId
-      ? readSalarySettings().map((item) => (item.id === editingId ? nextEntry : item))
-      : [...readSalarySettings(), nextEntry];
+    const nextState = (() => {
+      let replaced = false;
+      const nextItems = readSalarySettings().map((item) => {
+        if (item.id === targetId) {
+          replaced = true;
+          return nextEntry;
+        }
+        if (item.id !== targetId && item.isActive !== false && String(item.effectiveFrom ?? "") === String(effectiveFrom)) {
+          return { ...item, isActive: false, updatedAt: nextEntry.updatedAt };
+        }
+        return item.id === editingId ? { ...item, isActive: false, updatedAt: nextEntry.updatedAt } : item;
+      });
+      return replaced ? nextItems : [...nextItems, nextEntry];
+    })();
 
     const result = await saveSalarySettings(nextState);
     resetForm();
     await refreshFinanceView({
-      title: isEditing ? "Gehaltsstand aktualisiert" : "Gehaltsstand gespeichert",
+      title: isEditing ? "Gehalt aktualisiert" : "Gehalt gespeichert",
       detail: statusDetailForMode(result.mode),
       tone: result.mode === "project" ? "success" : "warn",
     });

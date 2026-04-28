@@ -926,7 +926,9 @@ export function createLocalFinanceStateTools(deps) {
       .sort(compareMonthKeys)
       .map((monthKey) => {
         const baseline = selectBaselineForMonth(importDraft.monthlyBaselines, monthKey);
-        const salary = [...salarySettings].reverse().find((entry) => compareMonthKeys(entry.effectiveFrom, monthKey) <= 0);
+        const salary =
+          [...salarySettings].reverse().find((entry) => String(entry.effectiveFrom ?? "") === String(monthKey)) ??
+          [...salarySettings].reverse().find((entry) => compareMonthKeys(entry.effectiveFrom, monthKey) <= 0);
         if (!baseline) {
           return null;
         }
