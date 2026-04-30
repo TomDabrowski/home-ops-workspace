@@ -11,12 +11,30 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
   const negativeMonths = monthlyPlan.rows.filter((row) => row.netAfterImportedFlows < 0);
   const suspiciousMonths = monthlyPlan.rows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
   const futureRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
+  const nextWithdrawalMonth = [...negativeMonths].sort((left, right) => left.monthKey.localeCompare(right.monthKey))[0];
 
   if (Math.abs(delta) > 0.01) {
     signals.push({
       level: "warn",
       title: "Grundplan und aktuelle Rechnung laufen noch auseinander",
       body: `Zwischen geplanter und aktuell berechneter Basis liegt noch eine Differenz von ${euro.format(delta)}. Das ist ein guter Kandidat für eine kurze Prüfung im Monatsbereich.`,
+    });
+  }
+
+  if (nextWithdrawalMonth) {
+    const withdrawalAmount = Math.abs(nextWithdrawalMonth.netAfterImportedFlows);
+    signals.push({
+      level: "warn",
+      title: "Tagesgeld-Entnahme für den Monatsplan einplanen",
+      body:
+        `${nextWithdrawalMonth.monthKey} braucht voraussichtlich ${euro.format(withdrawalAmount)} aus dem Tagesgeld. ` +
+        `Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.`,
+    });
+  } else {
+    signals.push({
+      level: "info",
+      title: "Keine Tagesgeld-Entnahme für den Monatsplan nötig",
+      body: "Aktuell deckt die Monatsplanung alle importierten Bewegungen ohne zusätzliche Entnahme aus dem Tagesgeld.",
     });
   }
 

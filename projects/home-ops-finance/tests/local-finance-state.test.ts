@@ -205,7 +205,14 @@ test("month-start wealth anchors use the saved snapshot as the opening value for
           isPlanned: true,
         },
       ],
-      expenseEntries: [],
+      expenseEntries: [
+        {
+          id: "activate-april-forecast",
+          entryDate: "2026-04-01",
+          amount: 0,
+          isPlanned: true,
+        },
+      ],
       debtSnapshots: [],
       forecastAssumptions: [],
       wealthBuckets: [
@@ -596,6 +603,110 @@ test("month-start anchors do not re-add music income that is already captured in
   assert.equal(aprilRow.musicAllocationToSafetyAmount, 0);
   assert.equal(aprilRow.musicAllocationToInvestmentAmount, 0);
   assert.equal(aprilRow.investmentBucketEndAmount, 14308);
+});
+
+test("month-start anchors do not re-add salary allocations already captured in snapshot status", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-04"];
+    },
+    assumptionNumber(_draft: unknown, _key: string, fallback: number) {
+      return fallback;
+    },
+    assumptionString(_draft: unknown, _key: string, fallback: string) {
+      return fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "april-start-salary-included",
+          snapshotDate: "2026-03-27T22:32",
+          anchorMonthKey: "2026-04",
+          cashAmount: 10172,
+          cashAccounts: { giro: 100, cash: 72, savings: 10000 },
+          investmentAmount: 13258,
+          monthlyStatus: {
+            salaryIncludedForMonthKey: "2026-04",
+            basisInvestmentState: "included",
+          },
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [],
+      expenseEntries: [],
+      debtSnapshots: [],
+      forecastAssumptions: [],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 0, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 0, expectedAnnualReturn: 0 },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-04",
+          netSalaryAmount: 2920,
+          fixedExpensesAmount: 1266.49,
+          baselineVariableAmount: 320,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1050,
+          availableBeforeIrregulars: 283.51,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1266.49, category: "fixed", effectiveFrom: "2026-04" },
+        { id: "variable", label: "Var", amount: 320, category: "variable", effectiveFrom: "2026-04" },
+        { id: "save", label: "Save", amount: 1050, category: "savings", effectiveFrom: "2026-04" },
+      ],
+      forecastWealthAnchors: [],
+    },
+  });
+
+  const aprilRow = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-04");
+  assert.ok(aprilRow);
+  assert.equal(aprilRow.anchorMode, "month_start");
+  assert.equal(aprilRow.anchorAppliesAtMonthStart, true);
+  assert.equal(aprilRow.salaryAllocationToSafetyAmount, 283.51);
+  assert.equal(aprilRow.salaryAllocationToInvestmentAmount, 1050);
+  assert.equal(aprilRow.projectionSalaryAllocationToSafetyAmount, 0);
+  assert.equal(aprilRow.projectionSalaryAllocationToInvestmentAmount, 0);
 });
 
 test("month-start anchors without threshold-account detail keep routing against the carried threshold balance", () => {

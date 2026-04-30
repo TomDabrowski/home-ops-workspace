@@ -79,11 +79,17 @@ test("parses wealth snapshots and keeps month-start anchors", () => {
       },
       cashAmount: 10172,
       investmentAmount: 13258,
+      monthlyStatus: {
+        salaryIncludedForMonthKey: "2026-04",
+        musicIncludedForMonthKey: "2026-04",
+      },
       isActive: true,
     },
   ]);
 
   assert.equal(parsed[0].anchorMonthKey, "2026-04");
+  assert.equal(parsed[0].monthlyStatus?.salaryIncludedForMonthKey, "2026-04");
+  assert.equal(parsed[0].monthlyStatus?.musicIncludedForMonthKey, "2026-04");
 });
 
 test("rejects import drafts that are missing required top-level collections", () => {

@@ -8,6 +8,8 @@ import { createPlannerSettingsStore } from "../app/browser/planner-settings.js";
 import { createReviewStateTools } from "../app/browser/review-state.js";
 // @ts-ignore
 import { renderMonthlyExpenseEditor } from "../app/ui/workflow-planners.js";
+// @ts-ignore
+import { renderValidationSignals } from "../app/ui/overview-dashboard.js";
 
 test("planner settings store falls back to derived defaults and persists updates", () => {
   const storage = new Map<string, string>();
@@ -169,7 +171,7 @@ test("monthly expense editor defaults to today and stores the month derived from
   } as typeof globalThis.document;
 
   let savedState: Record<string, unknown>[] = [];
-  let refreshStatus: Record<string, unknown> | null = null;
+  let refreshStatus: any = null;
 
   try {
     renderMonthlyExpenseEditor({ expenseCategories: [] }, "2026-03", {
@@ -194,7 +196,7 @@ test("monthly expense editor defaults to today and stores the month derived from
         savedState = nextState;
         return { mode: "project" };
       },
-      async refreshFinanceView(status: Record<string, unknown>) {
+      async refreshFinanceView(status: any) {
         refreshStatus = status;
       },
       statusDetailForMode: () => "Projektdatei",
@@ -209,6 +211,62 @@ test("monthly expense editor defaults to today and stores the month derived from
     assert.equal(savedState[0]?.entryDate, "2026-04-14");
     assert.equal(savedState[0]?.monthKey, "2026-04");
     assert.equal(refreshStatus?.title, "Ausgabe gespeichert");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("validation signals show the monthly Tagesgeld withdrawal need and the no-withdrawal state", () => {
+  const originalDocument = globalThis.document;
+  const target = { innerHTML: "" };
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return id === "validationSignals" ? target : null;
+    },
+  } as typeof globalThis.document;
+
+  try {
+    renderValidationSignals(
+      { baselineSummary: { deltaToAnchor: 0 } },
+      {
+        rows: [
+          { monthKey: "2026-03", netAfterImportedFlows: 120, consistencySignals: [] },
+          { monthKey: "2026-04", netAfterImportedFlows: -245.5, consistencySignals: [] },
+        ],
+      },
+      {
+        euro: new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 2,
+        }),
+      },
+    );
+
+    assert.match(target.innerHTML, /Tagesgeld-Entnahme für den Monatsplan einplanen/);
+    assert.match(target.innerHTML, /2026-04 braucht voraussichtlich 245,50/);
+    assert.match(target.innerHTML, /Ausgleich des Monatsdefizits/);
+
+    renderValidationSignals(
+      { baselineSummary: { deltaToAnchor: 0 } },
+      {
+        rows: [
+          { monthKey: "2026-03", netAfterImportedFlows: 120, consistencySignals: [] },
+          { monthKey: "2026-04", netAfterImportedFlows: 0, consistencySignals: [] },
+        ],
+      },
+      {
+        euro: new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 2,
+        }),
+      },
+    );
+
+    assert.match(target.innerHTML, /Keine Tagesgeld-Entnahme für den Monatsplan nötig/);
+    assert.match(target.innerHTML, /ohne zusätzliche Entnahme aus dem Tagesgeld/);
   } finally {
     globalThis.document = originalDocument;
   }
