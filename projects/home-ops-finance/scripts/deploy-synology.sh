@@ -75,7 +75,10 @@ REMOTE_BUILD_CMD="set -euo pipefail; \
  fi; \
  sudo_run \"\${docker_bin}\" build --network host -t '${DEPLOY_IMAGE_TAG}' '${DEPLOY_APP_DIR}'; \
  if sudo_run \"\${docker_bin}\" ps -a --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
-   sudo_run \"\${docker_bin}\" rm -f '${DEPLOY_CONTAINER_NAME}'; \
+   if sudo_run \"\${docker_bin}\" ps --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
+     sudo_run \"\${docker_bin}\" stop --time 20 '${DEPLOY_CONTAINER_NAME}' >/dev/null; \
+   fi; \
+   sudo_run \"\${docker_bin}\" rm -f '${DEPLOY_CONTAINER_NAME}' >/dev/null; \
  fi; \
  sudo_run \"\${docker_bin}\" run -d \
    --name '${DEPLOY_CONTAINER_NAME}' \
