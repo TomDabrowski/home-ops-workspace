@@ -1163,6 +1163,9 @@ th:first-child {
   gap: 12px;
   margin-bottom: 18px;
 }
+.month-main .month-tagesgeld-withdrawal-hint {
+  margin-bottom: 18px;
+}
 .month-data-status-card.is-ok {
   border-left-color: rgba(23, 114, 69, 0.28);
 }

@@ -514,6 +514,9 @@ export function createLocalFinanceStateTools(deps) {
           importedExpenseAmount,
       );
       const monthAvailableBeforeExpensesAmount = roundCurrency(baselineAvailableAmount + importedIncomeAvailableAmount);
+      const requiredTagesgeldWithdrawalAmount = roundCurrency(
+        Math.max(0, importedExpenseAmount - monthAvailableBeforeExpensesAmount),
+      );
       const baselineAnchorAvailableAmount = roundCurrency(selectedBaseline.availableBeforeIrregulars);
       const baselineAnchorDeltaAmount = roundCurrency(baselineAvailableAmount - baselineAnchorAvailableAmount);
       const baselineFixedDeltaAmount = roundCurrency(fixedAmount - selectedBaseline.fixedExpensesAmount);
@@ -746,6 +749,10 @@ export function createLocalFinanceStateTools(deps) {
         thresholdAccountEndAmount: musicThresholdAccountId ? musicThresholdAccountProjectedEndAmount : undefined,
         wealthAnchorApplied: Boolean(explicitWealthAnchor),
         importedExpenseAmount,
+        requiredTagesgeldWithdrawalAmount,
+        requiredTagesgeldWithdrawalSourceLabel: "Tagesgeld",
+        requiredTagesgeldWithdrawalDestinationAccountId: "giro",
+        requiredTagesgeldWithdrawalDestinationLabel: "Girokonto",
         netAfterImportedFlows,
         consistencySignals: buildConsistencySignals({
           monthKey,

@@ -10,6 +10,10 @@ import { createReviewStateTools } from "../app/browser/review-state.js";
 import { renderMonthlyExpenseEditor } from "../app/ui/workflow-planners.js";
 // @ts-ignore
 import { renderValidationSignals } from "../app/ui/overview-dashboard.js";
+// @ts-ignore
+import { renderMonthTagesgeldWithdrawalHint } from "../app/ui/month-review.js";
+// @ts-ignore
+import { escapeHtml, roundCurrency } from "../app/shared/ui-formatters.js";
 
 test("planner settings store falls back to derived defaults and persists updates", () => {
   const storage = new Map<string, string>();
@@ -232,7 +236,13 @@ test("validation signals show the monthly Tagesgeld withdrawal need and the no-w
       {
         rows: [
           { monthKey: "2026-03", netAfterImportedFlows: 120, consistencySignals: [] },
-          { monthKey: "2026-04", netAfterImportedFlows: -245.5, consistencySignals: [] },
+          {
+            monthKey: "2026-04",
+            requiredTagesgeldWithdrawalAmount: 245.5,
+            requiredTagesgeldWithdrawalDestinationLabel: "Girokonto",
+            netAfterImportedFlows: -245.5,
+            consistencySignals: [],
+          },
         ],
       },
       {
@@ -246,6 +256,7 @@ test("validation signals show the monthly Tagesgeld withdrawal need and the no-w
 
     assert.match(target.innerHTML, /Tagesgeld-Entnahme für den Monatsplan einplanen/);
     assert.match(target.innerHTML, /2026-04 braucht voraussichtlich 245,50/);
+    assert.match(target.innerHTML, /Ziel: Girokonto/);
     assert.match(target.innerHTML, /Ausgleich des Monatsdefizits/);
 
     renderValidationSignals(
@@ -267,6 +278,65 @@ test("validation signals show the monthly Tagesgeld withdrawal need and the no-w
 
     assert.match(target.innerHTML, /Keine Tagesgeld-Entnahme für den Monatsplan nötig/);
     assert.match(target.innerHTML, /ohne zusätzliche Entnahme aus dem Tagesgeld/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("month review surfaces Tagesgeld withdrawal on the monthly planning screen when net flow is negative", () => {
+  const originalDocument = globalThis.document;
+  const target = { innerHTML: "", className: "" };
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return id === "monthTagesgeldWithdrawalHint" ? target : null;
+    },
+  } as typeof globalThis.document;
+
+  const euro = new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  });
+
+  try {
+    renderMonthTagesgeldWithdrawalHint(
+      {
+        row: {
+          monthKey: "2026-04",
+          requiredTagesgeldWithdrawalAmount: 245.5,
+          requiredTagesgeldWithdrawalDestinationLabel: "CHECK24 Alltag",
+          netAfterImportedFlows: -245.5,
+        },
+      },
+      {
+        euro,
+        roundCurrency,
+        escapeHtml,
+        giroAccountLabel: "CHECK24 Alltag",
+      },
+    );
+
+    assert.match(target.innerHTML, /Tagesgeld-Entnahme für den Monatsplan/);
+    assert.match(target.innerHTML, /2026-04/);
+    assert.match(target.innerHTML, /245,50/);
+    assert.match(target.innerHTML, /CHECK24 Alltag/);
+    assert.match(target.innerHTML, /Ausgleich des Monatsdefizits/);
+    assert.match(target.className, /is-warn/);
+
+    renderMonthTagesgeldWithdrawalHint(
+      { row: { monthKey: "2026-03", netAfterImportedFlows: 120 } },
+      {
+        euro,
+        roundCurrency,
+        escapeHtml,
+        giroAccountLabel: "CHECK24 Alltag",
+      },
+    );
+
+    assert.match(target.innerHTML, /keine zusätzliche Entnahme aus dem Tagesgeld nötig/i);
+    assert.match(target.innerHTML, /Übrig nach allem: 120/);
+    assert.match(target.className, /is-ok/);
   } finally {
     globalThis.document = originalDocument;
   }

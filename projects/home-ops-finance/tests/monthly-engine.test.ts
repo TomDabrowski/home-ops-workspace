@@ -169,6 +169,7 @@ test("builds monthly rows with historical and investing profiles", () => {
   assert.equal(investing?.importedIncomeAvailableAmount, 490);
   assert.equal(investing?.musicAllocationToSafetyAmount, 210);
   assert.equal(investing?.musicAllocationToInvestmentAmount, 490);
+  assert.equal(investing?.requiredTagesgeldWithdrawalAmount, 0);
   assert.equal(investing?.netAfterImportedFlows, 473.51);
   assert.equal(investing?.consistencySignals.length, 1);
   assert.deepEqual(
@@ -517,6 +518,8 @@ test("flags anchor mismatches and negative months automatically", () => {
   assert.ok(row);
   assert.equal(row?.baselineAnchorDeltaAmount, 150);
   assert.equal(row?.netAfterImportedFlows, -676.49);
+  assert.equal(row?.requiredTagesgeldWithdrawalAmount, 676.49);
+  assert.equal(row?.requiredTagesgeldWithdrawalDestinationLabel, "Girokonto");
   assert.deepEqual(
     row?.consistencySignals.map((signal) => signal.code),
     ["baseline_anchor_mismatch", "monthly_deficit", "expense_over_baseline_available", "expense_spike"],

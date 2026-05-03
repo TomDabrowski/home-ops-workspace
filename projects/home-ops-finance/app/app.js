@@ -50,6 +50,7 @@ import {
   renderMonthExpenseList as renderMonthExpenseListView,
   renderMonthIncomeList as renderMonthIncomeListView,
   renderMonthSourceStats as renderMonthSourceStatsView,
+  renderMonthTagesgeldWithdrawalHint as renderMonthTagesgeldWithdrawalHintView,
 } from "./ui/month-review.js";
 import {
   renderEntryMappings as renderEntryMappingsView,
@@ -891,6 +892,12 @@ function renderImportsWorkspace(importDraft, review) {
 function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const review = buildMonthReviewData(importDraft, monthlyPlan, monthKey);
   if (!review) return;
+  renderMonthTagesgeldWithdrawalHintView(review, {
+    euro,
+    roundCurrency,
+    escapeHtml,
+    giroAccountLabel: accountOptions.find((option) => option.id === "giro")?.label ?? "Girokonto",
+  });
   const monthIndex = monthlyPlan.rows.findIndex((row) => row.monthKey === monthKey);
   const previousRow = monthIndex > 0 ? monthlyPlan.rows[monthIndex - 1] : null;
 

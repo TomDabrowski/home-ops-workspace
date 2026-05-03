@@ -65,6 +65,8 @@ interface MonthlyPlanReport {
     baselineAvailableAmount: number;
     importedIncomeAmount: number;
     importedExpenseAmount: number;
+    requiredTagesgeldWithdrawalAmount?: number;
+    requiredTagesgeldWithdrawalDestinationLabel?: string;
     netAfterImportedFlows: number;
   }>;
 }
@@ -91,17 +93,28 @@ function escapeHtml(value: string): string {
 }
 
 function renderTableRows(
-  rows: Array<{ monthKey: string; incomeTotal?: number; expenseTotal?: number; netFlow?: number; netAfterImportedFlows?: number }>,
+  rows: Array<{
+    monthKey: string;
+    incomeTotal?: number;
+    expenseTotal?: number;
+    requiredTagesgeldWithdrawalAmount?: number;
+    requiredTagesgeldWithdrawalDestinationLabel?: string;
+    netFlow?: number;
+    netAfterImportedFlows?: number;
+  }>,
   valueKey: "netFlow" | "netAfterImportedFlows",
+  options: { includeWithdrawal?: boolean } = {},
 ): string {
   return rows
     .map((row) => {
       const result = row[valueKey] ?? 0;
       const resultClass = result >= 0 ? "positive" : "negative";
+      const withdrawalAmount = Number(row.requiredTagesgeldWithdrawalAmount ?? Math.max(0, -result));
       return `<tr>
         <td>${escapeHtml(row.monthKey)}</td>
         <td>${currency(row.incomeTotal ?? 0)}</td>
         <td>${currency(row.expenseTotal ?? 0)}</td>
+        ${options.includeWithdrawal ? `<td>${withdrawalAmount > 0 ? `${currency(withdrawalAmount)} -> ${escapeHtml(row.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto")}` : "Nicht nötig"}</td>` : ""}
         <td class="${resultClass}">${currency(result)}</td>
       </tr>`;
     })
@@ -113,6 +126,8 @@ function buildHtml(draftReport: DraftReport, monthlyPlan: MonthlyPlanReport): st
     monthKey: row.monthKey,
     incomeTotal: row.importedIncomeAmount,
     expenseTotal: row.importedExpenseAmount,
+    requiredTagesgeldWithdrawalAmount: row.requiredTagesgeldWithdrawalAmount,
+    requiredTagesgeldWithdrawalDestinationLabel: row.requiredTagesgeldWithdrawalDestinationLabel,
     netAfterImportedFlows: row.netAfterImportedFlows,
   }));
 
@@ -369,10 +384,10 @@ function buildHtml(draftReport: DraftReport, monthlyPlan: MonthlyPlanReport): st
         <h2>Monatsplan</h2>
         <table>
           <thead>
-            <tr><th>Monat</th><th>Importierte Zuflüsse</th><th>Importierte Ausgaben</th><th>Monatsergebnis</th></tr>
+            <tr><th>Monat</th><th>Importierte Zuflüsse</th><th>Importierte Ausgaben</th><th>Tagesgeld</th><th>Monatsergebnis</th></tr>
           </thead>
           <tbody>
-            ${renderTableRows(recentPlanRows, "netAfterImportedFlows")}
+            ${renderTableRows(recentPlanRows, "netAfterImportedFlows", { includeWithdrawal: true })}
           </tbody>
         </table>
       </div>

@@ -108,6 +108,10 @@ export interface MonthlyPlanRow {
   projectedWealthEndAmount?: number;
   wealthAnchorApplied?: boolean;
   importedExpenseAmount: number;
+  requiredTagesgeldWithdrawalAmount: number;
+  requiredTagesgeldWithdrawalSourceLabel: string;
+  requiredTagesgeldWithdrawalDestinationAccountId: string;
+  requiredTagesgeldWithdrawalDestinationLabel: string;
   netAfterImportedFlows: number;
   consistencySignals: MonthlyConsistencySignal[];
 }
@@ -283,6 +287,9 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const monthAvailableBeforeExpensesAmount = roundCurrency(
       baselineAvailableAmount + importedIncomeAvailableAmount,
     );
+    const requiredTagesgeldWithdrawalAmount = roundCurrency(
+      Math.max(0, importedExpenseAmount - monthAvailableBeforeExpensesAmount),
+    );
     const baselineAnchorAvailableAmount = roundCurrency(selectedBaseline.availableBeforeIrregulars);
     const baselineAnchorDeltaAmount = roundCurrency(baselineAvailableAmount - baselineAnchorAvailableAmount);
     const baselineFixedDeltaAmount = roundCurrency(fixedAmount - selectedBaseline.fixedExpensesAmount);
@@ -436,6 +443,10 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       projectedWealthEndAmount: forecastRouting.projectedWealthEndAmount,
       wealthAnchorApplied: forecastRouting.wealthAnchorApplied,
       importedExpenseAmount,
+      requiredTagesgeldWithdrawalAmount,
+      requiredTagesgeldWithdrawalSourceLabel: "Tagesgeld",
+      requiredTagesgeldWithdrawalDestinationAccountId: "giro",
+      requiredTagesgeldWithdrawalDestinationLabel: "Girokonto",
       netAfterImportedFlows,
       consistencySignals,
     };
@@ -485,7 +496,7 @@ export function buildMarkdown(report: MonthlyPlanReport): string {
 
   for (const row of report.rows.slice(-12)) {
     lines.push(
-      `- ${row.monthKey} (${row.baselineProfile}): baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, music gross ${row.musicIncomeAmount.toFixed(2)} EUR, free ${row.importedIncomeAvailableAmount.toFixed(2)} EUR, reserve ${row.importedIncomeReserveAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
+      `- ${row.monthKey} (${row.baselineProfile}): baseline ${row.baselineAvailableAmount.toFixed(2)} EUR, music gross ${row.musicIncomeAmount.toFixed(2)} EUR, free ${row.importedIncomeAvailableAmount.toFixed(2)} EUR, reserve ${row.importedIncomeReserveAmount.toFixed(2)} EUR, imported expenses ${row.importedExpenseAmount.toFixed(2)} EUR, Tagesgeld withdrawal ${row.requiredTagesgeldWithdrawalAmount.toFixed(2)} EUR to ${row.requiredTagesgeldWithdrawalDestinationLabel}, result ${row.netAfterImportedFlows.toFixed(2)} EUR`,
     );
   }
 

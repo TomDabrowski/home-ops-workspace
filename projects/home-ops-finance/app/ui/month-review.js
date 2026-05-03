@@ -1,6 +1,46 @@
 // Month review UI surfaces live here so app.js can stay the composition root
 // instead of also owning every list/detail renderer for the review workspace.
 
+/** Uses the monthly-engine Tagesgeld withdrawal field, derived from the existing monthly-plan row. */
+export function renderMonthTagesgeldWithdrawalHint(review, deps) {
+  const { euro, roundCurrency, escapeHtml, giroAccountLabel } = deps;
+  const target = document.getElementById("monthTagesgeldWithdrawalHint");
+  if (!target) {
+    return;
+  }
+
+  const net = Number(review.row.netAfterImportedFlows ?? 0);
+  const shortfall = roundCurrency(Number(review.row.requiredTagesgeldWithdrawalAmount ?? (net < 0 ? -net : 0)));
+  const monthKey = String(review.row.monthKey ?? "");
+  const checkingLabel = escapeHtml(review.row.requiredTagesgeldWithdrawalDestinationLabel ?? giroAccountLabel ?? "Girokonto");
+
+  if (shortfall > 0.009) {
+    target.className = "mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-warn";
+    target.innerHTML = `
+      <div class="mapping-card-head">
+        <strong>Tagesgeld-Entnahme für den Monatsplan</strong>
+      </div>
+      <p class="section-copy">
+        Für <strong>${escapeHtml(monthKey)}</strong> übersteigen die Monatsausgaben das, was aus Hauptgehalt-Rest und geplanten Zuflüssen übrig bleibt —
+        der Saldo „Übrig nach allem“ liegt bei <strong>${euro.format(net)}</strong>.
+        Plane voraussichtlich <strong>${euro.format(shortfall)}</strong> vom <strong>Tagesgeld</strong> auf <strong>${checkingLabel}</strong>.
+      </p>
+      <p class="mapping-source">Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.</p>
+    `;
+    return;
+  }
+
+  target.className = "mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-ok";
+  target.innerHTML = `
+    <div class="mapping-card-head">
+      <strong>Tagesgeld und Monatsplan</strong>
+    </div>
+    <p class="section-copy">
+      Für <strong>${escapeHtml(monthKey)}</strong> ist keine zusätzliche Entnahme aus dem Tagesgeld nötig (Übrig nach allem: ${euro.format(net)}).
+    </p>
+  `;
+}
+
 export function renderMonthSourceStats(review, deps) {
   const { roundCurrency, isManualExpenseEntry, renderRows, euro } = deps;
 
@@ -17,6 +57,12 @@ export function renderMonthSourceStats(review, deps) {
     ["Zusätzliche Einnahmen", euro.format(review.row.importedIncomeAvailableAmount)],
     ["Importierte Ausgaben im Monat", euro.format(importedExpenseAmount)],
     ["Manuelle Ausgaben im Monat", euro.format(manualExpenseAmount)],
+    [
+      "Tagesgeld-Entnahme",
+      Number(review.row.requiredTagesgeldWithdrawalAmount ?? 0) > 0
+        ? `${euro.format(review.row.requiredTagesgeldWithdrawalAmount)} -> ${review.row.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto"}`
+        : "Nicht nötig",
+    ],
     ["Übrig nach allem", euro.format(review.row.netAfterImportedFlows)],
   ], ([label, value]) => `
     <tr>

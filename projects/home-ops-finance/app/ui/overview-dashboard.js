@@ -11,7 +11,8 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
   const negativeMonths = monthlyPlan.rows.filter((row) => row.netAfterImportedFlows < 0);
   const suspiciousMonths = monthlyPlan.rows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
   const futureRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
-  const nextWithdrawalMonth = [...negativeMonths].sort((left, right) => left.monthKey.localeCompare(right.monthKey))[0];
+  const withdrawalMonths = monthlyPlan.rows.filter((row) => Number(row.requiredTagesgeldWithdrawalAmount ?? 0) > 0);
+  const nextWithdrawalMonth = [...withdrawalMonths].sort((left, right) => left.monthKey.localeCompare(right.monthKey))[0];
 
   if (Math.abs(delta) > 0.01) {
     signals.push({
@@ -22,13 +23,14 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
   }
 
   if (nextWithdrawalMonth) {
-    const withdrawalAmount = Math.abs(nextWithdrawalMonth.netAfterImportedFlows);
+    const withdrawalAmount = Number(nextWithdrawalMonth.requiredTagesgeldWithdrawalAmount ?? Math.abs(nextWithdrawalMonth.netAfterImportedFlows));
+    const destinationLabel = nextWithdrawalMonth.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto";
     signals.push({
       level: "warn",
       title: "Tagesgeld-Entnahme für den Monatsplan einplanen",
       body:
         `${nextWithdrawalMonth.monthKey} braucht voraussichtlich ${euro.format(withdrawalAmount)} aus dem Tagesgeld. ` +
-        `Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.`,
+        `Ziel: ${destinationLabel}. Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.`,
     });
   } else {
     signals.push({
@@ -294,6 +296,11 @@ export function createMonthReviewNavigation(deps) {
           <td>${euro.format(row.musicIncomeAmount)}</td>
           <td>${euro.format(row.importedIncomeAvailableAmount)}</td>
           <td>${euro.format(row.importedExpenseAmount)}</td>
+          <td>${
+            Number(row.requiredTagesgeldWithdrawalAmount ?? 0) > 0
+              ? `${euro.format(row.requiredTagesgeldWithdrawalAmount)} -> ${row.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto"}`
+              : "Nicht nötig"
+          }</td>
           <td>${row.projectedWealthEndAmount !== undefined ? euro.format(row.projectedWealthEndAmount) : "-"}</td>
           <td>${makeMoneyCell(row.netAfterImportedFlows)}</td>
           <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.consistencySignals.length} öffnen</button></td>
