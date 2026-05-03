@@ -3,9 +3,10 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { ensureFinanceDataDir, financeDataDir, financeDataPath } from "./local-config.ts";
-import { readServeAppRuntimeConfig } from "./server-runtime-config.ts";
+import { readServeAppRuntimeConfig, parseBooleanFlag } from "./server-runtime-config.ts";
 import {
   ValidationError,
+  assertImportDraft,
   parseBaselineOverrideCollection,
   parseForecastSettings,
   parseHouseholdState,
@@ -19,6 +20,7 @@ import {
   parseWealthSnapshotCollection,
 } from "./persistence-validation.ts";
 import { validateAllocationActionStatePayload } from "./adapters/persistence/json-boundary-validation.ts";
+import { removeImportedDraftEntryById } from "./import-draft-entry-removal.ts";
 
 const root = resolve(".");
 const appDir = join(root, "app");
@@ -31,6 +33,7 @@ const port = runtimeConfig.port;
 const bindHost = runtimeConfig.bindHost;
 const serverDisplayUrl = runtimeConfig.displayUrl;
 const persistentServer = runtimeConfig.persistentServer;
+const devImportDraftToolsEnabled = parseBooleanFlag(process.env.HOME_OPS_FINANCE_DEV_IMPORT_TOOLS);
 const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
 const baselineOverridesPath = financeDataPath("baseline-overrides.json");
@@ -43,6 +46,7 @@ const salarySettingsPath = financeDataPath("salary-settings.json");
 const wealthSnapshotsPath = financeDataPath("wealth-snapshots.json");
 const allocationActionStatePath = financeDataPath("allocation-action-state.json");
 const householdItemsPath = financeDataPath("household-items.json");
+const importDraftSourcePath = financeDataPath("import-draft.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 15000;
 const startupNoClientGraceMs = 120000;
@@ -172,6 +176,27 @@ function describePayload(payload: unknown): string {
   }
 
   return typeof payload;
+}
+
+function pruneMappingStateForDeletedEntry(deletedEntryId: string): void {
+  if (!deletedEntryId) {
+    return;
+  }
+
+  const raw = existsSync(importMappingsPath) ? readJsonFile(importMappingsPath) : {};
+  const mappings = parseMappingState(raw ?? {});
+
+  if (!(deletedEntryId in mappings)) {
+    return;
+  }
+
+  const { [deletedEntryId]: _discard, ...next } = mappings;
+  writeJsonFile(importMappingsPath, next);
+
+  appendActivityLog("mapping-eintrag entfernt nach dev-import-loeschung", {
+    eintrag_id: deletedEntryId,
+    datei: importMappingsPath,
+  });
 }
 
 function appendActivityLog(event: string, details: Record<string, string | number> = {}): void {
@@ -445,6 +470,93 @@ const server = createServer(async (req, res) => {
       dataDir,
       dataMode: dataDir === join(root, "data") ? "repo-default" : "external",
     });
+  }
+
+  if (url.pathname === "/api/dev/remove-import-draft-entry" && req.method === "POST") {
+    try {
+      if (!devImportDraftToolsEnabled) {
+        return sendJson(res, 403, { ok: false, error: "dev_import_tools_disabled" });
+      }
+
+      const payloadUnknown = await readRequestJson(req);
+      const payload =
+        payloadUnknown && typeof payloadUnknown === "object" ? (payloadUnknown as Record<string, unknown>) : {};
+
+      const kind = payload.kind;
+      const entryIdRaw = payload.id;
+      const kindNormalized = kind === "income" || kind === "expense" ? kind : null;
+
+      const entryId = typeof entryIdRaw === "string" ? entryIdRaw.trim() : "";
+
+      if (!kindNormalized || !entryId) {
+        return sendJson(res, 400, { ok: false, error: "invalid_import_entry_delete_payload" });
+      }
+
+      if (!existsSync(importDraftSourcePath)) {
+        return sendJson(res, 404, { ok: false, error: "import_draft_missing" });
+      }
+
+      const draftCandidate = readJsonFile(importDraftSourcePath);
+      try {
+        assertImportDraft(draftCandidate);
+      } catch (error) {
+        appendActivityLog("dev-import-loeschung gespeicherter draft ungueltig", {
+          datei: importDraftSourcePath,
+          fehler: error instanceof Error ? error.message : String(error),
+        });
+        return sendJson(res, 500, {
+          ok: false,
+          error: "saved_import_draft_invalid",
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const monthlyExpenseOverrides = parseMonthlyExpenseOverrideCollection(readJsonFile(monthlyExpenseOverridesPath) ?? []);
+      const monthlyMusicIncomeOverrides = parseMonthlyMusicIncomeOverrideCollection(readJsonFile(monthlyMusicIncomeOverridesPath) ?? []);
+
+      const activeManualExpenseIds = new Set(
+        monthlyExpenseOverrides.filter((entry) => entry.isActive !== false).map((entry) => entry.id),
+      );
+      const activeManualMusicIncomeIds = new Set(
+        monthlyMusicIncomeOverrides.filter((entry) => entry.isActive !== false).map((entry) => entry.id),
+      );
+
+      const removal = removeImportedDraftEntryById(
+        draftCandidate,
+        kindNormalized,
+        entryId,
+        { activeManualExpenseIds, activeManualMusicIncomeIds },
+      );
+
+      if (!removal.ok) {
+        return sendJson(res, 400, { ok: false, error: removal.error });
+      }
+
+      writeJsonFile(importDraftSourcePath, removal.draft);
+
+      pruneMappingStateForDeletedEntry(entryId);
+
+      refreshReviewedArtifacts();
+
+      appendActivityLog("dev-import-entwurf-zeile-entfernt", {
+        art: kindNormalized,
+        eintrag_id: entryId,
+        datei: importDraftSourcePath,
+      });
+
+      return sendJson(res, 200, { ok: true });
+    } catch (error) {
+      appendActivityLog("dev-import-loeschung-fehler", {
+        fehler: error instanceof Error ? error.message : String(error),
+      });
+
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof SyntaxError) {
+        return sendJson(res, 400, { ok: false, error: "malformed_import_entry_delete_payload", detail: message });
+      }
+
+      return sendJson(res, 500, { ok: false, error: "import_entry_delete_failed", detail: message });
+    }
   }
 
   if (url.pathname === "/api/reconciliation-state") {

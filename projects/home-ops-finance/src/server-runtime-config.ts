@@ -1,4 +1,4 @@
-function parseBooleanFlag(value: string | undefined): boolean {
+export function parseBooleanFlag(value: string | undefined): boolean {
   const normalized = String(value ?? "").trim().toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }

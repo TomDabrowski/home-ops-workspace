@@ -1189,6 +1189,14 @@ th:first-child {
   margin: 4px 0 0;
   color: var(--muted);
 }
+.mapping-card-actions {
+  flex-shrink: 0;
+}
+.mapping-card-actions .pill-danger {
+  font-size: 0.84rem;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
 .mapping-source {
   margin: -2px 0 0;
   color: var(--muted);

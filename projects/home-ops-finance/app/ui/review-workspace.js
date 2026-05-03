@@ -12,6 +12,8 @@ export function renderImportsWorkspace(importDraft, review, deps) {
     isManualExpenseEntry,
     expenseCategoryLabel,
     renderEntryMappings,
+    developerModeEnabled,
+    performDevImportEntryDeleteIfConfirmed,
   } = deps;
 
   setText("importsCurrentMonthLabel", formatMonthLabel(review.row.monthKey));
@@ -21,27 +23,96 @@ export function renderImportsWorkspace(importDraft, review, deps) {
   if (importedIncomeTarget) {
     const importedIncome = review.incomeEntries.filter((entry) => !isManualMusicIncomeEntry(entry));
     importedIncomeTarget.innerHTML = importedIncome.length > 0
-      ? importedIncome.map((entry) => `
-          <article class="mapping-card">
-            <strong>${incomeStreamLabel(importDraft, entry.incomeStreamId)}</strong>
-            <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
+      ? importedIncome.map((entry) => {
+        const devDeleteButton = developerModeEnabled
+          ? `<div class="mapping-card-actions"><button type="button" class="pill pill-danger dev-delete-import-entry" aria-label=\"Importierte Einnahme aus import-draft.json entfernen\">Aus import-draft entfernen (Dev)</button></div>`
+          : "";
+        return `
+          <article class="mapping-card" data-mapping-card-kind="imports-income" data-mapping-card-id="${encodeURIComponent(entry.id)}">
+            <div class="mapping-card-head">
+              <div>
+                <strong>${incomeStreamLabel(importDraft, entry.incomeStreamId)}</strong>
+                <p>${entry.entryDate} · ${euro.format(entry.amount)}</p>
+              </div>
+              ${devDeleteButton}
+            </div>
             <p class="mapping-source">${sourcePreview(entry.notes)}</p>
           </article>
-        `).join("")
+        `;
+      }).join("")
       : `<p class="empty-state">Keine importierten Einnahmen in diesem Monat.</p>`;
   }
 
   if (importedExpenseTarget) {
     const importedExpenses = review.expenseEntries.filter((entry) => !isManualExpenseEntry(entry));
     importedExpenseTarget.innerHTML = importedExpenses.length > 0
-      ? importedExpenses.map((entry) => `
-          <article class="mapping-card">
-            <strong>${entry.description}</strong>
-            <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${expenseCategoryLabel(importDraft, entry.expenseCategoryId)}</p>
+      ? importedExpenses.map((entry) => {
+        const devDeleteButton = developerModeEnabled
+          ? `<div class="mapping-card-actions"><button type="button" class="pill pill-danger dev-delete-import-entry" aria-label=\"Importierte Ausgabe aus import-draft.json entfernen\">Aus import-draft entfernen (Dev)</button></div>`
+          : "";
+        return `
+          <article class="mapping-card" data-mapping-card-kind="imports-expense" data-mapping-card-id="${encodeURIComponent(entry.id)}">
+            <div class="mapping-card-head">
+              <div>
+                <strong>${entry.description}</strong>
+                <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${expenseCategoryLabel(importDraft, entry.expenseCategoryId)}</p>
+              </div>
+              ${devDeleteButton}
+            </div>
             <p class="mapping-source">${sourcePreview(entry.notes)}</p>
           </article>
-        `).join("")
+        `;
+      }).join("")
       : `<p class="empty-state">Keine importierten Ausgaben in diesem Monat.</p>`;
+  }
+
+  if (developerModeEnabled && typeof performDevImportEntryDeleteIfConfirmed === "function") {
+    for (const target of [importedIncomeTarget, importedExpenseTarget]) {
+      if (!target) {
+        continue;
+      }
+
+      const cards = target.querySelectorAll("article.mapping-card[data-mapping-card-kind^=\"imports-\"]");
+      for (const card of cards) {
+        const encodedId = card.getAttribute("data-mapping-card-id");
+        const scope = card.getAttribute("data-mapping-card-kind");
+
+        if (!(scope === "imports-income" || scope === "imports-expense") || encodedId == null) {
+          continue;
+        }
+
+        let resolvedEntryId;
+        try {
+          resolvedEntryId = decodeURIComponent(encodedId);
+        } catch (_error) {
+          continue;
+        }
+
+        const kind = scope === "imports-income" ? "income" : "expense";
+        const labelCell = card.querySelector(".mapping-card-head strong");
+        const detailCell = card.querySelector(".mapping-card-head p");
+
+        let confirmationSummary;
+        if (labelCell instanceof HTMLElement && detailCell instanceof HTMLElement) {
+          confirmationSummary = `${labelCell.textContent ?? ""} · ${detailCell.textContent ?? ""}`.trim();
+        } else {
+          confirmationSummary = resolvedEntryId;
+        }
+
+        const button = card.querySelector("button.dev-delete-import-entry");
+
+        if (!(button instanceof HTMLElement)) {
+          continue;
+        }
+
+        button.onclick = () =>
+          performDevImportEntryDeleteIfConfirmed({
+            kind,
+            id: resolvedEntryId,
+            confirmationSummary,
+          });
+      }
+    }
   }
 
   renderEntryMappings(importDraft, review);

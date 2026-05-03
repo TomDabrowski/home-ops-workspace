@@ -739,6 +739,64 @@ const {
   showStatus,
 });
 
+async function performDevImportEntryDeleteIfConfirmed(meta) {
+  const { kind, id, confirmationSummary } = meta;
+  if (
+    !confirmAction(
+      `Developer-Modus: Diese importierte Zeile wird dauerhaft aus import-draft.json gelöscht (Review-Artefakte werden neu erzeugt).\n\n${confirmationSummary}\n\nFortfahren?`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/dev/remove-import-draft-entry", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ kind, id }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    const errorCode = typeof body.error === "string" ? body.error : "";
+
+    if (response.ok) {
+      await refreshFinanceView({
+        title: "Importierte Entwurfzeile entfernt",
+        detail: "Die Änderung steht in import-draft.json; reviewed Dateien wurden neu erzeugt.",
+        tone: "success",
+      });
+      return;
+    }
+
+    if (response.status === 403 && errorCode === "dev_import_tools_disabled") {
+      showStatus(
+        "Developer-Löschen nicht aktiv",
+        "Um diese Aktion auszuführen, die App mit HOME_OPS_FINANCE_DEV_IMPORT_TOOLS=1 starten.",
+        "warn",
+      );
+      return;
+    }
+
+    showStatus(
+      "Developer-Löschen fehlgeschlagen",
+      errorCode === "entry_not_found"
+        ? `Kein Eintrag mit dieser Id in import-draft.json (${id}). Liste neu laden oder anderen Eintrag probieren.`
+        : errorCode === "entry_is_manual_override"
+          ? "Zeile gilt als manueller Istwert. Bitte im passenden Overrides-Workspace entfernen."
+          : typeof body.detail === "string" && body.detail.trim()
+            ? body.detail.trim()
+            : errorCode.trim() !== ""
+              ? errorCode
+              : `HTTP ${response.status}`,
+      "warn",
+    );
+  } catch (error) {
+    showStatus("Netzwerkfehler beim Löschen", error instanceof Error ? error.message : String(error), "warn");
+  }
+}
+
 function renderMonthlyExpenseEditor(importDraft, monthKey) {
   renderMonthlyExpenseEditorView(importDraft, monthKey, {
     manualExpensesForMonth,
@@ -886,6 +944,8 @@ function renderImportsWorkspace(importDraft, review) {
     isManualExpenseEntry,
     expenseCategoryLabel,
     renderEntryMappings,
+    developerModeEnabled: readDeveloperMode(),
+    performDevImportEntryDeleteIfConfirmed,
   });
 }
 
