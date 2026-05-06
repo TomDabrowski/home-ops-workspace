@@ -23,6 +23,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
 
   const currentAgeInput = document.getElementById("plannerCurrentAge");
   const targetAgeInput = document.getElementById("plannerTargetAge");
+  const replacementRateInput = document.getElementById("plannerReplacementRate");
   const retirementSpendInput = document.getElementById("plannerRetirementSpend");
   const withdrawalRateInput = document.getElementById("plannerWithdrawalRate");
   const inflationRateInput = document.getElementById("plannerInflationRate");
@@ -32,6 +33,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   const musicGrowthRateInput = document.getElementById("plannerMusicGrowthRate");
   const musicTaxRateInput = document.getElementById("plannerMusicTaxRate");
   const minimumMusicGrossPerMonthInput = document.getElementById("plannerMinimumMusicGrossPerMonth");
+  const replacementRatePresetButtons = [...document.querySelectorAll("[data-replacement-rate-preset]")];
   const applyButton = document.getElementById("applyRetirementPlannerButton");
   const errorBox = document.getElementById("plannerErrorBox");
   const assumptionsTarget = document.getElementById("plannerAssumptions");
@@ -48,6 +50,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   if (
     !currentAgeInput ||
     !targetAgeInput ||
+    !replacementRateInput ||
     !retirementSpendInput ||
     !withdrawalRateInput ||
     !inflationRateInput ||
@@ -76,6 +79,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   const plannerSettings = readPlannerSettings(monthlyPlan);
   currentAgeInput.value = plannerSettings.currentAge;
   targetAgeInput.value = plannerSettings.targetAge;
+  replacementRateInput.value = plannerSettings.replacementRate;
   retirementSpendInput.value = plannerSettings.retirementSpend;
   withdrawalRateInput.value = plannerSettings.withdrawalRate;
   inflationRateInput.value = plannerSettings.inflationRate;
@@ -85,6 +89,10 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   musicGrowthRateInput.value = plannerSettings.musicGrowthRate;
   musicTaxRateInput.value = plannerSettings.musicTaxRate;
   minimumMusicGrossPerMonthInput.value = plannerSettings.minimumMusicGrossPerMonth;
+  for (const button of replacementRatePresetButtons) {
+    const preset = Number(button.getAttribute("data-replacement-rate-preset"));
+    button.classList.toggle("is-active", Number.isFinite(preset) && preset === Number(plannerSettings.replacementRate));
+  }
 
   function setPlannerError(messages = []) {
     if (messages.length === 0) {
@@ -124,10 +132,45 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     return `${age.toFixed(1).replace(".", ",")} Jahre`;
   }
 
+  function firstSafeRetirementWithoutMusic(simulation, input) {
+    const {
+      replacementRate,
+      currentNetSalary,
+      inflationRate,
+      withdrawalRate,
+      currentAge,
+      startMonthKey,
+    } = input;
+    if (!Array.isArray(simulation) || simulation.length === 0 || currentNetSalary <= 0 || withdrawalRate <= 0) {
+      return null;
+    }
+
+    const spendNow = currentNetSalary * (replacementRate / 100);
+    const monthlyWithdrawalRate = withdrawalRate / 100;
+    for (let index = 0; index < simulation.length; index += 1) {
+      const row = simulation[index];
+      const yearsFromStart = index / 12;
+      const spendAtMonth = spendNow * Math.pow(1 + inflationRate / 100, yearsFromStart);
+      const requiredNestEggAtMonth = (spendAtMonth * 12) / monthlyWithdrawalRate;
+      if ((row.wealthEndAmount ?? 0) >= requiredNestEggAtMonth) {
+        const age = ageAtMonth(startMonthKey, currentAge, row.monthKey);
+        return {
+          monthKey: row.monthKey,
+          age,
+          requiredNestEggAtMonth,
+          wealthAmount: row.wealthEndAmount,
+        };
+      }
+    }
+
+    return null;
+  }
+
   function readPlannerFormValues() {
     return {
       currentAge: Number(currentAgeInput.value),
       targetAge: Number(targetAgeInput.value),
+      replacementRate: Number(replacementRateInput.value),
       retirementSpend: Number(retirementSpendInput.value),
       withdrawalRate: Number(withdrawalRateInput.value),
       inflationRate: Number(inflationRateInput.value),
@@ -151,8 +194,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     if (Number.isFinite(raw.currentAge) && Number.isFinite(raw.targetAge) && raw.targetAge < raw.currentAge) {
       messages.push("`Zielalter Rente` darf nicht kleiner sein als `Aktuelles Alter`.");
     }
-    if (!Number.isFinite(raw.retirementSpend) || raw.retirementSpend < 0) {
-      messages.push("`Bedarf pro Monat in Rente` muss 0 oder größer sein.");
+    if (!Number.isFinite(raw.replacementRate) || raw.replacementRate < 40 || raw.replacementRate > 120) {
+      messages.push("`Bedarf in Rente (% vom Netto)` muss zwischen 40 und 120 liegen.");
     }
     if (!Number.isFinite(raw.withdrawalRate) || raw.withdrawalRate <= 0 || raw.withdrawalRate > 10) {
       messages.push("`Entnahmerate` muss größer als 0 und höchstens 10 sein.");
@@ -194,6 +237,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     const settings = {
       currentAge: raw.currentAge,
       targetAge: raw.targetAge,
+      replacementRate: raw.replacementRate,
       retirementSpend: raw.retirementSpend,
       withdrawalRate: raw.withdrawalRate,
       inflationRate: raw.inflationRate,
@@ -207,7 +251,14 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     writePlannerSettings(settings);
     currentAgeInput.value = settings.currentAge;
     targetAgeInput.value = settings.targetAge;
+    replacementRateInput.value = settings.replacementRate;
 
+    const forecastRows = futureForecastRows(monthlyPlan);
+    const nowMonthKey = currentMonthKey() ?? "2026-03";
+    const firstForecastMonthKey =
+      forecastRows.find((row) => row.monthKey >= nowMonthKey)?.monthKey ??
+      forecastRows[0]?.monthKey ??
+      "2026-03";
     const plannerAssumptions = {
       inflationRate: settings.inflationRate,
       salaryGrowthRate: settings.salaryGrowthRate,
@@ -215,10 +266,12 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       expenseGrowthRate: settings.expenseGrowthRate,
       musicGrowthRate: settings.musicGrowthRate,
       musicTaxRate: settings.musicTaxRate,
+      startMonthKey: firstForecastMonthKey,
     };
-    const firstForecastMonthKey = futureForecastRows(monthlyPlan)[0]?.monthKey ?? "2026-03";
     const targetMonthKey = targetMonthFromAges(settings.currentAge, settings.targetAge, firstForecastMonthKey);
     const retirementMonths = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
+    const maxAgeMonthKey = targetMonthFromAges(settings.currentAge, 90, firstForecastMonthKey);
+    const safetyHorizonMonths = monthsUntilInclusive(firstForecastMonthKey, maxAgeMonthKey);
     const noMusicSimulation = simulateForecast(importDraft, monthlyPlan, {
       months: retirementMonths,
       ...plannerAssumptions,
@@ -230,9 +283,30 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       constantMusicGrossPerMonth: settings.minimumMusicGrossPerMonth,
     });
     const targetYears = Math.max(0, settings.targetAge - settings.currentAge);
+    const currentWealth = noMusicSimulation[0]
+      ? noMusicSimulation[0].safetyStartAmount + noMusicSimulation[0].investmentStartAmount
+      : 0;
+    const currentNetSalary = noMusicSimulation[0]?.netSalaryAmount ?? 0;
+    const retirementSpendNow = currentNetSalary * (settings.replacementRate / 100);
+    retirementSpendInput.value = String(Math.round(retirementSpendNow));
+    settings.retirementSpend = retirementSpendNow;
+    writePlannerSettings(settings);
     const retirementSpendAtTarget =
-      settings.retirementSpend * Math.pow(1 + settings.inflationRate / 100, targetYears);
+      retirementSpendNow * Math.pow(1 + settings.inflationRate / 100, targetYears);
     const requiredNestEgg = (retirementSpendAtTarget * 12) / (settings.withdrawalRate / 100);
+    const noMusicSafetySimulation = simulateForecast(importDraft, monthlyPlan, {
+      months: safetyHorizonMonths,
+      ...plannerAssumptions,
+      constantMusicGrossPerMonth: 0,
+    });
+    const safeWithoutMusic = firstSafeRetirementWithoutMusic(noMusicSafetySimulation, {
+      replacementRate: settings.replacementRate,
+      currentNetSalary,
+      inflationRate: settings.inflationRate,
+      withdrawalRate: settings.withdrawalRate,
+      currentAge: settings.currentAge,
+      startMonthKey: firstForecastMonthKey,
+    });
     const targetRun = requiredConstantMusicForTarget(
       importDraft,
       monthlyPlan,
@@ -245,9 +319,15 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     const baselineRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, baselineAtTarget?.monthKey);
     const minimumMusicRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, minimumMusicAtTarget?.monthKey);
     const milestoneRows = wealthMilestones(noMusicSimulation, requiredNestEgg);
-    const currentWealth = noMusicSimulation[0]
-      ? noMusicSimulation[0].safetyStartAmount + noMusicSimulation[0].investmentStartAmount
+    const retirementSpendShareOfCurrentNet = currentNetSalary > 0
+      ? (retirementSpendAtTarget / currentNetSalary) * 100
       : 0;
+    const replacementRates = [70, 76, 90];
+    const replacementTargets = replacementRates.map((rate) => {
+      const monthlySpendAtTarget = currentNetSalary * (rate / 100) * Math.pow(1 + settings.inflationRate / 100, targetYears);
+      const nestEgg = (monthlySpendAtTarget * 12) / (settings.withdrawalRate / 100);
+      return { rate, monthlySpendAtTarget, nestEgg };
+    });
     const latestProjectedWealth = noMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
     const latestMinimumMusicWealth = musicScenarioSimulation.at(-1)?.wealthEndAmount ?? 0;
     const constantMusicNeeded = targetRun?.constantMusicGrossPerMonth ?? 0;
@@ -274,7 +354,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     );
 
     assumptionsTarget.textContent =
-      `Annahmen gerade aktiv: Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. In diesem Reiter bedeutet 'ohne Musik' wirklich ab jetzt 0 € Musik, und 'mit Musik' rechnet mit ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat im Szenario. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
+      `Annahmen gerade aktiv: Startmonat ${formatMonthLabel(firstForecastMonthKey)}, Inflation ${settings.inflationRate.toFixed(1)} %, Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen und sonstige Kosten +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer konservativ ${settings.musicTaxRate.toFixed(1)} %. In diesem Reiter bedeutet 'ohne Musik' wirklich ab jetzt 0 € Musik, und 'mit Musik' rechnet mit ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat im Szenario. Dieser Reiter rechnet nur bis zum Zielmonat der Rente; danach wird hier bewusst kein weiteres Arbeitsgehalt mehr fortgeschrieben.`;
     retirementProjectionMetaTarget.textContent =
       `Berechnung aktuell: Inflation ${settings.inflationRate.toFixed(1)} % p.a., Gehalt +${settings.salaryGrowthRate.toFixed(1)} % p.a., Miete +${settings.rentGrowthRate.toFixed(1)} % p.a., Versicherungen & Sonstiges +${settings.expenseGrowthRate.toFixed(1)} % p.a., Musik +${settings.musicGrowthRate.toFixed(1)} % p.a., Musiksteuer ${settings.musicTaxRate.toFixed(1)} %, ohne Musik = ab jetzt 0 € und mit Musik-Szenario = ${euro.format(settings.minimumMusicGrossPerMonth)} brutto pro Monat, Investment-Ertrag 6,0 % p.a.`;
 
@@ -298,13 +378,24 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       {
         label: "Bedarf in Zieljahren",
         value: euro.format(retirementSpendAtTarget),
-        formula: `${euro.format(settings.retirementSpend)} * Inflation bis Zielalter = ${euro.format(retirementSpendAtTarget)}`,
+        formula: `${settings.replacementRate.toFixed(0)} % von ${euro.format(currentNetSalary)} * Inflation bis Zielalter = ${euro.format(retirementSpendAtTarget)}`,
       },
       {
         label: "Nest Egg noetig",
         value: euro.format(requiredNestEgg),
         formula: `(${euro.format(retirementSpendAtTarget)} * 12) / ${settings.withdrawalRate.toFixed(1)} % = ${euro.format(requiredNestEgg)}`,
       },
+      [
+        "Sicher ohne Musik in Rente",
+        safeWithoutMusic
+          ? `${formatAgeLabel(safeWithoutMusic.age)} (${formatMonthLabel(safeWithoutMusic.monthKey)})`
+          : "Nicht bis Alter 90",
+      ],
+      ["Rentenbedarf vs. aktuelles Netto", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} %`],
+      ...replacementTargets.map((item) => [
+        `Nest Egg bei ${item.rate} % Netto`,
+        euro.format(item.nestEgg),
+      ]),
       ["Vermögen im Zielmonat ohne Musik", euro.format(latestProjectedWealth)],
       ["Vermögen im Zielmonat mit Musik-Szenario", euro.format(latestMinimumMusicWealth)],
       ["Musik-Szenario pro Monat", euro.format(settings.minimumMusicGrossPerMonth)],
@@ -403,7 +494,16 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     retirementSummaryTarget.innerHTML = renderDetailEntries([
       ["Heute", `${settings.currentAge.toFixed(0)} Jahre`],
       ["Zielalter", `${settings.targetAge.toFixed(0)} Jahre`],
+      ["Netto-Ersatzquote", `${settings.replacementRate.toFixed(0)} %`],
+      ["Projektionsstart", formatMonthLabel(firstForecastMonthKey)],
       ["Zielmonat", formatMonthLabel(targetMonthKey)],
+      [
+        "Sicher ohne Musik in Rente",
+        safeWithoutMusic
+          ? `${formatAgeLabel(safeWithoutMusic.age)} (${formatMonthLabel(safeWithoutMusic.monthKey)})`
+          : "Nicht bis Alter 90",
+      ],
+      ["Bedarf als Anteil vom Netto", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} %`],
       ["Musik-Szenario", euro.format(settings.minimumMusicGrossPerMonth)],
       ["Ziel mit Musik-Szenario", minimumMusicAtTarget ? formatMonthLabel(minimumMusicAtTarget.monthKey) : "Noch nicht erreicht"],
       ["Konstante Musik nötig", euro.format(constantMusicNeeded)],
@@ -502,5 +602,24 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   } catch (error) {
     console.error(error);
     setPlannerError(["Die gespeicherten Rentenwerte konnten nicht geladen werden. Bitte Eingaben prüfen und mit `Werte übernehmen` neu rechnen."]);
+  }
+
+  for (const button of replacementRatePresetButtons) {
+    button.addEventListener("click", () => {
+      const value = Number(button.getAttribute("data-replacement-rate-preset"));
+      if (!Number.isFinite(value)) {
+        return;
+      }
+      replacementRateInput.value = String(value);
+      for (const presetButton of replacementRatePresetButtons) {
+        presetButton.classList.toggle("is-active", presetButton === button);
+      }
+      try {
+        update();
+      } catch (error) {
+        console.error(error);
+        setPlannerError(["Die Rentenberechnung konnte mit dem Preset nicht aktualisiert werden. Bitte erneut versuchen."]);
+      }
+    });
   }
 }

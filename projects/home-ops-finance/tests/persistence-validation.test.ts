@@ -17,6 +17,10 @@ test("parses persisted mapping state and keeps optional fields", () => {
       accountId: "giro",
       reviewed: true,
       updatedAt: "2026-03-25T08:00:00.000Z",
+      amount: 88.5,
+      entryDate: "2026-03-12",
+      description: "Nachbearbeitet",
+      notes: "Quelle geprüft",
     },
   });
 
@@ -26,6 +30,10 @@ test("parses persisted mapping state and keeps optional fields", () => {
       accountId: "giro",
       reviewed: true,
       updatedAt: "2026-03-25T08:00:00.000Z",
+      amount: 88.5,
+      entryDate: "2026-03-12",
+      description: "Nachbearbeitet",
+      notes: "Quelle geprüft",
     },
   });
 });

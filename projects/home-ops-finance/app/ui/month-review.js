@@ -72,11 +72,25 @@ export function renderMonthSourceStats(review, deps) {
   `);
 }
 
+function incomeEntryDateForDatetimeLocal(value) {
+  const raw = String(value ?? "");
+  if (raw.length >= 16) {
+    return raw.slice(0, 16);
+  }
+  if (raw.length >= 10) {
+    return `${raw.slice(0, 10)}T12:00`;
+  }
+  return "";
+}
+
 export function renderMonthIncomeList(importDraft, review, deps) {
   const {
+    listTargetId = "monthUnifiedIncomeList",
+    incomeListScope = "month",
+    incomeEntryFilter,
     isManualMusicIncomeEntry,
-    getExpandedMonthIncomeId,
-    setExpandedMonthIncomeId,
+    getExpandedMonthIncomeKey,
+    setExpandedMonthIncomeKey,
     incomeStreamLabel,
     euro,
     unifiedEntrySourceLabel,
@@ -89,25 +103,35 @@ export function renderMonthIncomeList(importDraft, review, deps) {
     musicIncomeProfileForMonth,
     roundCurrency,
     saveMonthlyMusicIncomeOverrides,
+    saveImportedIncomeMappingCorrection,
+    buildCategoryOptions,
+    optionMarkup,
+    accountOptions,
     refreshFinanceView,
     statusDetailForMode,
     confirmAction,
   } = deps;
 
-  const target = document.getElementById("monthUnifiedIncomeList");
+  const expandToken = (id) => `${incomeListScope}/${id}`;
+  const target = document.getElementById(listTargetId);
   if (!target) {
     return;
   }
 
-  const entries = [...review.incomeEntries].sort((left, right) => String(left.entryDate).localeCompare(String(right.entryDate)));
+  const rawEntries = [...review.incomeEntries];
+  const entries = (typeof incomeEntryFilter === "function" ? rawEntries.filter(incomeEntryFilter) : rawEntries).sort((left, right) =>
+    String(left.entryDate).localeCompare(String(right.entryDate)),
+  );
   if (entries.length === 0) {
     target.innerHTML = `<p class="empty-state">Keine Einnahmen für diesen Monat.</p>`;
     return;
   }
 
+  const incomeStreamOptions = buildCategoryOptions(importDraft.incomeStreams ?? []);
+
   target.innerHTML = entries.map((entry) => {
     const isManual = isManualMusicIncomeEntry(entry);
-    const expanded = getExpandedMonthIncomeId() === entry.id;
+    const expanded = getExpandedMonthIncomeKey() === expandToken(entry.id);
     const label = incomeStreamLabel(importDraft, entry.incomeStreamId);
     return `
       <article class="mapping-card ${expanded ? "is-expanded" : ""}">
@@ -117,7 +141,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
             <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${unifiedEntrySourceLabel(entry, "income")}</p>
           </div>
           <div class="filter-group">
-            <button class="pill" type="button" data-month-income-toggle="${entry.id}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Details"}</button>
+            <button class="pill" type="button" data-month-income-toggle="${entry.id}" data-income-list-scope="${escapeHtml(incomeListScope)}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Bearbeiten"}</button>
           </div>
         </div>
         ${expanded ? (
@@ -142,7 +166,34 @@ export function renderMonthIncomeList(importDraft, review, deps) {
                 <button class="pill pill-danger" type="button" data-month-income-delete="${entry.id}">Löschen</button>
               </div>
             `
-            : `<p class="mapping-source">${sourcePreview(entry.notes)}</p>`
+            : `
+              <div class="mapping-fields month-inline-form">
+                <label class="select-wrap">
+                  <span>Einnahme-Kategorie</span>
+                  <select data-import-income-stream="${entry.id}">${optionMarkup(incomeStreamOptions, entry.incomeStreamId)}</select>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Betrag brutto</span>
+                  <input type="number" min="0" step="0.01" data-import-income-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Datum / Zeit</span>
+                  <input type="datetime-local" data-import-income-entrydate="${entry.id}" value="${escapeHtml(incomeEntryDateForDatetimeLocal(entry.entryDate))}">
+                </label>
+                <label class="select-wrap">
+                  <span>Zielkonto</span>
+                  <select data-import-income-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                </label>
+                <label class="select-wrap planner-span-two">
+                  <span>Notiz</span>
+                  <input type="text" data-import-income-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}">
+                </label>
+              </div>
+              <p class="mapping-source">Änderungen landen in den Import-Mappings (Projektdatei oder Browser-Fallback) und überschreiben die importierte Zeile für diese Ansicht.</p>
+              <div class="filter-group">
+                <button class="pill is-active" type="button" data-import-income-save="${entry.id}">Speichern</button>
+              </div>
+            `
         ) : ""}
       </article>
     `;
@@ -151,7 +202,9 @@ export function renderMonthIncomeList(importDraft, review, deps) {
   for (const button of target.querySelectorAll("[data-month-income-toggle]")) {
     button.addEventListener("click", () => {
       const id = button.getAttribute("data-month-income-toggle");
-      setExpandedMonthIncomeId(getExpandedMonthIncomeId() === id ? null : id);
+      const scope = button.getAttribute("data-income-list-scope") || "month";
+      const token = `${scope}/${id}`;
+      setExpandedMonthIncomeKey(getExpandedMonthIncomeKey() === token ? null : token);
       rerenderSelectedMonthContext();
     });
   }
@@ -199,7 +252,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
         return item.id === id ? { ...item, isActive: false, updatedAt: nextEntry.updatedAt } : item;
       });
       const result = await saveMonthlyMusicIncomeOverrides(nextState);
-      setExpandedMonthIncomeId(null);
+      setExpandedMonthIncomeKey(null);
       await refreshFinanceView({
         title: "Musik-Istwert aktualisiert",
         detail: `${statusDetailForMode(result.mode)} ${euro.format(amount)} netto gespeichert.`,
@@ -220,9 +273,52 @@ export function renderMonthIncomeList(importDraft, review, deps) {
         item.id === id ? { ...item, isActive: false, updatedAt: new Date().toISOString() } : item,
       );
       const result = await saveMonthlyMusicIncomeOverrides(nextState);
-      setExpandedMonthIncomeId(null);
+      setExpandedMonthIncomeKey(null);
       await refreshFinanceView({
         title: "Musik-Istwert gelöscht",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  for (const button of target.querySelectorAll("[data-import-income-save]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-import-income-save");
+      const entry = entries.find((item) => item.id === id);
+      if (!entry) {
+        return;
+      }
+
+      const incomeStreamId = target.querySelector(`[data-import-income-stream="${id}"]`)?.value;
+      const amount = Number(target.querySelector(`[data-import-income-amount="${id}"]`)?.value);
+      let entryDate = target.querySelector(`[data-import-income-entrydate="${id}"]`)?.value?.trim() ?? "";
+      const accountId = target.querySelector(`[data-import-income-account="${id}"]`)?.value || "giro";
+      const notes = target.querySelector(`[data-import-income-notes="${id}"]`)?.value?.trim() ?? "";
+
+      if (!incomeStreamId || !Number.isFinite(amount) || amount <= 0) {
+        showStatus("Einnahme unvollständig", "Bitte Kategorie und einen positiven Betrag eintragen.", "warn");
+        return;
+      }
+      if (!entryDate) {
+        showStatus("Einnahme unvollständig", "Bitte Datum und Uhrzeit setzen.", "warn");
+        return;
+      }
+
+      if (entryDate.length === 16) {
+        entryDate = `${entryDate}:00`;
+      }
+
+      const result = await saveImportedIncomeMappingCorrection(entry, {
+        incomeStreamId,
+        amount,
+        entryDate,
+        accountId,
+        notes,
+      });
+      setExpandedMonthIncomeKey(null);
+      await refreshFinanceView({
+        title: "Importierte Einnahme angepasst",
         detail: statusDetailForMode(result.mode),
         tone: result.mode === "project" ? "success" : "warn",
       });
@@ -232,9 +328,12 @@ export function renderMonthIncomeList(importDraft, review, deps) {
 
 export function renderMonthExpenseList(importDraft, review, deps) {
   const {
+    listTargetId = "monthUnifiedExpenseList",
+    expenseListScope = "month",
+    expenseEntryFilter,
     isManualExpenseEntry,
-    getExpandedMonthExpenseId,
-    setExpandedMonthExpenseId,
+    getExpandedMonthExpenseKey,
+    setExpandedMonthExpenseKey,
     euro,
     expenseCategoryLabel,
     unifiedEntrySourceLabel,
@@ -248,17 +347,22 @@ export function renderMonthExpenseList(importDraft, review, deps) {
     showStatus,
     monthFromDate,
     saveMonthlyExpenseOverrides,
+    saveImportedExpenseMappingCorrection,
     refreshFinanceView,
     statusDetailForMode,
     confirmAction,
   } = deps;
 
-  const target = document.getElementById("monthUnifiedExpenseList");
+  const expandToken = (id) => `${expenseListScope}/${id}`;
+  const target = document.getElementById(listTargetId);
   if (!target) {
     return;
   }
 
-  const entries = [...review.expenseEntries].sort((left, right) => String(left.entryDate).localeCompare(String(right.entryDate)));
+  const rawEntries = [...review.expenseEntries];
+  const entries = (typeof expenseEntryFilter === "function" ? rawEntries.filter(expenseEntryFilter) : rawEntries).sort((left, right) =>
+    String(left.entryDate).localeCompare(String(right.entryDate)),
+  );
   if (entries.length === 0) {
     target.innerHTML = `<p class="empty-state">Keine Ausgaben für diesen Monat.</p>`;
     return;
@@ -266,7 +370,8 @@ export function renderMonthExpenseList(importDraft, review, deps) {
 
   target.innerHTML = entries.map((entry) => {
     const isManual = isManualExpenseEntry(entry);
-    const expanded = getExpandedMonthExpenseId() === entry.id;
+    const expanded = getExpandedMonthExpenseKey() === expandToken(entry.id);
+    const entryDateValue = String(entry.entryDate ?? "").slice(0, 10);
     return `
       <article class="mapping-card ${expanded ? "is-expanded" : ""}">
         <div class="mapping-card-head">
@@ -275,7 +380,7 @@ export function renderMonthExpenseList(importDraft, review, deps) {
             <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${expenseCategoryLabel(importDraft, entry.expenseCategoryId)} · ${unifiedEntrySourceLabel(entry, "expense")}</p>
           </div>
           <div class="filter-group">
-            <button class="pill" type="button" data-month-expense-toggle="${entry.id}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Details"}</button>
+            <button class="pill" type="button" data-month-expense-toggle="${entry.id}" data-expense-list-scope="${escapeHtml(expenseListScope)}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Bearbeiten"}</button>
           </div>
         </div>
         ${expanded ? (
@@ -292,7 +397,7 @@ export function renderMonthExpenseList(importDraft, review, deps) {
                 </label>
                 <label class="select-wrap">
                   <span>Datum</span>
-                  <input type="date" data-month-expense-date="${entry.id}" value="${escapeHtml(entry.entryDate)}">
+                  <input type="date" data-month-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}">
                 </label>
                 <label class="select-wrap">
                   <span>Kategorie</span>
@@ -312,7 +417,38 @@ export function renderMonthExpenseList(importDraft, review, deps) {
                 <button class="pill pill-danger" type="button" data-month-expense-delete="${entry.id}">Löschen</button>
               </div>
             `
-            : `<p class="mapping-source">${sourcePreview(entry.notes)}</p>`
+            : `
+              <div class="mapping-fields month-inline-form">
+                <label class="select-wrap">
+                  <span>Beschreibung</span>
+                  <input type="text" data-import-expense-description="${entry.id}" value="${escapeHtml(entry.description)}">
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Betrag</span>
+                  <input type="number" min="0" step="0.01" data-import-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Datum</span>
+                  <input type="date" data-import-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Kategorie</span>
+                  <select data-import-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</select>
+                </label>
+                <label class="select-wrap">
+                  <span>Konto</span>
+                  <select data-import-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                </label>
+                <label class="select-wrap">
+                  <span>Notiz</span>
+                  <input type="text" data-import-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}">
+                </label>
+              </div>
+              <p class="mapping-source">Änderungen landen in den Import-Mappings (Projektdatei oder Browser-Fallback) und überschreiben die importierte Zeile für diese Ansicht.</p>
+              <div class="filter-group">
+                <button class="pill is-active" type="button" data-import-expense-save="${entry.id}">Speichern</button>
+              </div>
+            `
         ) : ""}
       </article>
     `;
@@ -321,7 +457,9 @@ export function renderMonthExpenseList(importDraft, review, deps) {
   for (const button of target.querySelectorAll("[data-month-expense-toggle]")) {
     button.addEventListener("click", () => {
       const id = button.getAttribute("data-month-expense-toggle");
-      setExpandedMonthExpenseId(getExpandedMonthExpenseId() === id ? null : id);
+      const scope = button.getAttribute("data-expense-list-scope") || "month";
+      const token = `${scope}/${id}`;
+      setExpandedMonthExpenseKey(getExpandedMonthExpenseKey() === token ? null : token);
       rerenderSelectedMonthContext();
     });
   }
@@ -359,7 +497,7 @@ export function renderMonthExpenseList(importDraft, review, deps) {
 
       const nextState = readMonthlyExpenseOverrides().map((item) => (item.id === id ? nextEntry : item));
       const result = await saveMonthlyExpenseOverrides(nextState);
-      setExpandedMonthExpenseId(null);
+      setExpandedMonthExpenseKey(null);
       await refreshFinanceView({
         title: "Monatsausgabe aktualisiert",
         detail: statusDetailForMode(result.mode),
@@ -380,9 +518,46 @@ export function renderMonthExpenseList(importDraft, review, deps) {
         item.id === id ? { ...item, isActive: false, updatedAt: new Date().toISOString() } : item,
       );
       const result = await saveMonthlyExpenseOverrides(nextState);
-      setExpandedMonthExpenseId(null);
+      setExpandedMonthExpenseKey(null);
       await refreshFinanceView({
         title: "Monatsausgabe gelöscht",
+        detail: statusDetailForMode(result.mode),
+        tone: result.mode === "project" ? "success" : "warn",
+      });
+    });
+  }
+
+  for (const button of target.querySelectorAll("[data-import-expense-save]")) {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-import-expense-save");
+      const entry = entries.find((item) => item.id === id);
+      if (!entry) {
+        return;
+      }
+
+      const description = target.querySelector(`[data-import-expense-description="${id}"]`)?.value?.trim() ?? "";
+      const amount = Number(target.querySelector(`[data-import-expense-amount="${id}"]`)?.value);
+      const entryDate = target.querySelector(`[data-import-expense-date="${id}"]`)?.value || entry.entryDate;
+      const expenseCategoryId = target.querySelector(`[data-import-expense-category="${id}"]`)?.value || "other";
+      const accountId = target.querySelector(`[data-import-expense-account="${id}"]`)?.value || "giro";
+      const notes = target.querySelector(`[data-import-expense-notes="${id}"]`)?.value?.trim() ?? "";
+
+      if (!description || !Number.isFinite(amount) || amount <= 0) {
+        showStatus("Ausgabe unvollständig", "Bitte Beschreibung und positiven Betrag eintragen.", "warn");
+        return;
+      }
+
+      const result = await saveImportedExpenseMappingCorrection(entry, {
+        description,
+        amount,
+        entryDate,
+        expenseCategoryId,
+        accountId,
+        notes,
+      });
+      setExpandedMonthExpenseKey(null);
+      await refreshFinanceView({
+        title: "Importierte Ausgabe angepasst",
         detail: statusDetailForMode(result.mode),
         tone: result.mode === "project" ? "success" : "warn",
       });

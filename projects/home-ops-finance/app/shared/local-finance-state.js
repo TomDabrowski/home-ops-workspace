@@ -18,7 +18,91 @@ export function createLocalFinanceStateTools(deps) {
     readWealthSnapshots,
     readSalarySettings,
     readBaselineOverrides,
+    readMappingState,
   } = deps;
+
+  function applyImportMappingEntryPatches(importDraft, mappings) {
+    if (!mappings || typeof mappings !== "object" || !importDraft) {
+      return importDraft;
+    }
+
+    const expenseCategoryById = new Map((importDraft.expenseCategories ?? []).map((category) => [category.id, category]));
+
+    const incomeEntries = (importDraft.incomeEntries ?? []).map((entry) => {
+      const mapping = mappings[entry.id];
+      if (!mapping) {
+        return entry;
+      }
+
+      let next = { ...entry };
+      if (typeof mapping.amount === "number" && Number.isFinite(mapping.amount) && mapping.amount >= 0) {
+        next.amount = mapping.amount;
+      }
+      if (typeof mapping.entryDate === "string" && mapping.entryDate.trim()) {
+        next.entryDate = mapping.entryDate.trim();
+        if (entry.monthKey !== undefined || next.monthKey !== undefined) {
+          next.monthKey = next.entryDate.slice(0, 7);
+        }
+      }
+      if (typeof mapping.notes === "string") {
+        next.notes = mapping.notes;
+      }
+      if (next.incomeStreamId === "music-income" && typeof mapping.amount === "number" && Number.isFinite(mapping.amount)) {
+        const gross = Number(entry.amount ?? 0);
+        const reserve = Number(entry.reserveAmount ?? 0);
+        const rate = gross > 0 ? reserve / gross : 0;
+        next.reserveAmount = roundCurrency(next.amount * rate);
+        next.availableAmount = roundCurrency(next.amount - next.reserveAmount);
+      }
+      if (mapping.reviewed) {
+        next = {
+          ...next,
+          incomeStreamId: mapping.categoryId ?? next.incomeStreamId,
+          accountId: mapping.accountId ?? next.accountId,
+        };
+      }
+
+      return next;
+    });
+
+    const expenseEntries = (importDraft.expenseEntries ?? []).map((entry) => {
+      const mapping = mappings[entry.id];
+      if (!mapping) {
+        return entry;
+      }
+
+      let next = { ...entry };
+      if (typeof mapping.amount === "number" && Number.isFinite(mapping.amount) && mapping.amount > 0) {
+        next.amount = mapping.amount;
+      }
+      if (typeof mapping.entryDate === "string" && mapping.entryDate.trim()) {
+        next.entryDate = mapping.entryDate.trim().slice(0, 10);
+      }
+      if (typeof mapping.description === "string" && mapping.description.trim()) {
+        next.description = mapping.description.trim();
+      }
+      if (typeof mapping.notes === "string") {
+        next.notes = mapping.notes;
+      }
+      const reviewedExpenseType = mapping.categoryId ? expenseCategoryById.get(mapping.categoryId)?.expenseType : undefined;
+      if (mapping.reviewed) {
+        next = {
+          ...next,
+          expenseCategoryId: mapping.categoryId ? mapping.categoryId : next.expenseCategoryId,
+          accountId: mapping.accountId ?? next.accountId,
+          expenseType: reviewedExpenseType ? reviewedExpenseType : next.expenseType,
+        };
+      }
+
+      return next;
+    });
+
+    return {
+      ...importDraft,
+      incomeEntries,
+      expenseEntries,
+    };
+  }
 
   function selectBaselineLineItemsForMonth(lineItems, monthKey) {
     const currentByKey = new Map();
@@ -1025,10 +1109,14 @@ export function createLocalFinanceStateTools(deps) {
       };
     }
 
+    nextDraft = applyImportMappingEntryPatches(nextDraft, readMappingState());
+
     return nextDraft;
   }
 
   function applyLocalWorkflowState(state) {
+    const priorReportAt = state.draftReport?.generatedAt ?? null;
+    const priorPlanAt = state.monthlyPlan?.generatedAt ?? null;
     const importDraft = mergeClientWorkflowIntoImportDraft(state.importDraft);
     const monthlyPlan = monthlyPlanFromImportDraft(importDraft, state.monthlyPlan);
     const draftReport = draftReportFromImportDraft(importDraft, state.draftReport, monthlyPlan);
@@ -1036,8 +1124,14 @@ export function createLocalFinanceStateTools(deps) {
     return {
       ...state,
       importDraft,
-      draftReport,
-      monthlyPlan,
+      draftReport: {
+        ...draftReport,
+        importBundleGeneratedAt: priorReportAt,
+      },
+      monthlyPlan: {
+        ...monthlyPlan,
+        importBundlePlanGeneratedAt: priorPlanAt,
+      },
     };
   }
 

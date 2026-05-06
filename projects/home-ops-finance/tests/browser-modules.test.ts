@@ -48,7 +48,8 @@ test("planner settings store falls back to derived defaults and persists updates
 
     const defaults = readPlannerSettings(monthlyPlan);
     assert.equal(defaults.retirementSpend, 1700);
-    assert.equal(defaults.withdrawalRate, 4);
+    assert.equal(defaults.replacementRate, 76);
+    assert.equal(defaults.withdrawalRate, 3.5);
 
     writePlannerSettings({
       ...defaults,

@@ -70,6 +70,7 @@ import {
 import { renderHouseholdWorkspace as renderHouseholdWorkspaceView } from "./ui/household-workspace.js";
 import { renderFixedCostPlanner as renderFixedCostPlannerView } from "./ui/fixed-cost-workspace.js";
 import { renderGoalsWorkspace as renderGoalsWorkspaceView } from "./ui/retirement-workspace.js";
+import { renderStatisticsWorkspace as renderStatisticsWorkspaceView } from "./ui/statistics-workspace.js";
 import { buildMonthDataStatus } from "./shared/month-data-status.js";
 import {
   renderBaselineSummaryForMonth as renderBaselineSummaryForMonthView,
@@ -142,8 +143,8 @@ const fallbackAccountOptions = [
   { id: "unknown", label: "Noch offen" },
 ];
 let accountOptions = fallbackAccountOptions;
-let expandedMonthExpenseId = null;
-let expandedMonthIncomeId = null;
+let expandedMonthExpenseKey = null;
+let expandedMonthIncomeKey = null;
 
 const appShell = createAppShellTools({
   activeTabStorageKey,
@@ -228,6 +229,8 @@ const {
   incomeMappingForEntry,
   expenseMappingForEntry,
   saveMappings,
+  saveImportedIncomeMappingCorrection,
+  saveImportedExpenseMappingCorrection,
 } = createReviewStateTools({
   readReconciliationState,
   readMappingState,
@@ -691,6 +694,7 @@ const {
   readWealthSnapshots,
   readSalarySettings,
   readBaselineOverrides,
+  readMappingState,
 });
 
 const {
@@ -827,12 +831,15 @@ function renderMonthSourceStats(review) {
   });
 }
 
-function renderMonthIncomeList(importDraft, review) {
+function renderMonthIncomeList(importDraft, review, listOptions = {}) {
   renderMonthIncomeListView(importDraft, review, {
+    listTargetId: listOptions.listTargetId,
+    incomeListScope: listOptions.incomeListScope,
+    incomeEntryFilter: listOptions.incomeEntryFilter,
     isManualMusicIncomeEntry,
-    getExpandedMonthIncomeId: () => expandedMonthIncomeId,
-    setExpandedMonthIncomeId: (value) => {
-      expandedMonthIncomeId = value;
+    getExpandedMonthIncomeKey: () => expandedMonthIncomeKey,
+    setExpandedMonthIncomeKey: (value) => {
+      expandedMonthIncomeKey = value;
     },
     incomeStreamLabel,
     euro,
@@ -846,18 +853,25 @@ function renderMonthIncomeList(importDraft, review) {
     musicIncomeProfileForMonth,
     roundCurrency,
     saveMonthlyMusicIncomeOverrides,
+    saveImportedIncomeMappingCorrection,
+    buildCategoryOptions,
+    optionMarkup,
+    accountOptions,
     refreshFinanceView,
     statusDetailForMode,
     confirmAction,
   });
 }
 
-function renderMonthExpenseList(importDraft, review) {
+function renderMonthExpenseList(importDraft, review, listOptions = {}) {
   renderMonthExpenseListView(importDraft, review, {
+    listTargetId: listOptions.listTargetId,
+    expenseListScope: listOptions.expenseListScope,
+    expenseEntryFilter: listOptions.expenseEntryFilter,
     isManualExpenseEntry,
-    getExpandedMonthExpenseId: () => expandedMonthExpenseId,
-    setExpandedMonthExpenseId: (value) => {
-      expandedMonthExpenseId = value;
+    getExpandedMonthExpenseKey: () => expandedMonthExpenseKey,
+    setExpandedMonthExpenseKey: (value) => {
+      expandedMonthExpenseKey = value;
     },
     euro,
     expenseCategoryLabel,
@@ -872,6 +886,7 @@ function renderMonthExpenseList(importDraft, review) {
     showStatus,
     monthFromDate,
     saveMonthlyExpenseOverrides,
+    saveImportedExpenseMappingCorrection,
     refreshFinanceView,
     statusDetailForMode,
     confirmAction,
@@ -934,15 +949,19 @@ function renderMusicWorkspace(importDraft, monthlyPlan, monthKey) {
 }
 
 function renderImportsWorkspace(importDraft, review) {
+  renderMonthIncomeList(importDraft, review, {
+    listTargetId: "importsIncomeList",
+    incomeListScope: "imports",
+    incomeEntryFilter: (entry) => !isManualMusicIncomeEntry(entry),
+  });
+  renderMonthExpenseList(importDraft, review, {
+    listTargetId: "importsExpenseList",
+    expenseListScope: "imports",
+    expenseEntryFilter: (entry) => !isManualExpenseEntry(entry),
+  });
   renderImportsWorkspaceView(importDraft, review, {
     setText,
     formatMonthLabel,
-    isManualMusicIncomeEntry,
-    incomeStreamLabel,
-    euro,
-    sourcePreview,
-    isManualExpenseEntry,
-    expenseCategoryLabel,
     renderEntryMappings,
     developerModeEnabled: readDeveloperMode(),
     performDevImportEntryDeleteIfConfirmed,
@@ -1643,6 +1662,22 @@ function renderGoals(importDraft, monthlyPlan) {
   });
 }
 
+function renderStatisticsWorkspace(importDraft, monthlyPlan) {
+  renderStatisticsWorkspaceView(importDraft, monthlyPlan, {
+    currentMonthKey,
+    addMonths,
+    compareMonthKeys,
+    monthFromDate,
+    expenseCategoryLabel,
+    formatMonthLabel,
+    formatPercent,
+    renderDetailEntries,
+    renderRows,
+    renderEmptyRow,
+    euro,
+  });
+}
+
 function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewState = {}) {
   const { bindMonthFilters, bindMonthReview, openMonthReview } = createMonthReviewNavigation({
     saveViewState,
@@ -1664,7 +1699,10 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   window.__importDraft = importDraft;
   window.__financeState = { draftReport, monthlyPlan, importDraft, accounts };
 
-  setText("generatedAt", draftReport.generatedAt);
+  const viewRecalculatedAt = formatHistoryTimestamp(draftReport.generatedAt);
+  const bundleAt = draftReport.importBundleGeneratedAt;
+  const bundleLabel = bundleAt ? formatHistoryTimestamp(bundleAt) : "—";
+  setText("generatedAt", `${viewRecalculatedAt} · JSON-Daten: ${bundleLabel}`);
   setText("netFlow", euro.format(draftReport.totals.netFlow));
   setText("incomeTotal", euro.format(draftReport.totals.incomeTotal));
   setText("expenseTotal", euro.format(draftReport.totals.expenseTotal));
@@ -1712,6 +1750,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   renderWealthSnapshotPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderHouseholdWorkspace();
+  renderStatisticsWorkspace(importDraft, monthlyPlan);
 
   let retirementInitialized = false;
   const initRetirement = () => {

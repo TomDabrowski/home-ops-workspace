@@ -12,6 +12,11 @@ export interface EntryMappingState {
   accountId?: string;
   reviewed?: boolean;
   updatedAt?: string;
+  /** Optional corrections to imported workbook rows (merged in browser + apply-review-state). */
+  amount?: number;
+  entryDate?: string;
+  description?: string;
+  notes?: string;
 }
 
 export interface ReconciliationActionState {
@@ -282,6 +287,10 @@ export function parseMappingState(value: unknown): MappingState {
       accountId: asOptionalString(item.accountId, `mappingState.${key}.accountId`),
       reviewed: asOptionalBoolean(item.reviewed, `mappingState.${key}.reviewed`),
       updatedAt: asOptionalString(item.updatedAt, `mappingState.${key}.updatedAt`),
+      amount: asOptionalNumber(item.amount, `mappingState.${key}.amount`),
+      entryDate: asOptionalString(item.entryDate, `mappingState.${key}.entryDate`),
+      description: asOptionalString(item.description, `mappingState.${key}.description`),
+      notes: asOptionalString(item.notes, `mappingState.${key}.notes`),
     };
   }
 

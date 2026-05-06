@@ -476,15 +476,40 @@ export function applyReviewState(
     baselineLineItems: [...draft.baselineLineItems, ...activeBaselineOverrides],
     incomeEntries: nextIncomeEntries.map((entry) => {
       const mapping = mappings[entry.id];
-      if (!mapping?.reviewed) {
+      if (!mapping) {
         return entry;
       }
 
+      let next = { ...entry };
+      if (typeof mapping.amount === "number" && Number.isFinite(mapping.amount) && mapping.amount >= 0) {
+        next.amount = mapping.amount;
+      }
+      if (typeof mapping.entryDate === "string" && mapping.entryDate.trim()) {
+        next.entryDate = mapping.entryDate.trim();
+        if (entry.monthKey !== undefined || next.monthKey !== undefined) {
+          next.monthKey = next.entryDate.slice(0, 7);
+        }
+      }
+      if (typeof mapping.notes === "string") {
+        next.notes = mapping.notes;
+      }
+      if (next.incomeStreamId === "music-income" && typeof mapping.amount === "number" && Number.isFinite(mapping.amount)) {
+        const gross = Number(entry.amount ?? 0);
+        const reserve = Number(entry.reserveAmount ?? 0);
+        const rate = gross > 0 ? reserve / gross : 0;
+        next.reserveAmount = roundCurrency(next.amount * rate);
+        next.availableAmount = roundCurrency(next.amount - next.reserveAmount);
+      }
+
+      if (!mapping.reviewed) {
+        return next;
+      }
+
       return {
-        ...entry,
-        incomeStreamId: mapping.categoryId ?? entry.incomeStreamId,
-        accountId: mapping.accountId ?? entry.accountId,
-        notes: mergeNotes(entry.notes, [
+        ...next,
+        incomeStreamId: mapping.categoryId ?? next.incomeStreamId,
+        accountId: mapping.accountId ?? next.accountId,
+        notes: mergeNotes(next.notes, [
           mapping.updatedAt ? `reviewed ${mapping.updatedAt}` : "reviewed",
         ]),
       };
@@ -498,12 +523,28 @@ export function applyReviewState(
         ? expenseCategoryById.get(mapping.categoryId)?.expenseType
         : undefined;
 
+      let next = { ...entry };
+      if (mapping) {
+        if (typeof mapping.amount === "number" && Number.isFinite(mapping.amount) && mapping.amount > 0) {
+          next.amount = mapping.amount;
+        }
+        if (typeof mapping.entryDate === "string" && mapping.entryDate.trim()) {
+          next.entryDate = mapping.entryDate.trim().slice(0, 10);
+        }
+        if (typeof mapping.description === "string" && mapping.description.trim()) {
+          next.description = mapping.description.trim();
+        }
+        if (typeof mapping.notes === "string") {
+          next.notes = mapping.notes;
+        }
+      }
+
       return {
-        ...entry,
-        expenseCategoryId: mapping?.reviewed && mapping.categoryId ? mapping.categoryId : entry.expenseCategoryId,
-        accountId: mapping?.reviewed ? (mapping.accountId ?? entry.accountId) : entry.accountId,
-        expenseType: mapping?.reviewed && reviewedExpenseType ? reviewedExpenseType : entry.expenseType,
-        notes: mergeNotes(entry.notes, [
+        ...next,
+        expenseCategoryId: mapping?.reviewed && mapping.categoryId ? mapping.categoryId : next.expenseCategoryId,
+        accountId: mapping?.reviewed ? (mapping.accountId ?? next.accountId) : next.accountId,
+        expenseType: mapping?.reviewed && reviewedExpenseType ? reviewedExpenseType : next.expenseType,
+        notes: mergeNotes(next.notes, [
           mapping?.reviewed ? (mapping.updatedAt ? `reviewed ${mapping.updatedAt}` : "reviewed") : "",
           monthReview?.status ? `reconciliation ${monthReview.status}` : "",
           monthReview?.note ? `month note: ${monthReview.note}` : "",

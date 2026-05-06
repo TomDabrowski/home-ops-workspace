@@ -45,9 +45,10 @@ export function createProjectionTools(deps) {
       return [];
     }
 
+    const startMonthKey = options.startMonthKey ?? firstRow.monthKey;
+    const startTemplate = rowTemplateForMonth(monthlyPlan, startMonthKey) ?? firstRow;
     const months = options.months ?? forecastRows.length;
     const extraMusicGrossPerMonth = options.extraMusicGrossPerMonth ?? 0;
-    const startMonthKey = options.startMonthKey ?? firstRow.monthKey;
     const safetyThreshold = assumptionNumber(importDraft, "safety_threshold", 10000);
     const musicThreshold = assumptionNumber(importDraft, "music_threshold", safetyThreshold);
     const musicThresholdAccountId = assumptionString(importDraft, "music_threshold_account_id", "savings");
@@ -63,14 +64,14 @@ export function createProjectionTools(deps) {
     const musicTaxRate = options.musicTaxRate ?? 0;
     const minimumMusicGrossPerMonth = options.minimumMusicGrossPerMonth ?? 0;
     const constantMusicGrossPerMonth = options.constantMusicGrossPerMonth;
-    const rentBaseAmount = options.rentBaseAmount ?? currentRentAmount(importDraft, firstRow.monthKey);
+    const rentBaseAmount = options.rentBaseAmount ?? currentRentAmount(importDraft, startMonthKey);
 
-    let safetyStartAmount = firstRow.safetyBucketStartAmount ?? 0;
-    let investmentStartAmount = firstRow.investmentBucketStartAmount ?? 0;
+    let safetyStartAmount = startTemplate.safetyBucketStartAmount ?? 0;
+    let investmentStartAmount = startTemplate.investmentBucketStartAmount ?? 0;
     let thresholdAccountStartAmount =
-      firstRow.thresholdAccountEndAmount ??
-      firstRow.thresholdAccountStartAmount ??
-      firstRow.safetyBucketStartAmount ??
+      startTemplate.thresholdAccountEndAmount ??
+      startTemplate.thresholdAccountStartAmount ??
+      startTemplate.safetyBucketStartAmount ??
       0;
     const results = [];
 
@@ -338,11 +339,12 @@ export function createProjectionTools(deps) {
       return null;
     }
 
-    const firstForecastMonthKey = forecastRows[0].monthKey;
+    const firstForecastMonthKey = plannerAssumptions.startMonthKey ?? forecastRows[0].monthKey;
     const months = monthsUntilInclusive(firstForecastMonthKey, targetMonthKey);
 
     const baselineRun = simulateForecast(importDraft, monthlyPlan, {
       months,
+      startMonthKey: firstForecastMonthKey,
       constantMusicGrossPerMonth: 0,
       ...plannerAssumptions,
     });
@@ -361,6 +363,7 @@ export function createProjectionTools(deps) {
       const mid = (low + high) / 2;
       const simulation = simulateForecast(importDraft, monthlyPlan, {
         months,
+        startMonthKey: firstForecastMonthKey,
         constantMusicGrossPerMonth: mid,
         ...plannerAssumptions,
       });
@@ -378,6 +381,7 @@ export function createProjectionTools(deps) {
       constantMusicGrossPerMonth: Math.ceil(high / 10) * 10,
       simulation: bestRun ?? simulateForecast(importDraft, monthlyPlan, {
         months,
+        startMonthKey: firstForecastMonthKey,
         constantMusicGrossPerMonth: high,
         ...plannerAssumptions,
       }),
@@ -395,9 +399,11 @@ export function createProjectionTools(deps) {
       return [];
     }
 
-    const months = monthsUntilInclusive(firstRow.monthKey, untilMonthKey);
+    const startMonthKey = plannerAssumptions.startMonthKey ?? firstRow.monthKey;
+    const months = monthsUntilInclusive(startMonthKey, untilMonthKey);
     const simulation = simulateForecast(importDraft, monthlyPlan, {
       months,
+      startMonthKey,
       constantMusicGrossPerMonth: 0,
       ...plannerAssumptions,
     });

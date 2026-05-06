@@ -66,6 +66,9 @@ test("latest active wealth snapshot for a month wins when building local anchors
     readBaselineOverrides() {
       return [];
     },
+    readMappingState() {
+      return {};
+    },
   });
 
   const state = tools.applyLocalWorkflowState({
@@ -186,6 +189,9 @@ test("month-start wealth anchors use the saved snapshot as the opening value for
     },
     readBaselineOverrides() {
       return [];
+    },
+    readMappingState() {
+      return {};
     },
   });
 
@@ -309,6 +315,9 @@ test("late pre-month snapshots infer a month-start anchor for the next month whe
     },
     readBaselineOverrides() {
       return [];
+    },
+    readMappingState() {
+      return {};
     },
   });
 
@@ -435,6 +444,9 @@ test("in-month snapshots do not re-add the full monthly base investment on top o
     readBaselineOverrides() {
       return [];
     },
+    readMappingState() {
+      return {};
+    },
   });
 
   const state = tools.applyLocalWorkflowState({
@@ -541,6 +553,9 @@ test("month-start anchors do not re-add music income that is already captured in
     },
     readBaselineOverrides() {
       return [];
+    },
+    readMappingState() {
+      return {};
     },
   });
 
@@ -769,6 +784,9 @@ test("month-start anchors without threshold-account detail keep routing against 
     },
     readBaselineOverrides() {
       return [];
+    },
+    readMappingState() {
+      return {};
     },
   });
 

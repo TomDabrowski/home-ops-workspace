@@ -152,3 +152,44 @@ test("manual music income keeps only the latest active value per month", () => {
   assert.equal(musicEntries[0]?.availableAmount, 1300);
   assert.equal(musicEntries[0]?.reserveAmount, 0);
 });
+
+test("applies import mapping field overrides without requiring reviewed for amounts", () => {
+  const draft = createDraft();
+  const reviewed = applyReviewState(
+    draft,
+    {
+      "income-1": {
+        categoryId: "music-income",
+        accountId: "giro",
+        reviewed: false,
+        amount: 400,
+        entryDate: "2026-03-05T10:00:00",
+        notes: "Korrigiert",
+        updatedAt: "2026-03-21T09:00:00.000Z",
+      },
+      "expense-1": {
+        categoryId: "debt",
+        accountId: "debt",
+        reviewed: false,
+        amount: 99,
+        entryDate: "2026-03-10",
+        description: "Korrigierte Beschreibung",
+        notes: "Fix",
+        updatedAt: "2026-03-21T09:01:00.000Z",
+      },
+    },
+    {},
+  );
+
+  assert.equal(reviewed.incomeEntries[0]?.amount, 400);
+  assert.equal(reviewed.incomeEntries[0]?.entryDate, "2026-03-05T10:00:00");
+  assert.equal(reviewed.incomeEntries[0]?.notes, "Korrigiert");
+  assert.equal(reviewed.incomeEntries[0]?.incomeStreamId, "music-income");
+
+  assert.equal(reviewed.expenseEntries[0]?.amount, 99);
+  assert.equal(reviewed.expenseEntries[0]?.entryDate, "2026-03-10");
+  assert.equal(reviewed.expenseEntries[0]?.description, "Korrigierte Beschreibung");
+  assert.equal(reviewed.expenseEntries[0]?.notes, "Fix");
+  assert.equal(reviewed.expenseEntries[0]?.expenseCategoryId, "food");
+  assert.equal(reviewed.expenseEntries[0]?.expenseType, "variable");
+});

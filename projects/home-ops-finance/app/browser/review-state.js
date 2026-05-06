@@ -121,6 +121,7 @@ export function createReviewStateTools({
       const reviewedField = document.querySelector(`[data-mapping-reviewed="${entry.id}"]`);
 
       state[entry.id] = {
+        ...(state[entry.id] ?? {}),
         categoryId: categoryField?.value ?? "",
         accountId: accountField?.value ?? "unknown",
         reviewed: Boolean(reviewedField?.checked),
@@ -132,10 +133,47 @@ export function createReviewStateTools({
     return saveMappingState(state);
   }
 
+  async function saveImportedIncomeMappingCorrection(entry, values) {
+    const state = readMappingState();
+    const base = incomeMappingForEntry(entry);
+    state[entry.id] = {
+      ...(state[entry.id] ?? {}),
+      categoryId: values.incomeStreamId ?? base.categoryId ?? entry.incomeStreamId,
+      accountId: values.accountId ?? base.accountId ?? entry.accountId ?? "giro",
+      amount: values.amount,
+      entryDate: values.entryDate,
+      notes: values.notes,
+      reviewed: true,
+      updatedAt: new Date().toISOString(),
+    };
+    writeMappingState(state);
+    return saveMappingState(state);
+  }
+
+  async function saveImportedExpenseMappingCorrection(entry, values) {
+    const state = readMappingState();
+    const base = expenseMappingForEntry(entry);
+    state[entry.id] = {
+      ...(state[entry.id] ?? {}),
+      categoryId: values.expenseCategoryId ?? base.categoryId ?? entry.expenseCategoryId,
+      accountId: values.accountId ?? base.accountId ?? entry.accountId ?? "giro",
+      amount: values.amount,
+      entryDate: values.entryDate,
+      description: values.description,
+      notes: values.notes,
+      reviewed: true,
+      updatedAt: new Date().toISOString(),
+    };
+    writeMappingState(state);
+    return saveMappingState(state);
+  }
+
   return {
     reconciliationForMonth,
     incomeMappingForEntry,
     expenseMappingForEntry,
     saveMappings,
+    saveImportedIncomeMappingCorrection,
+    saveImportedExpenseMappingCorrection,
   };
 }
