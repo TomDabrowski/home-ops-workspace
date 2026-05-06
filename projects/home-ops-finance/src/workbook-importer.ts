@@ -48,7 +48,13 @@ function decodeXml(value: string): string {
 }
 
 function readSharedStrings(workbookPath: string): string[] {
-  const xml = unzipText(workbookPath, "xl/sharedStrings.xml");
+  let xml = "";
+  try {
+    xml = unzipText(workbookPath, "xl/sharedStrings.xml");
+  } catch {
+    // Some XLSX files store all strings inline and don't include sharedStrings.xml.
+    return [];
+  }
   const matches = matchAll(xml, /<si[\s\S]*?>([\s\S]*?)<\/si>/g);
 
   return matches.map((match) => {

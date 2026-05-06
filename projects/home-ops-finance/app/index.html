@@ -205,6 +205,35 @@
           <tbody id="statsPlannedNextMonthRows"></tbody>
         </table>
       </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <h2>Jahresliste Einnahmen & Ausgaben</h2>
+            <p class="section-copy">Komplette Buchungsliste für ein Jahr mit Datum, Kategorie und Betrag.</p>
+          </div>
+          <label class="select-wrap">
+            <span>Jahr</span>
+            <select id="statsYearSelect"></select>
+          </label>
+        </div>
+        <div class="grid two">
+          <div>
+            <h3 class="subhead">Einnahmen</h3>
+            <table>
+              <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+              <tbody id="statsYearIncomeRows"></tbody>
+            </table>
+          </div>
+          <div>
+            <h3 class="subhead">Ausgaben</h3>
+            <table>
+              <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+              <tbody id="statsYearExpenseRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </article>
     </section>
 
     <section id="baseline" class="tab-panel">

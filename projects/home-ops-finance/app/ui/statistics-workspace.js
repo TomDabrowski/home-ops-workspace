@@ -18,7 +18,8 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
   const kpiTarget = document.getElementById("statsKpiCards");
   const monthCompareTarget = document.getElementById("statsMonthCompare");
   const recurringTarget = document.getElementById("statsRecurringList");
-  if (!kpiTarget || !monthCompareTarget || !recurringTarget) {
+  const yearSelect = document.getElementById("statsYearSelect");
+  if (!kpiTarget || !monthCompareTarget || !recurringTarget || !(yearSelect instanceof HTMLSelectElement)) {
     return;
   }
 
@@ -46,13 +47,21 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
   const previousRow = recentRows.length > 1 ? recentRows[recentRows.length - 2] : null;
   const latestRow = recentRows.at(-1) ?? null;
 
-  const incomeTotal12 = recentRows.reduce((sum, row) => sum + Number(row.importedIncomeAmount ?? 0), 0);
+  const importedIncomeTotal12 = recentRows.reduce((sum, row) => sum + Number(row.importedIncomeAmount ?? 0), 0);
+  const salaryIncomeTotal12 = recentRows.reduce((sum, row) => sum + Number(row.netSalaryAmount ?? 0), 0);
+  const incomeTotal12 = importedIncomeTotal12 + salaryIncomeTotal12;
   const expenseTotal12 = recentRows.reduce((sum, row) => sum + Number(row.importedExpenseAmount ?? 0), 0);
   const netTotal12 = incomeTotal12 - expenseTotal12;
   const averageIncome = recentRows.length > 0 ? incomeTotal12 / recentRows.length : 0;
   const averageExpense = recentRows.length > 0 ? expenseTotal12 / recentRows.length : 0;
   const averageNet = averageIncome - averageExpense;
   const savingsRate = incomeTotal12 > 0 ? netTotal12 / incomeTotal12 : 0;
+  const latestIncomeTotal = latestRow
+    ? Number(latestRow.importedIncomeAmount ?? 0) + Number(latestRow.netSalaryAmount ?? 0)
+    : null;
+  const previousIncomeTotal = previousRow
+    ? Number(previousRow.importedIncomeAmount ?? 0) + Number(previousRow.netSalaryAmount ?? 0)
+    : null;
 
   const expenseEntriesLast12 = (importDraft?.expenseEntries ?? [])
     .filter((entry) => {
@@ -188,15 +197,53 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
     }));
 
   const nextMonthKey = addMonths(currentKey, 1);
-  const nextIncome = (importDraft?.incomeEntries ?? [])
+  const nextImportedIncome = (importDraft?.incomeEntries ?? [])
     .filter((entry) => entry.isPlanned && monthFromDate(entry.entryDate) === nextMonthKey)
     .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
+  const nextRow = rows.find((row) => row.monthKey === nextMonthKey);
+  const nextIncome = nextImportedIncome + Number(nextRow?.netSalaryAmount ?? 0);
   const nextExpense = (importDraft?.expenseEntries ?? [])
     .filter((entry) => entry.isPlanned && monthFromDate(entry.entryDate) === nextMonthKey)
     .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
 
+  const incomeStreamById = new Map((importDraft?.incomeStreams ?? []).map((stream) => [stream.id, stream.name]));
+  const allYears = new Set();
+  for (const entry of importDraft?.incomeEntries ?? []) {
+    const year = Number(String(monthFromDate(entry.entryDate)).slice(0, 4));
+    if (Number.isFinite(year)) {
+      allYears.add(year);
+    }
+  }
+  for (const entry of importDraft?.expenseEntries ?? []) {
+    const year = Number(String(monthFromDate(entry.entryDate)).slice(0, 4));
+    if (Number.isFinite(year)) {
+      allYears.add(year);
+    }
+  }
+  const availableYears = [...allYears].filter((year) => year >= 2020).sort((left, right) => right - left);
+
+  if (availableYears.length > 0) {
+    const selectedYear = Number(yearSelect.value);
+    yearSelect.innerHTML = availableYears.map((year) => `<option value="${year}">${year}</option>`).join("");
+    yearSelect.value = availableYears.includes(selectedYear) ? String(selectedYear) : String(availableYears[0]);
+  } else {
+    yearSelect.innerHTML = `<option value="">-</option>`;
+  }
+
+  const selectedYear = Number(yearSelect.value);
+  const yearIncomeEntries = Number.isFinite(selectedYear)
+    ? (importDraft?.incomeEntries ?? [])
+      .filter((entry) => Number(String(monthFromDate(entry.entryDate)).slice(0, 4)) === selectedYear)
+      .sort((left, right) => String(right.entryDate).localeCompare(String(left.entryDate)))
+    : [];
+  const yearExpenseEntries = Number.isFinite(selectedYear)
+    ? (importDraft?.expenseEntries ?? [])
+      .filter((entry) => Number(String(monthFromDate(entry.entryDate)).slice(0, 4)) === selectedYear)
+      .sort((left, right) => String(right.entryDate).localeCompare(String(left.entryDate)))
+    : [];
+
   kpiTarget.innerHTML = [
-    `<article class="card stat"><span>Ø Einnahmen (12M)</span><strong>${euro.format(averageIncome)}</strong></article>`,
+    `<article class="card stat"><span>Ø Einnahmen gesamt (12M)</span><strong>${euro.format(averageIncome)}</strong></article>`,
     `<article class="card stat"><span>Ø Ausgaben (12M)</span><strong>${euro.format(averageExpense)}</strong></article>`,
     `<article class="card stat"><span>Alltag (12M)</span><strong>${euro.format(everydayExpense12)}</strong></article>`,
     `<article class="card stat"><span>Musikinvestitionen (12M)</span><strong>${euro.format(musicInvestment12)}</strong></article>`,
@@ -215,8 +262,10 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
         ? euro.format(Number(latestRow.importedExpenseAmount ?? 0) - Number(previousRow.importedExpenseAmount ?? 0))
         : "-",
     ],
-    ["Einnahmen aktuell", latestRow ? euro.format(latestRow.importedIncomeAmount) : "-"],
-    ["Einnahmen Vormonat", previousRow ? euro.format(previousRow.importedIncomeAmount) : "-"],
+    ["Einnahmen aktuell (gesamt)", latestIncomeTotal != null ? euro.format(latestIncomeTotal) : "-"],
+    ["Einnahmen Vormonat (gesamt)", previousIncomeTotal != null ? euro.format(previousIncomeTotal) : "-"],
+    ["davon Gehalt (12M)", euro.format(salaryIncomeTotal12)],
+    ["davon Musik/sonstige (12M)", euro.format(importedIncomeTotal12)],
     ["Alltagsausgaben (12M)", euro.format(everydayExpense12)],
     ["Musikinvestitionen (12M)", euro.format(musicInvestment12)],
   ]);
@@ -287,5 +336,31 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
       <td>${euro.format(net)}</td>
     </tr>
   `);
+
+  renderRows("statsYearIncomeRows", yearIncomeEntries, (entry) => `
+    <tr>
+      <td>${entry.entryDate}</td>
+      <td>${entry.description || "-"}</td>
+      <td>${incomeStreamById.get(entry.incomeStreamId) ?? entry.incomeStreamId ?? "-"}</td>
+      <td>${euro.format(Number(entry.amount ?? 0))}</td>
+    </tr>
+  `);
+  if (yearIncomeEntries.length === 0) {
+    renderEmptyRow("statsYearIncomeRows", 4, "Keine Einnahmen für dieses Jahr.");
+  }
+
+  renderRows("statsYearExpenseRows", yearExpenseEntries, (entry) => `
+    <tr>
+      <td>${entry.entryDate}</td>
+      <td>${entry.description || "-"}</td>
+      <td>${expenseCategoryLabel(importDraft, entry.expenseCategoryId)}</td>
+      <td>${euro.format(Number(entry.amount ?? 0))}</td>
+    </tr>
+  `);
+  if (yearExpenseEntries.length === 0) {
+    renderEmptyRow("statsYearExpenseRows", 4, "Keine Ausgaben für dieses Jahr.");
+  }
+
+  yearSelect.onchange = () => renderStatisticsWorkspace(importDraft, monthlyPlan, deps);
 }
 
