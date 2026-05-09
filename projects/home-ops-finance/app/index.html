@@ -565,6 +565,35 @@
               <div id="monthUnifiedExpenseList" class="mapping-list"></div>
             </article>
           </div>
+          <article class="card" id="monthCurrentClearingCard">
+            <div class="section-head">
+              <div>
+                <h2>Monats-Clearing (nur aktueller Monat)</h2>
+                <p class="section-copy">Markiere hier, welche Buchungen schon in deinem Ist-Stand enthalten sind.</p>
+              </div>
+            </div>
+            <dl class="detail-list compact-details" id="monthCurrentClearingSummary"></dl>
+            <div class="grid two">
+              <article class="subcard">
+                <h3 class="subhead">Einnahmen aktueller Monat</h3>
+                <div class="table-wrap table-wrap--clearing">
+                  <table>
+                    <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
+                    <tbody id="monthCurrentClearingIncomeRows"></tbody>
+                  </table>
+                </div>
+              </article>
+              <article class="subcard">
+                <h3 class="subhead">Ausgaben aktueller Monat</h3>
+                <div class="table-wrap table-wrap--clearing">
+                  <table>
+                    <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+                    <tbody id="monthCurrentClearingExpenseRows"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </article>
           <article class="card" data-dev-only="true">
             <h2>Monatshinweise</h2>
             <ul class="signal-list" id="monthReviewSignals"></ul>

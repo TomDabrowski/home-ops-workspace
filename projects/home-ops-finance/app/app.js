@@ -132,6 +132,7 @@ const developerModeStorageKey = "home-ops-finance-developer-mode-v1";
 const formulaTooltipStorageKey = "home-ops-finance-formula-tooltips-v1";
 const themeModeStorageKey = "home-ops-finance-theme-mode-v1";
 const clientSessionStorageKey = "home-ops-finance-client-session-v1";
+const monthClearingStorageKey = "home-ops-finance-current-month-clearing-v1";
 const clientHeartbeatMs = 15000;
 const fallbackAccountOptions = [
   { id: "giro", label: "CHECK24 Alltag" },
@@ -593,14 +594,151 @@ function sumEntryAmounts(entries, accessor) {
   );
 }
 
-function amountsAfterSnapshot(entries, latestSnapshotDate, accessor) {
+function amountsAfterSnapshot(entries, latestSnapshotDate, accessor, options = {}) {
+  const excludedIds = options.excludedIds instanceof Set ? options.excludedIds : null;
+  const filteredEntries = excludedIds
+    ? (entries ?? []).filter((entry) => !excludedIds.has(entry.id))
+    : entries;
   if (!latestSnapshotDate) {
-    return sumEntryAmounts(entries, accessor);
+    return sumEntryAmounts(filteredEntries, accessor);
   }
   return sumEntryAmounts(
-    (entries ?? []).filter((entry) => String(entry.entryDate ?? "") > latestSnapshotDate),
+    (filteredEntries ?? []).filter((entry) => String(entry.entryDate ?? "") > latestSnapshotDate),
     accessor,
   );
+}
+
+function readMonthClearingState() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(monthClearingStorageKey) ?? "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMonthClearingState(state) {
+  window.localStorage.setItem(monthClearingStorageKey, JSON.stringify(state));
+}
+
+function monthClearingIncludedSet(monthKey, kind) {
+  const state = readMonthClearingState();
+  const month = state?.[monthKey];
+  const bucket = month?.[kind];
+  if (!bucket || typeof bucket !== "object") {
+    return new Set();
+  }
+  return new Set(Object.keys(bucket).filter((entryId) => bucket[entryId] === true));
+}
+
+function setMonthClearingEntryIncluded(monthKey, kind, entryId, included) {
+  const state = readMonthClearingState();
+  const month = state[monthKey] && typeof state[monthKey] === "object" ? state[monthKey] : { income: {}, expense: {} };
+  const nextIncome = month.income && typeof month.income === "object" ? { ...month.income } : {};
+  const nextExpense = month.expense && typeof month.expense === "object" ? { ...month.expense } : {};
+  const target = kind === "income" ? nextIncome : nextExpense;
+
+  if (included) {
+    target[entryId] = true;
+  } else {
+    delete target[entryId];
+  }
+
+  state[monthKey] = {
+    income: nextIncome,
+    expense: nextExpense,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMonthClearingState(state);
+}
+
+function renderCurrentMonthClearing(importDraft, review, monthKey) {
+  const card = document.getElementById("monthCurrentClearingCard");
+  const summary = document.getElementById("monthCurrentClearingSummary");
+  const incomeRows = document.getElementById("monthCurrentClearingIncomeRows");
+  const expenseRows = document.getElementById("monthCurrentClearingExpenseRows");
+  if (!card || !summary || !incomeRows || !expenseRows) {
+    return;
+  }
+
+  const isCurrent = monthKey === currentMonthKey();
+  if (!isCurrent) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  const includedIncomeIds = monthClearingIncludedSet(monthKey, "income");
+  const includedExpenseIds = monthClearingIncludedSet(monthKey, "expense");
+  const monthIncomeEntries = [...(review.incomeEntries ?? [])].sort((left, right) => String(right.entryDate).localeCompare(String(left.entryDate)));
+  const monthExpenseEntries = [...(review.expenseEntries ?? [])].sort((left, right) => String(right.entryDate).localeCompare(String(left.entryDate)));
+
+  const incomeIncludedAmount = roundCurrency(
+    monthIncomeEntries.filter((entry) => includedIncomeIds.has(entry.id)).reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+  const incomeOpenAmount = roundCurrency(
+    monthIncomeEntries.filter((entry) => !includedIncomeIds.has(entry.id)).reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+  const expenseIncludedAmount = roundCurrency(
+    monthExpenseEntries.filter((entry) => includedExpenseIds.has(entry.id)).reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+  const expenseOpenAmount = roundCurrency(
+    monthExpenseEntries.filter((entry) => !includedExpenseIds.has(entry.id)).reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
+  );
+
+  summary.innerHTML = renderDetailEntries([
+    ["Einnahmen schon drin", euro.format(incomeIncludedAmount)],
+    ["Einnahmen noch offen", euro.format(incomeOpenAmount)],
+    ["Ausgaben schon drin", euro.format(expenseIncludedAmount)],
+    ["Ausgaben noch offen", euro.format(expenseOpenAmount)],
+    ["Netto noch offen", euro.format(roundCurrency(incomeOpenAmount - expenseOpenAmount))],
+  ]);
+
+  renderRows("monthCurrentClearingIncomeRows", monthIncomeEntries, (entry) => `
+    <tr>
+      <td><input type="checkbox" data-clearing-income="${entry.id}" ${includedIncomeIds.has(entry.id) ? "checked" : ""}></td>
+      <td>${entry.entryDate}</td>
+      <td>${entry.description || incomeStreamLabel(importDraft, entry.incomeStreamId)}</td>
+      <td>${euro.format(Number(entry.amount ?? 0))}</td>
+    </tr>
+  `);
+  if (monthIncomeEntries.length === 0) {
+    renderEmptyRow("monthCurrentClearingIncomeRows", 4, "Keine Einnahmen im aktuellen Monat.");
+  }
+
+  renderRows("monthCurrentClearingExpenseRows", monthExpenseEntries, (entry) => `
+    <tr>
+      <td><input type="checkbox" data-clearing-expense="${entry.id}" ${includedExpenseIds.has(entry.id) ? "checked" : ""}></td>
+      <td>${entry.entryDate}</td>
+      <td>${entry.description || "-"}</td>
+      <td>${expenseCategoryLabel(importDraft, entry.expenseCategoryId)}</td>
+      <td>${euro.format(Number(entry.amount ?? 0))}</td>
+    </tr>
+  `);
+  if (monthExpenseEntries.length === 0) {
+    renderEmptyRow("monthCurrentClearingExpenseRows", 5, "Keine Ausgaben im aktuellen Monat.");
+  }
+
+  for (const checkbox of incomeRows.querySelectorAll("[data-clearing-income]")) {
+    checkbox.addEventListener("change", () => {
+      const entryId = checkbox.getAttribute("data-clearing-income");
+      if (!entryId) {
+        return;
+      }
+      setMonthClearingEntryIncluded(monthKey, "income", entryId, Boolean(checkbox.checked));
+      rerenderSelectedMonthContext();
+    });
+  }
+  for (const checkbox of expenseRows.querySelectorAll("[data-clearing-expense]")) {
+    checkbox.addEventListener("change", () => {
+      const entryId = checkbox.getAttribute("data-clearing-expense");
+      if (!entryId) {
+        return;
+      }
+      setMonthClearingEntryIncluded(monthKey, "expense", entryId, Boolean(checkbox.checked));
+      rerenderSelectedMonthContext();
+    });
+  }
 }
 
 const {
@@ -1016,10 +1154,56 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const latestSnapshotInvestmentAmount = latestSnapshot ? Number(latestSnapshot.investmentAmount ?? review.row.investmentBucketAnchorAmount ?? 0) : null;
   const wealthSourceLabel = workflowState.persistence.wealthSnapshots === "project" ? "Projektdatei" : "Browser-Fallback";
   const hasActiveInMonthSnapshot = Boolean(review.row.anchorAppliesWithinMonth && latestSnapshotDate);
+  const currentMonthIncludedIncomeIds = monthKey === currentMonthKey() ? monthClearingIncludedSet(monthKey, "income") : new Set();
+  const currentMonthIncludedExpenseIds = monthKey === currentMonthKey() ? monthClearingIncludedSet(monthKey, "expense") : new Set();
+  const resolvedThresholdAccountId =
+    review.row.thresholdAccountId ?? assumptionString(importDraft, "music_threshold_account_id", "savings");
+  const monthSummaryAccountIds = ["cash", "giro", "savings"].filter((id) => accountOptions.some((option) => option.id === id));
+  const monthSummaryAccounts = accountOptions.filter((option) => monthSummaryAccountIds.includes(option.id));
+  const defaultCashRemainderAccountId = accountOptions.some((option) => option.id === "giro")
+    ? "giro"
+    : accountOptions[0]?.id;
+  function deriveAccountBalances(totalCashAmount, thresholdAccountAmount) {
+    const balances = new Map(accountOptions.map((option) => [option.id, 0]));
+    const totalCash = Number.isFinite(Number(totalCashAmount)) ? Math.max(0, Number(totalCashAmount)) : 0;
+    const thresholdAmount = Number.isFinite(Number(thresholdAccountAmount))
+      ? Math.max(0, Math.min(totalCash, Number(thresholdAccountAmount)))
+      : 0;
+    const remainder = roundCurrency(Math.max(0, totalCash - thresholdAmount));
+
+    if (balances.has(resolvedThresholdAccountId)) {
+      balances.set(resolvedThresholdAccountId, thresholdAmount);
+    }
+
+    const fallbackAccountId = balances.has(defaultCashRemainderAccountId) ? defaultCashRemainderAccountId : accountOptions[0]?.id;
+    if (fallbackAccountId) {
+      const previousAmount = Number(balances.get(fallbackAccountId) ?? 0);
+      balances.set(fallbackAccountId, roundCurrency(previousAmount + remainder));
+    }
+
+    return balances;
+  }
+  const startAccountBalances =
+    latestSnapshot && review.row.anchorAppliesAtMonthStart
+      ? new Map(
+        monthSummaryAccounts.map((option) => [
+          option.id,
+          roundCurrency(Number(wealthSnapshotCashAccounts(latestSnapshot)[option.id] ?? 0)),
+        ]),
+      )
+      : deriveAccountBalances(
+        displayStartSafetyAmount,
+        review.row.thresholdAccountStartAmount ?? displayStartSafetyAmount,
+      );
+  const endAccountBalances = deriveAccountBalances(
+    endSafetyAmount,
+    review.row.thresholdAccountEndAmount ?? endSafetyAmount,
+  );
   const remainingImportedExpenseAmount = hasActiveInMonthSnapshot
     ? roundCurrency(
       review.expenseEntries
         .filter((entry) => !isManualExpenseEntry(entry))
+        .filter((entry) => !currentMonthIncludedExpenseIds.has(entry.id))
         .filter((entry) => String(entry.entryDate ?? "") > latestSnapshotDate)
         .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
     )
@@ -1028,6 +1212,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     ? roundCurrency(
       review.expenseEntries
         .filter((entry) => isManualExpenseEntry(entry))
+        .filter((entry) => !currentMonthIncludedExpenseIds.has(entry.id))
         .filter((entry) => String(entry.entryDate ?? "") > latestSnapshotDate)
         .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
     )
@@ -1036,6 +1221,10 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   if (startSummary) {
     const entries = [
+      ...monthSummaryAccounts.map((option) => ([
+        `${option.label} zu Beginn des geöffneten Monats`,
+        euro.format(Number(startAccountBalances.get(option.id) ?? 0)),
+      ])),
       {
         label: "Cash zu Beginn des geöffneten Monats",
         value:
@@ -1124,16 +1313,21 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicReserveTotalAmount = sumEntryAmounts(musicIncomeEntries, (entry) => entry.reserveAmount ?? 0);
     const musicNetTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicReserveTotalAmount));
     const musicGrossRemainingAmount = hasAnyActiveSnapshot
-      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0)
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0, {
+        excludedIds: currentMonthIncludedIncomeIds,
+      })
       : musicGrossTotalAmount;
     const musicReserveRemainingAmount = hasAnyActiveSnapshot
-      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.reserveAmount ?? 0)
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.reserveAmount ?? 0, {
+        excludedIds: currentMonthIncludedIncomeIds,
+      })
       : musicReserveTotalAmount;
     const musicNetRemainingAmount = hasAnyActiveSnapshot
       ? amountsAfterSnapshot(
         musicIncomeEntries,
         latestSnapshotDate,
         (entry) => entry.availableAmount ?? (Number(entry.amount ?? 0) - Number(entry.reserveAmount ?? 0)),
+        { excludedIds: currentMonthIncludedIncomeIds },
       )
       : musicNetTotalAmount;
     const musicGrossConsumedAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicGrossRemainingAmount));
@@ -1300,13 +1494,16 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const musicReserveTotalAmount = sumEntryAmounts(musicIncomeEntries, (entry) => entry.reserveAmount ?? 0);
     const musicNetTotalAmount = roundCurrency(Math.max(0, musicGrossTotalAmount - musicReserveTotalAmount));
     const musicGrossRemainingAmount = hasAnyActiveSnapshot
-      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0)
+      ? amountsAfterSnapshot(musicIncomeEntries, latestSnapshotDate, (entry) => entry.amount ?? 0, {
+        excludedIds: currentMonthIncludedIncomeIds,
+      })
       : musicGrossTotalAmount;
     const musicNetRemainingAmount = hasAnyActiveSnapshot
       ? amountsAfterSnapshot(
         musicIncomeEntries,
         latestSnapshotDate,
         (entry) => entry.availableAmount ?? (Number(entry.amount ?? 0) - Number(entry.reserveAmount ?? 0)),
+        { excludedIds: currentMonthIncludedIncomeIds },
       )
       : musicNetTotalAmount;
     const musicNetConsumedAmount = roundCurrency(Math.max(0, musicNetTotalAmount - musicNetRemainingAmount));
@@ -1363,6 +1560,10 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
         : 0;
     const entries = [
+      ...monthSummaryAccounts.map((option) => ([
+        `${option.label} am Ende des geöffneten Monats`,
+        euro.format(Number(endAccountBalances.get(option.id) ?? 0)),
+      ])),
       {
         label: "Cash am Ende des geöffneten Monats",
         value: review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-",
@@ -1460,6 +1661,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     </tr>
   `);
   renderMonthSourceStats(review);
+  renderCurrentMonthClearing(importDraft, review, monthKey);
   renderMonthIncomeList(importDraft, review);
   renderMonthExpenseList(importDraft, review);
 

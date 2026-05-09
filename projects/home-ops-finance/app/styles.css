@@ -940,6 +940,13 @@ th:first-child {
 .month-summary-grid {
   margin: 0;
 }
+.table-wrap--clearing {
+  max-height: 340px;
+  overflow: auto;
+}
+.table-wrap--clearing table {
+  min-width: 100%;
+}
 .month-picker {
   min-width: 220px;
 }
