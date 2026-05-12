@@ -197,6 +197,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
     const existingForMonth = readMonthlyMusicIncomeOverrides().find((item) =>
       item.id !== editingId &&
       item.isActive !== false &&
+      (item.incomeStreamId ?? "music-income") === "music-income" &&
       (item.monthKey ?? monthFromDate(item.entryDate)) === selectedMonthKey,
     );
     const targetId = editingId || existingForMonth?.id || uniqueEntryId("manual-music-income");

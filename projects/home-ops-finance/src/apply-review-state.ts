@@ -169,7 +169,7 @@ function latestActiveMonthlyMusicIncomeOverrides(
       continue;
     }
     const monthKey = entry.monthKey ?? entry.entryDate.slice(0, 7);
-    const incomeStreamId = entry.incomeStreamId ?? "music-income";
+    const incomeStreamId = entry.incomeStreamId ?? (String(entry.id ?? "").startsWith("manual-income-") ? "misc-inflows" : "music-income");
     const bucketKey = `${monthKey}/${incomeStreamId}`;
     const current = latestByMonthAndStream.get(bucketKey);
     const entryRank = `${entry.updatedAt ?? ""}|${entry.entryDate ?? ""}|${entry.id ?? ""}`;
@@ -379,7 +379,7 @@ export function applyReviewState(
     ...explicitMonthlyMusicIncomeOverrides,
   ]
     .map((entry) => {
-      const incomeStreamId = entry.incomeStreamId ?? "music-income";
+      const incomeStreamId = entry.incomeStreamId ?? (String(entry.id ?? "").startsWith("manual-income-") ? "misc-inflows" : "music-income");
       const isManualMusicIncome = incomeStreamId === "music-income" && String(entry.id ?? "").startsWith("manual-music-income-");
       return {
         monthKey: entry.monthKey,

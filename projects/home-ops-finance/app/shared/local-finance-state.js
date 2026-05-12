@@ -887,6 +887,10 @@ export function createLocalFinanceStateTools(deps) {
     const latestByMonth = new Map();
 
     for (const entry of readMonthlyMusicIncomeOverrides().filter((item) => item.isActive !== false)) {
+      const incomeStreamId = entry.incomeStreamId ?? (String(entry.id ?? "").startsWith("manual-income-") ? "misc-inflows" : "music-income");
+      if (incomeStreamId !== "music-income") {
+        continue;
+      }
       const monthKey = entry.monthKey ?? monthFromDate(entry.entryDate);
       const current = latestByMonth.get(monthKey);
       const entryRank = `${entry.updatedAt ?? ""}|${entry.entryDate ?? ""}|${entry.id ?? ""}`;

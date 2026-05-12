@@ -809,6 +809,37 @@ function currentSelectedMonthKey() {
   return viewStateMonthValue(monthSelect) ?? window.localStorage.getItem(monthReviewStorageKey) ?? null;
 }
 
+let runtimeBuildInfoRequest = null;
+function runtimeBuildLabel() {
+  if (!runtimeBuildInfoRequest) {
+    runtimeBuildInfoRequest = fetch("/api/runtime-info", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((runtimeInfo) => {
+        if (!runtimeInfo || typeof runtimeInfo !== "object") {
+          return "Build: unbekannt";
+        }
+        const buildLabel =
+          typeof runtimeInfo.buildLabel === "string" && runtimeInfo.buildLabel.trim()
+            ? runtimeInfo.buildLabel.trim()
+            : null;
+        if (buildLabel) {
+          return `Build: ${buildLabel}`;
+        }
+        const appVersion =
+          typeof runtimeInfo.appVersion === "string" && runtimeInfo.appVersion.trim()
+            ? runtimeInfo.appVersion.trim()
+            : "0.0.0";
+        const gitRevision =
+          typeof runtimeInfo.gitRevision === "string" && runtimeInfo.gitRevision.trim()
+            ? runtimeInfo.gitRevision.trim()
+            : null;
+        return gitRevision ? `Build: v${appVersion} (${gitRevision})` : `Build: v${appVersion}`;
+      })
+      .catch(() => "Build: unbekannt");
+  }
+  return runtimeBuildInfoRequest;
+}
+
 const {
   selectBaselineForMonth,
   buildBaselineForMonth,
@@ -1908,6 +1939,8 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   const bundleAt = draftReport.importBundleGeneratedAt;
   const bundleLabel = bundleAt ? formatHistoryTimestamp(bundleAt) : "—";
   setText("generatedAt", `${viewRecalculatedAt} · JSON-Daten: ${bundleLabel}`);
+  setText("monthBuildInfo", "Build: wird geladen...");
+  runtimeBuildLabel().then((label) => setText("monthBuildInfo", label));
   setText("netFlow", euro.format(draftReport.totals.netFlow));
   setText("incomeTotal", euro.format(draftReport.totals.incomeTotal));
   setText("expenseTotal", euro.format(draftReport.totals.expenseTotal));

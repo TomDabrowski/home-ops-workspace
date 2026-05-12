@@ -33,6 +33,35 @@ const port = runtimeConfig.port;
 const bindHost = runtimeConfig.bindHost;
 const serverDisplayUrl = runtimeConfig.displayUrl;
 const persistentServer = runtimeConfig.persistentServer;
+const buildStartedAt = new Date().toISOString();
+const appVersion = (() => {
+  try {
+    const pkgPath = join(root, "package.json");
+    const pkgRaw = readFileSync(pkgPath, "utf8");
+    const pkg = JSON.parse(pkgRaw) as { version?: string };
+    return pkg.version?.trim() || "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
+const gitRevision = (() => {
+  try {
+    return execFileSync("git", ["-C", root, "rev-parse", "--short", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    try {
+      return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+    } catch {
+      return null;
+    }
+  }
+})();
+const buildFallbackId = buildStartedAt.replace(/[-:TZ.]/g, "").slice(0, 12);
 const devImportDraftToolsEnabled = parseBooleanFlag(process.env.HOME_OPS_FINANCE_DEV_IMPORT_TOOLS);
 const reconciliationStatePath = financeDataPath("reconciliation-state.json");
 const importMappingsPath = financeDataPath("import-mappings.json");
@@ -469,6 +498,10 @@ const server = createServer(async (req, res) => {
       persistentServer,
       dataDir,
       dataMode: dataDir === join(root, "data") ? "repo-default" : "external",
+      appVersion,
+      gitRevision,
+      buildStartedAt,
+      buildLabel: gitRevision ? `v${appVersion} (${gitRevision})` : `v${appVersion} (dev-${buildFallbackId})`,
     });
   }
 
