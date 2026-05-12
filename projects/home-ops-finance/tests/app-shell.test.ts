@@ -59,6 +59,58 @@ test("app shell persists and applies dark mode", () => {
   assert.equal(themeButton.classList.active, true);
 });
 
+test("applyThemeUi sets light theme and updates toggle text to 'Dark Mode aus'", () => {
+  const storage = new Map<string, string>();
+  const themeButton = {
+    textContent: "",
+    classList: {
+      active: false,
+      toggle(_name: string, enabled: boolean) {
+        this.active = enabled;
+      },
+    },
+  };
+
+  globalThis.window = {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+    },
+    sessionStorage: {
+      getItem: () => null,
+      setItem: () => {},
+    },
+    matchMedia: () => ({ matches: false }),
+  } as unknown as Window & typeof globalThis;
+
+  globalThis.document = {
+    documentElement: {
+      dataset: {} as Record<string, string>,
+    },
+    getElementById: (id: string) => (id === "themeModeButton" ? themeButton : null),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  } as unknown as Document;
+
+  const shell = createAppShellTools({
+    activeTabStorageKey: "active-tab",
+    monthReviewStorageKey: "month-review",
+    monthFilterStorageKey: "month-filter",
+    developerModeStorageKey: "developer-mode",
+    formulaTooltipStorageKey: "formula-tooltips",
+    themeModeStorageKey: "theme-mode",
+    clientSessionStorageKey: "client-session",
+    clientHeartbeatMs: 15000,
+  });
+
+  shell.applyThemeUi("light");
+  assert.equal(document.documentElement.dataset.theme, "light");
+  assert.equal(themeButton.textContent, "Dark Mode aus");
+  assert.equal(themeButton.classList.active, false);
+});
+
 test("app shell keeps tooltip toggle visible outside developer mode", () => {
   const storage = new Map<string, string>();
   const developerButton = {
