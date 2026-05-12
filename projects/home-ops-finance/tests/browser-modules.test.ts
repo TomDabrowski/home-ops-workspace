@@ -221,6 +221,106 @@ test("monthly expense editor defaults to today and stores the month derived from
   }
 });
 
+test("movement editor keeps multiple manual incomes separate", async () => {
+  const originalDocument = globalThis.document;
+  const originalDateNow = Date.now;
+  const originalMathRandom = Math.random;
+  const field = (value: unknown, extra: Record<string, unknown> = {}) => ({
+    value,
+    dataset: {},
+    addEventListener() {},
+    ...extra,
+  });
+
+  const elements = new Map<string, Record<string, unknown>>([
+    ["monthlyMovementType", field("income", { onchange: null })],
+    ["monthlyExpenseDescription", field("Verkauf Kaffeemaschine", { oninput: null })],
+    ["monthlyExpenseAmount", field("100", { oninput: null })],
+    ["monthlyExpenseDate", field("2026-05-10", { oninput: null })],
+    ["monthlyExpenseCategory", field("other", { innerHTML: "", parentElement: { hidden: false }, onchange: null })],
+    ["monthlyIncomeStream", field("misc-inflows", { innerHTML: "", onchange: null })],
+    ["monthlyIncomeStreamWrap", { hidden: false }],
+    ["monthlyExpenseAccount", field("giro", { innerHTML: "", onchange: null })],
+    ["monthlyExpenseNotes", field("Notiz")],
+    ["monthlyExpenseMeta", { textContent: "" }],
+    ["monthlyExpenseWarnings", {}],
+    ["saveMonthlyExpenseButton", { dataset: {}, textContent: "Bewegung speichern", onclick: null }],
+  ]);
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return elements.get(id) ?? null;
+    },
+  } as typeof globalThis.document;
+
+  let savedIncomeState: Record<string, unknown>[] = [];
+  let refreshStatus: any = null;
+  const nowValues = [1715250060000, 1715250060000];
+  Date.now = () => nowValues.shift() ?? 1715250060000;
+  Math.random = () => 0.123456789;
+
+  try {
+    renderMonthlyExpenseEditor({ expenseCategories: [], incomeStreams: [] }, "2026-05", {
+      manualExpensesForMonth: () => [],
+      musicIncomeProfileForMonth: () => ({
+        reserveAmountForGross: () => 0,
+        availableAmountForGross: (amount: number) => amount,
+      }),
+      optionMarkup: () => "",
+      buildCategoryOptions: () => [],
+      accountOptions: [],
+      todayIsoDate: () => "2026-05-14",
+      monthFromDate: (value: string) => String(value).slice(0, 7),
+      euro: new Intl.NumberFormat("de-DE", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 2,
+      }),
+      formatDisplayDate: (value: string) => value,
+      monthlyExpensePersistence: "project",
+      renderSignalInline: () => {},
+      expenseWarningsForInput: () => [],
+      confirmAction: () => true,
+      readMonthlyExpenseOverrides: () => [],
+      async saveMonthlyExpenseOverrides() {
+        return { mode: "project" };
+      },
+      readMonthlyMusicIncomeOverrides: () => savedIncomeState,
+      async saveMonthlyMusicIncomeOverrides(nextState: Record<string, unknown>[]) {
+        savedIncomeState = nextState;
+        return { mode: "project" };
+      },
+      async refreshFinanceView(status: any) {
+        refreshStatus = status;
+      },
+      statusDetailForMode: () => "Projektdatei",
+    });
+
+    const saveButton = elements.get("saveMonthlyExpenseButton") as { onclick?: () => Promise<void>; dataset: Record<string, string> };
+    await saveButton.onclick?.();
+    const firstId = String(savedIncomeState[0]?.id ?? "");
+    assert.equal(savedIncomeState.length, 1);
+
+    const descriptionField = elements.get("monthlyExpenseDescription") as { value: string };
+    const amountField = elements.get("monthlyExpenseAmount") as { value: string };
+    const movementTypeField = elements.get("monthlyMovementType") as { value: string };
+    descriptionField.value = "Verkauf Schreibtisch";
+    amountField.value = "220";
+    movementTypeField.value = "income";
+    await saveButton.onclick?.();
+
+    assert.equal(savedIncomeState.length, 2);
+    assert.notEqual(savedIncomeState[0]?.id, savedIncomeState[1]?.id);
+    const secondId = String(savedIncomeState.find((entry) => String(entry.id) !== firstId)?.id ?? "");
+    assert.ok(secondId.length > 0);
+    assert.equal(refreshStatus?.title, "Einnahme gespeichert");
+  } finally {
+    Date.now = originalDateNow;
+    Math.random = originalMathRandom;
+    globalThis.document = originalDocument;
+  }
+});
+
 test("validation signals show the monthly Tagesgeld withdrawal need and the no-withdrawal state", () => {
   const originalDocument = globalThis.document;
   const target = { innerHTML: "" };

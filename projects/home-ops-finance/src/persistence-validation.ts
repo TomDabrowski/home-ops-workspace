@@ -65,6 +65,8 @@ export interface MonthlyMusicIncomeOverrideState {
   monthKey: string;
   entryDate: string;
   amount: number;
+  incomeStreamId?: string;
+  description?: string;
   reserveAmount?: number;
   availableAmount?: number;
   accountId?: string;
@@ -363,6 +365,8 @@ export function parseMonthlyMusicIncomeOverrideCollection(value: unknown): Month
       monthKey: asString(item.monthKey, `monthlyMusicIncomeOverrides[${index}].monthKey`),
       entryDate: asString(item.entryDate, `monthlyMusicIncomeOverrides[${index}].entryDate`),
       amount: asNumber(item.amount, `monthlyMusicIncomeOverrides[${index}].amount`),
+      incomeStreamId: asOptionalString(item.incomeStreamId, `monthlyMusicIncomeOverrides[${index}].incomeStreamId`),
+      description: asOptionalString(item.description, `monthlyMusicIncomeOverrides[${index}].description`),
       reserveAmount: asOptionalNumber(item.reserveAmount, `monthlyMusicIncomeOverrides[${index}].reserveAmount`),
       availableAmount: asOptionalNumber(item.availableAmount, `monthlyMusicIncomeOverrides[${index}].availableAmount`),
       accountId: asOptionalString(item.accountId, `monthlyMusicIncomeOverrides[${index}].accountId`),

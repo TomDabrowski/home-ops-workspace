@@ -107,7 +107,10 @@ export function createMonthReviewDataTools(deps) {
 
   function unifiedEntrySourceLabel(entry, kind) {
     if (kind === "income") {
-      return isManualMusicIncomeEntry(entry) ? "Istwert" : "Import";
+      if (!isManualMusicIncomeEntry(entry)) {
+        return "Import";
+      }
+      return entry?.incomeStreamId === "music-income" ? "Istwert" : "Manuell";
     }
 
     return isManualExpenseEntry(entry) ? "Manuell" : "Import";

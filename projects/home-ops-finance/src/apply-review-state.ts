@@ -159,21 +159,30 @@ function applyMusicForecastSettings(
 function latestActiveMonthlyMusicIncomeOverrides(
   overrides: MonthlyMusicIncomeOverrideCollection,
 ): MonthlyMusicIncomeOverrideCollection {
-  const latestByMonth = new Map<string, MonthlyMusicIncomeOverrideCollection[number]>();
+  const latestByMonthAndStream = new Map<string, MonthlyMusicIncomeOverrideCollection[number]>();
+  const manualEntries: MonthlyMusicIncomeOverrideCollection = [];
 
   for (const entry of overrides.filter((item) => item.isActive !== false)) {
+    const isManualIncome = String(entry.id ?? "").startsWith("manual-income-");
+    if (isManualIncome) {
+      manualEntries.push(entry);
+      continue;
+    }
     const monthKey = entry.monthKey ?? entry.entryDate.slice(0, 7);
-    const current = latestByMonth.get(monthKey);
+    const incomeStreamId = entry.incomeStreamId ?? "music-income";
+    const bucketKey = `${monthKey}/${incomeStreamId}`;
+    const current = latestByMonthAndStream.get(bucketKey);
     const entryRank = `${entry.updatedAt ?? ""}|${entry.entryDate ?? ""}|${entry.id ?? ""}`;
     const currentRank = current ? `${current.updatedAt ?? ""}|${current.entryDate ?? ""}|${current.id ?? ""}` : "";
     if (!current || entryRank.localeCompare(currentRank) >= 0) {
-      latestByMonth.set(monthKey, entry);
+      latestByMonthAndStream.set(bucketKey, entry);
     }
   }
 
-  return [...latestByMonth.entries()]
-    .sort((left, right) => compareMonthKeys(left[0], right[0]))
+  const deduped = [...latestByMonthAndStream.entries()]
+    .sort((left, right) => compareMonthKeys(left[1].monthKey ?? left[1].entryDate.slice(0, 7), right[1].monthKey ?? right[1].entryDate.slice(0, 7)))
     .map(([, entry]) => entry);
+  return [...deduped, ...manualEntries];
 }
 
 function applySalarySettingsToBaselines(
@@ -360,33 +369,40 @@ export function applyReviewState(
     }));
   const generatedMusicForecastOverrides = applyMusicForecastSettings(draft, musicForecastSettings);
   const explicitMonthlyMusicIncomeOverrides = latestActiveMonthlyMusicIncomeOverrides(monthlyMusicIncomeOverrides);
-  const explicitMusicOverrideMonths = new Set(explicitMonthlyMusicIncomeOverrides.map((entry) => entry.monthKey));
+  const explicitMusicOverrideMonths = new Set(
+    explicitMonthlyMusicIncomeOverrides
+      .filter((entry) => (entry.incomeStreamId ?? "music-income") === "music-income")
+      .map((entry) => entry.monthKey),
+  );
   const activeMonthlyMusicIncomeOverrides = [
     ...generatedMusicForecastOverrides.filter((entry) => !explicitMusicOverrideMonths.has(entry.monthKey)),
     ...explicitMonthlyMusicIncomeOverrides,
   ]
     .map((entry) => {
-      const isManualMusicIncome = String(entry.id ?? "").startsWith("manual-music-income-");
+      const incomeStreamId = entry.incomeStreamId ?? "music-income";
+      const isManualMusicIncome = incomeStreamId === "music-income" && String(entry.id ?? "").startsWith("manual-music-income-");
       return {
         monthKey: entry.monthKey,
         id: entry.id,
-        incomeStreamId: "music-income",
+        incomeStreamId,
         accountId: entry.accountId ?? "giro",
         entryDate: entry.entryDate,
         amount: entry.amount,
-        reserveAmount: isManualMusicIncome ? 0 : (entry.reserveAmount ?? 0),
-        availableAmount: isManualMusicIncome
-          ? roundCurrency(entry.amount)
-          : (entry.availableAmount ?? roundCurrency(entry.amount - (entry.reserveAmount ?? 0))),
-        kind: "music" as const,
+        reserveAmount: incomeStreamId === "music-income" ? (isManualMusicIncome ? 0 : (entry.reserveAmount ?? 0)) : 0,
+        availableAmount: incomeStreamId === "music-income"
+          ? (isManualMusicIncome
+            ? roundCurrency(entry.amount)
+            : (entry.availableAmount ?? roundCurrency(entry.amount - (entry.reserveAmount ?? 0))))
+          : roundCurrency(entry.amount),
+        kind: incomeStreamId === "music-income" ? "music" as const : "other" as const,
         isRecurring: false,
         isPlanned: entry.monthKey >= "2026-01",
         notes: mergeNotes(entry.notes, [
-          entry.updatedAt ? `manual music income ${entry.updatedAt}` : "manual music income",
+          entry.updatedAt ? `manual monthly income ${entry.updatedAt}` : "manual monthly income",
         ]),
       };
     });
-  const musicOverrideMonths = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => entry.monthKey));
+  const incomeOverrideKeys = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => `${entry.monthKey}/${entry.incomeStreamId}`));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
   const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
     entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
@@ -464,7 +480,7 @@ export function applyReviewState(
       : [];
 
   const nextIncomeEntries = [
-    ...draft.incomeEntries.filter((entry) => !(entry.incomeStreamId === "music-income" && musicOverrideMonths.has(entry.entryDate.slice(0, 7)))),
+    ...draft.incomeEntries.filter((entry) => !incomeOverrideKeys.has(`${entry.entryDate.slice(0, 7)}/${entry.incomeStreamId}`)),
     ...activeMonthlyMusicIncomeOverrides,
   ];
 

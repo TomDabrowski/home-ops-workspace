@@ -942,6 +942,7 @@ async function performDevImportEntryDeleteIfConfirmed(meta) {
 function renderMonthlyExpenseEditor(importDraft, monthKey) {
   renderMonthlyExpenseEditorView(importDraft, monthKey, {
     manualExpensesForMonth,
+    musicIncomeProfileForMonth,
     optionMarkup,
     buildCategoryOptions,
     accountOptions,
@@ -955,6 +956,8 @@ function renderMonthlyExpenseEditor(importDraft, monthKey) {
     confirmAction,
     readMonthlyExpenseOverrides,
     saveMonthlyExpenseOverrides,
+    readMonthlyMusicIncomeOverrides,
+    saveMonthlyMusicIncomeOverrides,
     refreshFinanceView,
     statusDetailForMode,
   });

@@ -54,6 +54,12 @@ function parseLocaleNumber(value) {
   return Number(normalized);
 }
 
+let uniqueEntryCounter = 0;
+function uniqueEntryId(prefix) {
+  uniqueEntryCounter += 1;
+  return `${prefix}-${Date.now()}-${uniqueEntryCounter}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
 export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
   const {
     manualMusicIncomeOverridesForMonth,
@@ -193,7 +199,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
       item.isActive !== false &&
       (item.monthKey ?? monthFromDate(item.entryDate)) === selectedMonthKey,
     );
-    const targetId = editingId || existingForMonth?.id || `manual-music-income-${Date.now()}`;
+    const targetId = editingId || existingForMonth?.id || uniqueEntryId("manual-music-income");
     const isEditing = Boolean(editingId || existingForMonth);
 
     if (!confirmAction(isEditing
@@ -248,6 +254,7 @@ export function renderMonthlyMusicIncomeEditor(importDraft, monthKey, deps) {
 export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   const {
     manualExpensesForMonth,
+    musicIncomeProfileForMonth,
     optionMarkup,
     buildCategoryOptions,
     accountOptions,
@@ -261,14 +268,19 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     confirmAction,
     readMonthlyExpenseOverrides,
     saveMonthlyExpenseOverrides,
+    readMonthlyMusicIncomeOverrides,
+    saveMonthlyMusicIncomeOverrides,
     refreshFinanceView,
     statusDetailForMode,
   } = deps;
 
+  const movementTypeField = document.getElementById("monthlyMovementType");
   const descriptionField = document.getElementById("monthlyExpenseDescription");
   const amountField = document.getElementById("monthlyExpenseAmount");
   const dateField = document.getElementById("monthlyExpenseDate");
   const categoryField = document.getElementById("monthlyExpenseCategory");
+  const incomeStreamField = document.getElementById("monthlyIncomeStream");
+  const incomeStreamWrap = document.getElementById("monthlyIncomeStreamWrap");
   const accountField = document.getElementById("monthlyExpenseAccount");
   const notesField = document.getElementById("monthlyExpenseNotes");
   const metaTarget = document.getElementById("monthlyExpenseMeta");
@@ -289,23 +301,34 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   }
 
   const items = manualExpensesForMonth(monthKey);
+  const supportsUnifiedMovement = Boolean(movementTypeField && incomeStreamField && incomeStreamWrap);
+  const incomeStreamOptions = buildCategoryOptions(importDraft.incomeStreams ?? []);
   categoryField.innerHTML = optionMarkup(buildCategoryOptions(importDraft.expenseCategories), categoryField.value || "other");
+  if (incomeStreamField) {
+    incomeStreamField.innerHTML = optionMarkup(incomeStreamOptions, incomeStreamField.value || "misc-inflows");
+  }
   accountField.innerHTML = optionMarkup(accountOptions, accountField.value || "giro");
   if (!(saveButton.dataset.editingId ?? "")) {
     dateField.value = todayIsoDate();
+  }
+  if (movementTypeField && !movementTypeField.value) {
+    movementTypeField.value = "expense";
   }
 
   const expenseNote = bindAutoNote(
     notesField,
     () => {
+      const movementType = movementTypeField?.value === "income" ? "income" : "expense";
       const description = descriptionField.value.trim();
       const amount = Number(amountField.value);
       const entryDate = dateField.value || todayIsoDate();
       const targetMonthKey = monthFromDate(entryDate) || monthKey;
       const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
-      return `${description || "Manuelle Ausgabe"} am ${formatDisplayDate(entryDate)} für ${targetMonthKey}: ${amountLabel}.`;
+      return movementType === "income"
+        ? `${description || "Manuelle Einnahme"} am ${formatDisplayDate(entryDate)} für ${targetMonthKey}: ${amountLabel}.`
+        : `${description || "Manuelle Ausgabe"} am ${formatDisplayDate(entryDate)} für ${targetMonthKey}: ${amountLabel}.`;
     },
-    [descriptionField, amountField, dateField, categoryField, accountField],
+    [movementTypeField, descriptionField, amountField, dateField, categoryField, incomeStreamField, accountField].filter(Boolean),
   );
   if (!(saveButton.dataset.editingId ?? "")) {
     expenseNote.refresh(true);
@@ -314,10 +337,17 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   const persistenceLabel = monthlyExpensePersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = items.length > 0
     ? `${items.length} manuelle Ausgaben im Monat · Speicherort: ${persistenceLabel}`
-    : `Noch keine manuelle Ausgabe gespeichert · Speicherort: ${persistenceLabel}`;
+    : `Noch keine manuelle Bewegung gespeichert · Speicherort: ${persistenceLabel}`;
 
-  const updateWarnings = () => {
-    renderSignalInline(warningsTarget, expenseWarningsForInput(importDraft, monthKey, {
+  const syncMovementFields = () => {
+    const isIncome = supportsUnifiedMovement && movementTypeField.value === "income";
+    if (categoryField.parentElement) {
+      categoryField.parentElement.hidden = isIncome;
+    }
+    if (incomeStreamWrap) {
+      incomeStreamWrap.hidden = !isIncome;
+    }
+    renderSignalInline(warningsTarget, isIncome ? [] : expenseWarningsForInput(importDraft, monthKey, {
       description: descriptionField.value,
       amount: amountField.value,
       entryDate: dateField.value,
@@ -326,10 +356,20 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     }));
   };
 
+  const updateWarnings = () => {
+    syncMovementFields();
+  };
+
+  if (movementTypeField) {
+    movementTypeField.onchange = updateWarnings;
+  }
   descriptionField.oninput = updateWarnings;
   amountField.oninput = updateWarnings;
   dateField.oninput = updateWarnings;
   categoryField.onchange = updateWarnings;
+  if (incomeStreamField) {
+    incomeStreamField.onchange = updateWarnings;
+  }
   accountField.onchange = updateWarnings;
   updateWarnings();
 
@@ -340,6 +380,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     const entryDate = dateField.value || todayIsoDate();
     const selectedMonthKey = monthFromDate(entryDate) || monthKey;
     const notes = notesField.value.trim();
+    const isIncome = supportsUnifiedMovement && movementTypeField?.value === "income";
 
     if (!description || !Number.isFinite(amount) || amount <= 0) {
       metaTarget.textContent = "Bitte Beschreibung und positiven Betrag eintragen.";
@@ -348,39 +389,75 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
 
     const isEditing = Boolean(editingId);
     if (!confirmAction(isEditing
-      ? `Ausgabe "${description}" für ${entryDate} wirklich aktualisieren?`
-      : `Ausgabe "${description}" für ${entryDate} wirklich speichern?`)) {
+      ? `${isIncome ? "Einnahme" : "Ausgabe"} "${description}" für ${entryDate} wirklich aktualisieren?`
+      : `${isIncome ? "Einnahme" : "Ausgabe"} "${description}" für ${entryDate} wirklich speichern?`)) {
       return;
     }
 
-    const nextEntry = {
-      id: editingId || `manual-expense-${Date.now()}`,
-      monthKey: selectedMonthKey,
-      entryDate,
-      description,
-      amount,
-      expenseCategoryId: categoryField.value || "other",
-      accountId: accountField.value || "giro",
-      expenseType: "variable",
-      isActive: true,
-      notes,
-      updatedAt: new Date().toISOString(),
-    };
+    let result;
+    if (isIncome) {
+      const incomeStreamId = incomeStreamField?.value || "misc-inflows";
+      const profile = musicIncomeProfileForMonth(importDraft, selectedMonthKey);
+      const reserveAmount = incomeStreamId === "music-income" ? profile.reserveAmountForGross(amount) : 0;
+      const availableAmount = incomeStreamId === "music-income"
+        ? profile.availableAmountForGross(amount)
+        : amount;
+      const nextEntry = {
+        id: editingId || uniqueEntryId("manual-income"),
+        monthKey: selectedMonthKey,
+        entryDate: `${entryDate}T12:00`,
+        description,
+        amount,
+        incomeStreamId,
+        reserveAmount,
+        availableAmount,
+        accountId: accountField.value || "giro",
+        isActive: true,
+        notes,
+        updatedAt: new Date().toISOString(),
+      };
+      const nextState = editingId
+        ? readMonthlyMusicIncomeOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
+        : [...readMonthlyMusicIncomeOverrides(), nextEntry];
+      result = await saveMonthlyMusicIncomeOverrides(nextState);
+    } else {
+      const nextEntry = {
+        id: editingId || uniqueEntryId("manual-expense"),
+        monthKey: selectedMonthKey,
+        entryDate,
+        description,
+        amount,
+        expenseCategoryId: categoryField.value || "other",
+        accountId: accountField.value || "giro",
+        expenseType: "variable",
+        isActive: true,
+        notes,
+        updatedAt: new Date().toISOString(),
+      };
 
-    const nextState = editingId
-      ? readMonthlyExpenseOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
-      : [...readMonthlyExpenseOverrides(), nextEntry];
-
-    const result = await saveMonthlyExpenseOverrides(nextState);
+      const nextState = editingId
+        ? readMonthlyExpenseOverrides().map((entry) => (entry.id === editingId ? nextEntry : entry))
+        : [...readMonthlyExpenseOverrides(), nextEntry];
+      result = await saveMonthlyExpenseOverrides(nextState);
+    }
     saveButton.dataset.editingId = "";
     descriptionField.value = "";
     amountField.value = "";
     dateField.value = todayIsoDate();
+    if (movementTypeField) {
+      movementTypeField.value = "expense";
+    }
     categoryField.value = "other";
+    if (incomeStreamField) {
+      incomeStreamField.value = "misc-inflows";
+    }
     accountField.value = "giro";
     expenseNote.refresh(true);
+    updateWarnings();
     await refreshFinanceView({
-      title: isEditing ? "Ausgabe aktualisiert" : "Ausgabe gespeichert",
+      title: isIncome
+        ? (isEditing ? "Einnahme aktualisiert" : "Einnahme gespeichert")
+        : (isEditing ? "Ausgabe aktualisiert" : "Ausgabe gespeichert"),
       detail: statusDetailForMode(result.mode),
       tone: result.mode === "project" ? "success" : "warn",
     });

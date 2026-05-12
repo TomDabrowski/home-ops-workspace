@@ -128,11 +128,15 @@ export function renderMonthIncomeList(importDraft, review, deps) {
   }
 
   const incomeStreamOptions = buildCategoryOptions(importDraft.incomeStreams ?? []);
+  const manualIncomeById = new Map(readMonthlyMusicIncomeOverrides().map((item) => [item.id, item]));
 
   target.innerHTML = entries.map((entry) => {
     const isManual = isManualMusicIncomeEntry(entry);
     const expanded = getExpandedMonthIncomeKey() === expandToken(entry.id);
-    const label = incomeStreamLabel(importDraft, entry.incomeStreamId);
+    const manualOverride = manualIncomeById.get(entry.id);
+    const label = isManual
+      ? (manualOverride?.description?.trim() || incomeStreamLabel(importDraft, entry.incomeStreamId))
+      : incomeStreamLabel(importDraft, entry.incomeStreamId);
     return `
       <article class="mapping-card ${expanded ? "is-expanded" : ""}">
         <div class="mapping-card-head">
@@ -151,6 +155,10 @@ export function renderMonthIncomeList(importDraft, review, deps) {
                 <label class="select-wrap currency-wrap">
                   <span>Musik netto</span>
                   <input type="number" min="0" step="0.01" data-month-income-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                </label>
+                <label class="select-wrap">
+                  <span>Bezeichnung</span>
+                  <input type="text" data-month-income-description="${entry.id}" value="${escapeHtml(manualOverride?.description ?? "")}">
                 </label>
                 <label class="select-wrap">
                   <span>Monat</span>
@@ -218,6 +226,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
       }
 
       const amount = Number(target.querySelector(`[data-month-income-amount="${id}"]`)?.value);
+      const description = target.querySelector(`[data-month-income-description="${id}"]`)?.value?.trim() ?? "";
       const selectedMonthKey = target.querySelector(`[data-month-income-date="${id}"]`)?.value || review.row.monthKey;
       const notes = target.querySelector(`[data-month-income-notes="${id}"]`)?.value?.trim() ?? "";
       if (!Number.isFinite(amount) || amount < 0) {
@@ -225,32 +234,21 @@ export function renderMonthIncomeList(importDraft, review, deps) {
         return;
       }
 
-      const collidingEntry = readMonthlyMusicIncomeOverrides().find((item) =>
-        item.id !== id &&
-        item.isActive !== false &&
-        (item.monthKey ?? monthFromDate(item.entryDate)) === selectedMonthKey,
-      );
       const nextEntry = {
         ...source,
-        id: collidingEntry?.id ?? source.id,
+        id: source.id,
         monthKey: selectedMonthKey,
         entryDate: `${selectedMonthKey}-01`,
+        description,
         amount,
         reserveAmount: 0,
         availableAmount: amount,
         notes,
         updatedAt: new Date().toISOString(),
       };
-      const nextState = readMonthlyMusicIncomeOverrides().map((item) => {
-        const itemMonthKey = item.monthKey ?? monthFromDate(item.entryDate);
-        if (item.id === nextEntry.id) {
-          return nextEntry;
-        }
-        if (item.id !== nextEntry.id && item.isActive !== false && itemMonthKey === selectedMonthKey) {
-          return { ...item, isActive: false, updatedAt: nextEntry.updatedAt };
-        }
-        return item.id === id ? { ...item, isActive: false, updatedAt: nextEntry.updatedAt } : item;
-      });
+      const nextState = readMonthlyMusicIncomeOverrides().map((item) => (
+        item.id === nextEntry.id ? nextEntry : item
+      ));
       const result = await saveMonthlyMusicIncomeOverrides(nextState);
       setExpandedMonthIncomeKey(null);
       await refreshFinanceView({

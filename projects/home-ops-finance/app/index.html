@@ -601,11 +601,18 @@
           <article class="card">
             <div class="section-head">
               <div>
-                <h2>Neue Ausgabe erfassen</h2>
-                <p class="section-copy">Neue Ausgaben starten mit dem heutigen Datum. Gespeichert wird immer im Monat des gewählten Datums, unabhängig davon, welchen Monat du gerade anschaust.</p>
+                <h2>Neue Bewegung erfassen</h2>
+                <p class="section-copy">Du kannst hier Einnahmen oder Ausgaben direkt für das gewählte Datum erfassen. Gespeichert wird immer im Monat des Datums.</p>
               </div>
             </div>
             <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Typ</span>
+                <select id="monthlyMovementType">
+                  <option value="expense">Ausgabe</option>
+                  <option value="income">Einnahme</option>
+                </select>
+              </label>
               <label class="select-wrap">
                 <span>Beschreibung</span>
                 <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
@@ -622,6 +629,10 @@
                 <span>Kategorie</span>
                 <select id="monthlyExpenseCategory"></select>
               </label>
+              <label class="select-wrap" id="monthlyIncomeStreamWrap" hidden>
+                <span>Einnahme-Kategorie</span>
+                <select id="monthlyIncomeStream"></select>
+              </label>
               <label class="select-wrap">
                 <span>Konto</span>
                 <select id="monthlyExpenseAccount"></select>
@@ -633,8 +644,8 @@
             </div>
             <div id="monthlyExpenseWarnings" class="signal-inline"></div>
             <div class="reconciliation-footer">
-              <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Ausgabe gespeichert.</p>
-              <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Ausgabe speichern</button>
+              <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Bewegung gespeichert.</p>
+              <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Bewegung speichern</button>
             </div>
           </article>
         </div>
