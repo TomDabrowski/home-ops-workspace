@@ -134,9 +134,12 @@ export function renderMonthIncomeList(importDraft, review, deps) {
     const isManual = isManualMusicIncomeEntry(entry);
     const expanded = getExpandedMonthIncomeKey() === expandToken(entry.id);
     const manualOverride = manualIncomeById.get(entry.id);
-    const label = isManual
-      ? (manualOverride?.description?.trim() || incomeStreamLabel(importDraft, entry.incomeStreamId))
-      : incomeStreamLabel(importDraft, entry.incomeStreamId);
+    const isManualMusicIncome = isManual && entry.incomeStreamId === "music-income";
+    const label = isManualMusicIncome
+      ? incomeStreamLabel(importDraft, entry.incomeStreamId)
+      : (isManual
+        ? (manualOverride?.description?.trim() || incomeStreamLabel(importDraft, entry.incomeStreamId))
+        : incomeStreamLabel(importDraft, entry.incomeStreamId));
     return `
       <article class="mapping-card ${expanded ? "is-expanded" : ""}">
         <div class="mapping-card-head">
