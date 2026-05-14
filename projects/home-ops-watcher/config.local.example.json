@@ -1,0 +1,21 @@
+{
+  "dataDir": "/path/to/private/home-ops-watcher/data",
+  "targets": [
+    {
+      "id": "router",
+      "label": "Router Admin",
+      "kind": "http",
+      "url": "http://example.home.invalid",
+      "expectedStatus": 200,
+      "timeoutMs": 3000
+    },
+    {
+      "id": "nas-ssh",
+      "label": "NAS SSH",
+      "kind": "tcp",
+      "host": "192.0.2.10",
+      "port": 22,
+      "timeoutMs": 3000
+    }
+  ]
+}

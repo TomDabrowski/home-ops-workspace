@@ -1,0 +1,20 @@
+{
+  "name": "home-ops-watcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first watcher for home lab services, devices, and health checks.",
+  "scripts": {
+    "check": "npm run typecheck && npm test",
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@home-ops/framework": "file:../../../home-ops-framework"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.2"
+  }
+}
