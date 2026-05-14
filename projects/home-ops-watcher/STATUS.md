@@ -12,7 +12,7 @@ First MVP
 - The project now consumes `@home-ops/framework` via a local file dependency.
 - HTTP, TCP, and JSON status checks are implemented.
 - Validated JSON history persistence is implemented.
-- A tiny local server exposes `/`, `/api/status`, `/api/checks/run`, and `/api/history`.
+- A compact local server UI exposes summary tiles, target cards, JSON details, and the API routes.
 - Typecheck and tests pass.
 
 ## Immediate Next Step

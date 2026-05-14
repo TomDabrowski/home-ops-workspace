@@ -17,7 +17,7 @@ This project is the first real consumer of the shared private `home-ops-framewor
 - Reads targets from `config.local.json`.
 - Stores check history in the private data directory as `watch-history.json`.
 - Supports HTTP, TCP, and JSON status checks for local Home Ops apps.
-- Exposes a tiny local status UI and JSON API.
+- Exposes a compact local status UI with summary tiles, target cards, and JSON details.
 
 ## Setup
 
@@ -33,6 +33,9 @@ Open:
 ```text
 http://127.0.0.1:4320
 ```
+
+The start page shows the current overall status, counts for `ok` / `warn` / `down`, and one card per
+configured target. Use "Checks starten" to run checks and persist the latest results into history.
 
 The default private data path is `data/` inside the project. For real use, set `dataDir` in `config.local.json` or `HOME_OPS_WATCHER_DATA_DIR` to a private external path.
 
