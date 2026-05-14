@@ -1,4 +1,4 @@
-export type WatchTargetKind = "http" | "tcp";
+export type WatchTargetKind = "http" | "tcp" | "json-status";
 export type WatchStatus = "ok" | "warn" | "down";
 
 export interface WatchTarget {
@@ -9,6 +9,7 @@ export interface WatchTarget {
   host?: string;
   port?: number;
   expectedStatus?: number;
+  statusPath?: string;
   timeoutMs?: number;
   enabled?: boolean;
 }

@@ -16,6 +16,29 @@ function resultStatusFromHttp(actualStatus: number, expectedStatus: number): Wat
   return actualStatus >= 200 && actualStatus < 500 ? "warn" : "down";
 }
 
+function readPath(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (current && typeof current === "object" && !Array.isArray(current)) {
+      return (current as Record<string, unknown>)[segment];
+    }
+    return undefined;
+  }, value);
+}
+
+function resultStatusFromJson(value: unknown): WatchStatus {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "ok" || normalized === "healthy" || normalized === "up") {
+    return "ok";
+  }
+  if (normalized === "warn" || normalized === "warning" || normalized === "degraded") {
+    return "warn";
+  }
+  if (normalized === "down" || normalized === "failed" || normalized === "error" || normalized === "critical") {
+    return "down";
+  }
+  return "warn";
+}
+
 async function runHttpCheck(target: WatchTarget, checkedAt: string): Promise<WatchCheckResult> {
   const timeoutMs = target.timeoutMs ?? 3000;
   const expectedStatus = target.expectedStatus ?? 200;
@@ -35,6 +58,53 @@ async function runHttpCheck(target: WatchTarget, checkedAt: string): Promise<Wat
       status,
       latencyMs,
       detail: `HTTP ${response.status}; expected ${expectedStatus}`,
+    };
+  } catch (error) {
+    return {
+      targetId: target.id,
+      label: target.label,
+      kind: target.kind,
+      checkedAt,
+      status: "down",
+      latencyMs: Math.round(performance.now() - start),
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function runJsonStatusCheck(target: WatchTarget, checkedAt: string): Promise<WatchCheckResult> {
+  const timeoutMs = target.timeoutMs ?? 3000;
+  const statusPath = target.statusPath ?? "summary.status";
+  const start = performance.now();
+  try {
+    const response = await fetch(target.url!, {
+      method: "GET",
+      signal: timeoutSignal(timeoutMs),
+    });
+    const latencyMs = Math.round(performance.now() - start);
+    if (!response.ok) {
+      return {
+        targetId: target.id,
+        label: target.label,
+        kind: target.kind,
+        checkedAt,
+        status: "down",
+        latencyMs,
+        detail: `HTTP ${response.status}; JSON status not read`,
+      };
+    }
+
+    const payload = await response.json() as unknown;
+    const statusValue = readPath(payload, statusPath);
+    const status = resultStatusFromJson(statusValue);
+    return {
+      targetId: target.id,
+      label: target.label,
+      kind: target.kind,
+      checkedAt,
+      status,
+      latencyMs,
+      detail: `JSON ${statusPath}=${String(statusValue)}`,
     };
   } catch (error) {
     return {
@@ -90,9 +160,13 @@ export async function runTargetCheck(target: WatchTarget, checkedAt = new Date()
       detail: "Target is disabled",
     };
   }
-  return target.kind === "http"
-    ? await runHttpCheck(target, checkedAt)
-    : await runTcpCheck(target, checkedAt);
+  if (target.kind === "http") {
+    return await runHttpCheck(target, checkedAt);
+  }
+  if (target.kind === "json-status") {
+    return await runJsonStatusCheck(target, checkedAt);
+  }
+  return await runTcpCheck(target, checkedAt);
 }
 
 export async function runTargetChecks(targets: WatchTarget[], checkedAt = new Date().toISOString()): Promise<WatchCheckResult[]> {

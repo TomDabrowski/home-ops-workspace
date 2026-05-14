@@ -10,14 +10,14 @@ First MVP
 - Initial scope and MVP captured.
 - First implementation added.
 - The project now consumes `@home-ops/framework` via a local file dependency.
-- HTTP and TCP checks are implemented.
+- HTTP, TCP, and JSON status checks are implemented.
 - Validated JSON history persistence is implemented.
 - A tiny local server exposes `/`, `/api/status`, `/api/checks/run`, and `/api/history`.
 - Typecheck and tests pass.
 
 ## Immediate Next Step
 
-Add real private targets in `config.local.json` and run the watcher locally.
+Add real private targets in `config.local.json`, including Backup Control via `/api/status`, and run the watcher locally.
 
 ## Notes
 

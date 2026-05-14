@@ -16,7 +16,7 @@ This project is the first real consumer of the shared private `home-ops-framewor
 - Uses `@home-ops/framework` through a local file dependency.
 - Reads targets from `config.local.json`.
 - Stores check history in the private data directory as `watch-history.json`.
-- Supports HTTP and TCP reachability checks.
+- Supports HTTP, TCP, and JSON status checks for local Home Ops apps.
 - Exposes a tiny local status UI and JSON API.
 
 ## Setup
@@ -42,6 +42,20 @@ The default private data path is `data/` inside the project. For real use, set `
 GET  /api/status
 POST /api/checks/run
 GET  /api/history
+```
+
+## JSON Status Targets
+
+Use `kind: "json-status"` for local apps that expose a status payload. By default Watcher reads
+`summary.status` and maps `ok` to `ok`, `warn` to `warn`, and `failed` to `down`.
+
+```json
+{
+  "id": "backup-control",
+  "label": "Backup Control",
+  "kind": "json-status",
+  "url": "http://127.0.0.1:4321/api/status"
+}
 ```
 
 ## Next Steps

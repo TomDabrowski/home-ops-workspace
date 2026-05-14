@@ -39,6 +39,29 @@ test("runs an http check against a local server", async () => {
   }
 });
 
+test("maps json status checks from local apps", async () => {
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ summary: { status: "failed" } }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+
+  try {
+    const result = await runTargetCheck({
+      id: "backup-control",
+      label: "Backup Control",
+      kind: "json-status",
+      url: `http://127.0.0.1:${address.port}/api/status`,
+    });
+    assert.equal(result.status, "down");
+    assert.match(result.detail, /summary\.status=failed/);
+  } finally {
+    server.close();
+  }
+});
+
 test("builds a report from targets and latest results", () => {
   const report = buildWatchReport(
     [{ id: "one", label: "One", kind: "http", url: "http://example.test" }],

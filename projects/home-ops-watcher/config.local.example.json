@@ -16,6 +16,14 @@
       "host": "192.0.2.10",
       "port": 22,
       "timeoutMs": 3000
+    },
+    {
+      "id": "backup-control",
+      "label": "Backup Control",
+      "kind": "json-status",
+      "url": "http://127.0.0.1:4321/api/status",
+      "statusPath": "summary.status",
+      "timeoutMs": 3000
     }
   ]
 }
