@@ -38,9 +38,19 @@ curl -X POST http://127.0.0.1:4321/api/runs \
   -d '{"jobId":"documents","completedAt":"2026-05-14T18:00","status":"success","note":"Manual check"}'
 ```
 
+## CLI
+
+```bash
+npm run backup -- status
+npm run backup -- runs
+npm run record -- --job documents-backup --status success --note "Manual check"
+```
+
+The CLI uses the same local config and JSON state as the server, so backup scripts can record a
+successful or failed run without calling the HTTP API.
+
 ## Next Steps
 
 - Add the real local backup jobs in `config.local.json`.
-- Add a CLI command that records runs from shell scripts or cron.
 - Add optional target probes for mounted volumes or backup marker files.
 - Wire the report into Home Ops Watcher once both APIs settle.

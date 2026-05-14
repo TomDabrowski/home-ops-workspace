@@ -6,6 +6,8 @@
   "description": "Local-first backup verification and stale-job tracker.",
   "scripts": {
     "check": "npm run typecheck && npm test",
+    "backup": "node --experimental-strip-types src/cli.ts",
+    "record": "node --experimental-strip-types src/cli.ts record",
     "start": "node --experimental-strip-types src/server.ts",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit"
