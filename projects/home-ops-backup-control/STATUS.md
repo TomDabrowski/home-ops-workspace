@@ -2,19 +2,20 @@
 
 ## Current Phase
 
-Planning
+MVP implemented
 
 ## Status Summary
 
-- Project folder created.
-- Initial scope and MVP captured.
-- Implementation has not started yet.
+- Local config, JSON state, report calculation, server API, and tiny status UI are implemented.
+- The app consumes shared helpers from `@home-ops/framework`.
+- Tests cover validation and stale/failed/disabled backup report behavior.
 
 ## Immediate Next Step
 
-List the backup jobs and destinations that need monitoring.
+Configure the first real backup jobs in `config.local.json` and decide how each job will record a run.
 
 ## Notes
 
-- Keep commits small and milestone-based.
-- Update this file whenever scope or progress changes.
+- Default local server: `http://127.0.0.1:4321`.
+- API endpoints: `GET /api/status`, `GET /api/runs`, `POST /api/runs`.
+- Good next integration point: Home Ops Watcher can call `/api/status` and show backup health beside service health.

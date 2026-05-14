@@ -1,0 +1,19 @@
+{
+  "dataDir": "/path/to/private/home-ops-backup-control/data",
+  "jobs": [
+    {
+      "id": "documents-backup",
+      "label": "Documents backup",
+      "sourceLabel": "Documents",
+      "destinationLabel": "NAS backup share",
+      "maxAgeHours": 30
+    },
+    {
+      "id": "photos-backup",
+      "label": "Photos backup",
+      "sourceLabel": "Photos library",
+      "destinationLabel": "External backup disk",
+      "maxAgeHours": 168
+    }
+  ]
+}
