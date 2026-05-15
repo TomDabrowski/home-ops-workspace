@@ -136,6 +136,10 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     return `${age.toFixed(1).replace(".", ",")} Jahre`;
   }
 
+  function roundMoney(value) {
+    return Math.round(Number(value ?? 0) * 100) / 100;
+  }
+
   function addMonths(monthKey, delta) {
     const year = Number(String(monthKey).slice(0, 4));
     const month = Number(String(monthKey).slice(5, 7));
@@ -153,7 +157,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     return [...simulation].reverse().find((row) => row.monthKey <= monthKey) ?? simulation.at(-1) ?? null;
   }
 
-  function firstSafeRetirementWithoutMusic(simulation, input) {
+  function firstFinancialIndependenceWithoutMusic(simulation, input) {
     const {
       replacementRate,
       currentNetSalary,
@@ -340,7 +344,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       ...plannerAssumptions,
       constantMusicGrossPerMonth: 0,
     });
-    const safeWithoutMusic = firstSafeRetirementWithoutMusic(noMusicSafetySimulation, {
+    const financialIndependenceWithoutMusic = firstFinancialIndependenceWithoutMusic(noMusicSafetySimulation, {
       replacementRate: settings.replacementRate,
       currentNetSalary,
       inflationRate: settings.inflationRate,
@@ -363,7 +367,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     const minimumMusicRetirementAge = ageAtMonth(firstForecastMonthKey, settings.currentAge, minimumMusicAtTarget?.monthKey);
     const milestoneRows = wealthMilestones(noMusicSimulation, requiredNestEgg);
     const retirementSpendShareOfCurrentNet = currentNetSalary > 0
-      ? (retirementSpendAtTarget / currentNetSalary) * 100
+      ? (retirementSpendNow / currentNetSalary) * 100
       : 0;
     const replacementRates = [70, 76, 90];
     const replacementTargets = replacementRates.map((rate) => {
@@ -373,6 +377,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     });
     const latestProjectedWealth = noMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
     const latestMinimumMusicWealth = musicScenarioSimulation.at(-1)?.wealthEndAmount ?? 0;
+    const noMusicGapAtTarget = roundMoney(Math.max(0, requiredNestEgg - latestProjectedWealth));
+    const musicGapAtTarget = roundMoney(Math.max(0, requiredNestEgg - latestMinimumMusicWealth));
     const nearTermNoMusicWealth = nearTermNoMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
     const nearTermMusicWealth = nearTermMusicSimulation.at(-1)?.wealthEndAmount ?? 0;
     const nearTermRequiredMusicGross = nearTermRequiredRun?.constantMusicGrossPerMonth ?? 0;
@@ -435,12 +441,24 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         formula: `(${euro.format(retirementSpendAtTarget)} * 12) / ${settings.withdrawalRate.toFixed(1)} % = ${euro.format(requiredNestEgg)}`,
       },
       [
-        "Sicher ohne Musik in Rente",
-        safeWithoutMusic
-          ? `${formatAgeLabel(safeWithoutMusic.age)} (${formatMonthLabel(safeWithoutMusic.monthKey)})`
+        "Rentenziel ohne Musik",
+        baselineAtTarget
+          ? `Erreicht in ${formatMonthLabel(baselineAtTarget.monthKey)}`
+          : `${euro.format(noMusicGapAtTarget)} Lücke bis ${formatMonthLabel(targetMonthKey)}`,
+      ],
+      [
+        "Rentenziel mit Musikprognose",
+        minimumMusicAtTarget
+          ? `Erreicht in ${formatMonthLabel(minimumMusicAtTarget.monthKey)}`
+          : `${euro.format(musicGapAtTarget)} Lücke bis ${formatMonthLabel(targetMonthKey)}`,
+      ],
+      [
+        "Ohne Musik bei weiterem Gehalt",
+        financialIndependenceWithoutMusic
+          ? `${formatAgeLabel(financialIndependenceWithoutMusic.age)} (${formatMonthLabel(financialIndependenceWithoutMusic.monthKey)})`
           : "Nicht bis Alter 90",
       ],
-      ["Rentenbedarf vs. aktuelles Netto", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} %`],
+      ["Rentenbedarf heute", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} % vom Netto`],
       ...replacementTargets.map((item) => [
         `Nest Egg bei ${item.rate} % Netto`,
         euro.format(item.nestEgg),
@@ -602,12 +620,18 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       ["Projektionsstart", formatMonthLabel(firstForecastMonthKey)],
       ["Zielmonat", formatMonthLabel(targetMonthKey)],
       [
-        "Sicher ohne Musik in Rente",
-        safeWithoutMusic
-          ? `${formatAgeLabel(safeWithoutMusic.age)} (${formatMonthLabel(safeWithoutMusic.monthKey)})`
+        "Rentenziel ohne Musik",
+        baselineAtTarget
+          ? `Erreicht in ${formatMonthLabel(baselineAtTarget.monthKey)}`
+          : `${euro.format(noMusicGapAtTarget)} Lücke`,
+      ],
+      [
+        "Ohne Musik bei weiterem Gehalt",
+        financialIndependenceWithoutMusic
+          ? `${formatAgeLabel(financialIndependenceWithoutMusic.age)} (${formatMonthLabel(financialIndependenceWithoutMusic.monthKey)})`
           : "Nicht bis Alter 90",
       ],
-      ["Bedarf als Anteil vom Netto", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} %`],
+      ["Bedarf heute", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} % vom Netto`],
       ["Musik-Mindestwert", euro.format(settings.minimumMusicGrossPerMonth)],
       ["Ziel mit Musik-Szenario", minimumMusicAtTarget ? formatMonthLabel(minimumMusicAtTarget.monthKey) : "Noch nicht erreicht"],
       ["Konstante Musik nötig", euro.format(constantMusicNeeded)],
@@ -618,8 +642,8 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
 
     const signalItems = [];
     signalItems.push({
-      title: "Ohne Musik sichtbar machen",
-      body: "Die Jahrestabelle blendet Musik absichtlich aus. Damit siehst du, wie stark dein Sockel allein durch Gehalt, Kostensteigerungen und Sparlogik trägt.",
+      title: "Ohne Musik ist kein Rentenversprechen",
+      body: `Die Null-Musik-Sicht zeigt nur, was bei weiterem Gehalt und Sparrate passiert. Zum Zielalter ${settings.targetAge.toFixed(0)} liegt die Lücke ohne Musik aktuell bei ${euro.format(noMusicGapAtTarget)}.`,
     });
     if (settings.minimumMusicGrossPerMonth > 0) {
       signalItems.push({
