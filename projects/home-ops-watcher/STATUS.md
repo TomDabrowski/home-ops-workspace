@@ -12,6 +12,7 @@ First MVP
 - The project now consumes `@home-ops/framework` via a local file dependency.
 - HTTP, TCP, and JSON status checks are implemented.
 - Missing or stale target checks are surfaced as `warn`.
+- JSON webhook notifications are available for `warn` or `down` reports.
 - Validated JSON history persistence is implemented.
 - A compact local server UI exposes summary tiles, target cards, JSON details, and the API routes.
 - Typecheck and tests pass.

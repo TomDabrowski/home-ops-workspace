@@ -1,5 +1,7 @@
 {
   "dataDir": "/path/to/private/home-ops-watcher/data",
+  "notificationWebhookUrl": "http://127.0.0.1:9999/home-ops-watcher",
+  "notificationMinimumStatus": "down",
   "targets": [
     {
       "id": "router",

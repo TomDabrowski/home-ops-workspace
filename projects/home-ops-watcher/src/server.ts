@@ -7,7 +7,8 @@ import {
 } from "@home-ops/framework";
 
 import { buildWatchReport, latestResultsForTargets, runTargetChecks } from "./checks.ts";
-import { configuredTargets } from "./config.ts";
+import { configuredTargets, notificationConfig } from "./config.ts";
+import { sendWebhookNotification, shouldNotify } from "./notifications.ts";
 import { appendWatchHistory, watchHistoryStore } from "./state.ts";
 import type { WatchCheckResult } from "./types.ts";
 
@@ -22,7 +23,16 @@ async function runAndStoreChecks() {
   const targets = configuredTargets();
   latestResults = await runTargetChecks(targets);
   appendWatchHistory(latestResults);
-  return buildWatchReport(targets, latestResults);
+  const report = buildWatchReport(targets, latestResults);
+  const notifications = notificationConfig();
+  if (notifications.webhookUrl && shouldNotify(report, notifications.minimumStatus)) {
+    try {
+      await sendWebhookNotification(notifications.webhookUrl, report);
+    } catch (error) {
+      console.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return report;
 }
 
 const server = createServer(async (req, res) => {

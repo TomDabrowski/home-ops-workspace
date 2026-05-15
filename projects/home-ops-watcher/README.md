@@ -18,6 +18,7 @@ This project is the first real consumer of the shared private `home-ops-framewor
 - Stores check history in the private data directory as `watch-history.json`.
 - Supports HTTP, TCP, and JSON status checks for local Home Ops apps.
 - Marks targets as `warn` when no check has been recorded or when `staleAfterHours` is exceeded.
+- Can send JSON webhook notifications for `warn` or `down` reports.
 - Exposes a compact local status UI with summary tiles, target cards, and JSON details.
 
 ## Setup
@@ -64,8 +65,20 @@ Use `kind: "json-status"` for local apps that expose a status payload. By defaul
 
 Add `staleAfterHours` to any target that should become `warn` when checks stop running.
 
+## Notifications
+
+Set `notificationWebhookUrl` in private `config.local.json` or use
+`HOME_OPS_WATCHER_NOTIFICATION_WEBHOOK_URL`. Watcher sends a compact JSON payload after
+`POST /api/checks/run` when the report reaches `notificationMinimumStatus`.
+
+```json
+{
+  "notificationWebhookUrl": "https://example.invalid/home-ops-watcher",
+  "notificationMinimumStatus": "down"
+}
+```
+
 ## Next Steps
 
 - Add the first real local device/service targets in private `config.local.json`.
-- Add a notification channel only after the status model is stable.
 - Add optional local advisor summary via Ollama once deterministic status data is useful.
