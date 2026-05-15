@@ -8,8 +8,6 @@ The repository contains code, example data, and project notes only. Real spreads
 
 - `projects/home-ops-finance`: finance tracker, import tooling, reports, and local dashboard
 - `projects/home-ops-subscriptions`: recurring cost and invoice tracking
-- `projects/home-ops-backup-control`: backup verification tooling
-- `projects/home-ops-watcher`: home lab monitoring
 - `projects/home-ops-dashboard`: shared household dashboard ideas
 - `projects/home-ops-media-organizer`: media and file organization tooling
 - `projects/home-ops-mail-sorter`: mail classification and sorting
@@ -20,25 +18,6 @@ The repository contains code, example data, and project notes only. Real spreads
 - Example JSON and mail samples are sanitized for development and testing.
 - See `.gitignore` for the default local-only files that should stay untracked.
 - Cross-repo DevOps/agent operations live in the separate `personal-devops-platform` repo.
-
-## Local Home Ops Runtime
-
-After creating local-only config files for Watcher and Backup Control, both local services can be
-started together:
-
-```bash
-scripts/home-ops-local.sh start
-scripts/home-ops-local.sh status
-scripts/home-ops-local.sh check
-```
-
-Stop them with:
-
-```bash
-scripts/home-ops-local.sh stop
-```
-
-Logs and PID files stay in each app's ignored `data/` directory.
 
 ## Local Finance Data
 
