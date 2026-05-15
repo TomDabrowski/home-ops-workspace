@@ -21,6 +21,25 @@ The repository contains code, example data, and project notes only. Real spreads
 - See `.gitignore` for the default local-only files that should stay untracked.
 - Cross-repo DevOps/agent operations live in the separate `personal-devops-platform` repo.
 
+## Local Home Ops Runtime
+
+After creating local-only config files for Watcher and Backup Control, both local services can be
+started together:
+
+```bash
+scripts/home-ops-local.sh start
+scripts/home-ops-local.sh status
+scripts/home-ops-local.sh check
+```
+
+Stop them with:
+
+```bash
+scripts/home-ops-local.sh stop
+```
+
+Logs and PID files stay in each app's ignored `data/` directory.
+
 ## Local Finance Data
 
 `projects/home-ops-finance` can keep private workbook exports and generated JSON outside the repo, for example on a NAS mount.
