@@ -2,6 +2,7 @@ FROM node:25-bookworm-slim
 
 WORKDIR /app
 
+COPY .deploy-deps/home-ops-framework /home-ops-framework
 COPY package.json package-lock.json ./
 RUN npm ci --omit=optional
 
