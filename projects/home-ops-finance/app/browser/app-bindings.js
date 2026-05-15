@@ -190,7 +190,7 @@ export function createAppBindingTools(deps) {
   }
 
   function activateInitialTab(viewState = {}) {
-    const initialTabId = viewState.tabId ?? window.localStorage.getItem(activeTabStorageKey) ?? "months";
+    const initialTabId = viewState.tabId ?? window.localStorage.getItem(activeTabStorageKey) ?? "overview";
     updateMonthNavVisibility(initialTabId);
     activateTab(initialTabId);
   }

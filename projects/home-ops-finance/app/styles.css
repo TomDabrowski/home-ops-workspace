@@ -250,10 +250,11 @@ h1 {
   font-weight: 650;
 }
 .tabs {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  justify-content: start;
+  gap: 12px;
   margin: 20px 0 24px;
-  flex-wrap: wrap;
   position: sticky;
   top: 62px;
   z-index: 10;
@@ -262,11 +263,30 @@ h1 {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
-.tab {
+.tab-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.48);
+}
+.tab-group-label {
+  padding: 0 7px 0 9px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: rgba(255,255,255,0.72);
-  padding: 11px 16px;
+  padding: 9px 13px;
   cursor: pointer;
   font: inherit;
   color: var(--muted);
@@ -455,6 +475,7 @@ h2 {
 :root[data-theme="dark"] .select-wrap input,
 :root[data-theme="dark"] .select-wrap textarea,
 :root[data-theme="dark"] .tab,
+:root[data-theme="dark"] .tab-group,
 :root[data-theme="dark"] .table-wrap,
 :root[data-theme="dark"] .metric,
 :root[data-theme="dark"] .stat,
@@ -578,7 +599,9 @@ h2 {
   .tabs {
     position: sticky;
     top: 68px;
-    flex-wrap: nowrap;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    grid-template-columns: none;
     overflow-x: auto;
     overflow-y: hidden;
     margin: 16px -4px 18px;
@@ -589,7 +612,6 @@ h2 {
     display: none;
   }
   .tab {
-    flex: 0 0 auto;
     white-space: nowrap;
     padding: 10px 14px;
   }

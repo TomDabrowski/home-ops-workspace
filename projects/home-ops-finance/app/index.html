@@ -60,15 +60,26 @@
       </div>
     </section>
 
-    <nav class="tabs">
-      <button class="tab is-active" data-tab="months">Monate</button>
-      <button class="tab" data-tab="music">Musik</button>
-      <button class="tab" data-tab="stats">Statistiken</button>
-      <button class="tab" data-tab="imports" data-dev-only="true">Importe</button>
-      <button class="tab" data-tab="overview" data-dev-only="true">Einordnung</button>
-      <button class="tab" data-tab="baseline">Fixe & variable Kosten</button>
-      <button class="tab" data-tab="household">Hausrat</button>
-      <button class="tab" data-tab="retirement">Rente</button>
+    <nav class="tabs" aria-label="Finanzbereiche">
+      <div class="tab-group">
+        <span class="tab-group-label">Heute</span>
+        <button class="tab is-active" data-tab="overview">Cockpit</button>
+        <button class="tab" data-tab="months">Monat</button>
+      </div>
+      <div class="tab-group">
+        <span class="tab-group-label">Plan</span>
+        <button class="tab" data-tab="baseline">Kosten & Ist-Stand</button>
+        <button class="tab" data-tab="retirement">Ziele & Rente</button>
+      </div>
+      <div class="tab-group">
+        <span class="tab-group-label">Analyse</span>
+        <button class="tab" data-tab="stats">Statistiken</button>
+        <button class="tab" data-tab="music">Musik & Steuern</button>
+      </div>
+      <div class="tab-group" data-dev-only="true">
+        <span class="tab-group-label">Daten</span>
+        <button class="tab" data-tab="imports" data-dev-only="true">Importe</button>
+      </div>
     </nav>
 
     <article class="card month-nav-bar">
@@ -89,7 +100,7 @@
       </div>
     </article>
 
-    <section id="overview" class="tab-panel" data-dev-only="true">
+    <section id="overview" class="tab-panel is-active">
       <div class="grid four">
         <article class="card stat">
           <span>Importe gesamt netto</span>
@@ -499,7 +510,7 @@
       </article>
     </section>
 
-    <section id="months" class="tab-panel is-active">
+    <section id="months" class="tab-panel">
       <article class="card">
         <div class="section-head">
           <div>

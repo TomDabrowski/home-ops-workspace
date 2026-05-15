@@ -53,7 +53,7 @@ export function createAppShellTools(config) {
   }
 
   function activeTabId() {
-    return document.querySelector(".tab.is-active")?.dataset.tab ?? "months";
+    return document.querySelector(".tab.is-active")?.dataset.tab ?? "overview";
   }
 
   function activeMonthFilter() {
@@ -87,8 +87,8 @@ export function createAppShellTools(config) {
   }
 
   function activateTab(tabId) {
-    if (!readDeveloperMode() && (tabId === "imports" || tabId === "overview")) {
-      tabId = "months";
+    if (!readDeveloperMode() && tabId === "imports") {
+      tabId = "overview";
     }
     const targetTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
     targetTab?.click();
@@ -128,9 +128,9 @@ export function createAppShellTools(config) {
     }
 
     const activeTab = activeTabId();
-    if (!enabled && (activeTab === "imports" || activeTab === "overview")) {
-      activateTab("months");
-      saveViewState({ tabId: "months" });
+    if (!enabled && activeTab === "imports") {
+      activateTab("overview");
+      saveViewState({ tabId: "overview" });
     }
   }
 
