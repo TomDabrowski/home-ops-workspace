@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 
-import { buildWatchReport, runTargetCheck, summarizeResults } from "../src/checks.ts";
+import { buildWatchReport, latestResultsForTargets, runTargetCheck, summarizeResults } from "../src/checks.ts";
 
 test("summarizes worst status across results", () => {
   const checkedAt = "2026-05-14T12:00:00.000Z";
@@ -66,8 +66,55 @@ test("builds a report from targets and latest results", () => {
   const report = buildWatchReport(
     [{ id: "one", label: "One", kind: "http", url: "http://example.test" }],
     [{ targetId: "one", label: "One", kind: "http", checkedAt: "now", status: "down", latencyMs: 1, detail: "nope" }],
+    "2026-05-14T12:00",
   );
 
   assert.equal(report.summary.status, "down");
   assert.equal(report.targets.length, 1);
+});
+
+test("marks targets without checks as warn", () => {
+  const report = buildWatchReport(
+    [{ id: "one", label: "One", kind: "http", url: "http://example.test" }],
+    [],
+    "2026-05-14T12:00",
+  );
+
+  assert.equal(report.summary.status, "warn");
+  assert.equal(report.latestResults[0]?.detail, "No check recorded yet.");
+});
+
+test("marks stale checks as warn when staleAfterHours is exceeded", () => {
+  const report = buildWatchReport(
+    [{ id: "one", label: "One", kind: "http", url: "http://example.test", staleAfterHours: 2 }],
+    [{ targetId: "one", label: "One", kind: "http", checkedAt: "2026-05-14T09:00", status: "ok", latencyMs: 1, detail: "HTTP 200" }],
+    "2026-05-14T12:00",
+  );
+
+  assert.equal(report.summary.status, "warn");
+  assert.match(report.latestResults[0]?.detail ?? "", /stale after 3.0 hours/);
+});
+
+test("keeps down stale checks down", () => {
+  const report = buildWatchReport(
+    [{ id: "one", label: "One", kind: "http", url: "http://example.test", staleAfterHours: 2 }],
+    [{ targetId: "one", label: "One", kind: "http", checkedAt: "2026-05-14T09:00", status: "down", latencyMs: 1, detail: "timeout" }],
+    "2026-05-14T12:00",
+  );
+
+  assert.equal(report.summary.status, "down");
+  assert.equal(report.latestResults[0]?.status, "down");
+});
+
+test("selects latest history result for each configured target", () => {
+  const latest = latestResultsForTargets(
+    [{ id: "one", label: "One", kind: "http", url: "http://example.test" }],
+    [
+      { id: "old", targetId: "one", label: "One", kind: "http", checkedAt: "2026-05-14T09:00", status: "down", latencyMs: 1, detail: "old" },
+      { id: "new", targetId: "one", label: "One", kind: "http", checkedAt: "2026-05-14T10:00", status: "ok", latencyMs: 1, detail: "new" },
+    ],
+  );
+
+  assert.equal(latest.length, 1);
+  assert.equal(latest[0]?.detail, "new");
 });

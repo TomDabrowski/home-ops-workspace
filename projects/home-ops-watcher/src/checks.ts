@@ -1,7 +1,7 @@
 import { connect } from "node:net";
 import { performance } from "node:perf_hooks";
 
-import type { WatchCheckResult, WatchReport, WatchStatus, WatchTarget } from "./types.ts";
+import type { WatchCheckResult, WatchHistoryEntry, WatchReport, WatchStatus, WatchTarget } from "./types.ts";
 
 function timeoutSignal(timeoutMs: number): AbortSignal {
   const controller = new AbortController();
@@ -37,6 +37,15 @@ function resultStatusFromJson(value: unknown): WatchStatus {
     return "down";
   }
   return "warn";
+}
+
+function hoursBetween(fromIso: string, toIso: string): number {
+  const from = new Date(fromIso).getTime();
+  const to = new Date(toIso).getTime();
+  if (!Number.isFinite(from) || !Number.isFinite(to)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.max(0, (to - from) / 36e5);
 }
 
 async function runHttpCheck(target: WatchTarget, checkedAt: string): Promise<WatchCheckResult> {
@@ -175,7 +184,7 @@ export async function runTargetChecks(targets: WatchTarget[], checkedAt = new Da
 
 export function summarizeResults(results: WatchCheckResult[]) {
   const summary = {
-    checkedAt: results[0]?.checkedAt ?? null,
+    checkedAt: null as string | null,
     total: results.length,
     ok: results.filter((entry) => entry.status === "ok").length,
     warn: results.filter((entry) => entry.status === "warn").length,
@@ -186,10 +195,54 @@ export function summarizeResults(results: WatchCheckResult[]) {
   return summary;
 }
 
-export function buildWatchReport(targets: WatchTarget[], latestResults: WatchCheckResult[]): WatchReport {
+function latestResultForTarget(results: WatchCheckResult[], targetId: string): WatchCheckResult | null {
+  return results
+    .filter((entry) => entry.targetId === targetId)
+    .sort((left, right) => String(right.checkedAt).localeCompare(String(left.checkedAt)))[0] ?? null;
+}
+
+export function latestResultsForTargets(targets: WatchTarget[], history: WatchHistoryEntry[]): WatchCheckResult[] {
+  return targets
+    .map((target) => latestResultForTarget(history, target.id))
+    .filter((entry): entry is WatchCheckResult => entry !== null);
+}
+
+function reportResultForTarget(target: WatchTarget, result: WatchCheckResult | null, checkedAt: string): WatchCheckResult {
+  if (!result) {
+    return {
+      targetId: target.id,
+      label: target.label,
+      kind: target.kind,
+      checkedAt,
+      status: "warn",
+      latencyMs: 0,
+      detail: "No check recorded yet.",
+    };
+  }
+
+  if (target.staleAfterHours === undefined) {
+    return result;
+  }
+
+  const ageHours = hoursBetween(result.checkedAt, checkedAt);
+  if (ageHours <= target.staleAfterHours) {
+    return result;
+  }
+
   return {
-    summary: summarizeResults(latestResults),
+    ...result,
+    status: result.status === "down" ? "down" : "warn",
+    detail: `${result.detail}; stale after ${ageHours.toFixed(1)} hours without a fresh check`,
+  };
+}
+
+export function buildWatchReport(targets: WatchTarget[], latestResults: WatchCheckResult[], checkedAt = new Date().toISOString()): WatchReport {
+  const reportResults = targets.map((target) => reportResultForTarget(target, latestResultForTarget(latestResults, target.id), checkedAt));
+  const summary = summarizeResults(reportResults);
+  summary.checkedAt = checkedAt;
+  return {
+    summary,
     targets,
-    latestResults,
+    latestResults: reportResults,
   };
 }

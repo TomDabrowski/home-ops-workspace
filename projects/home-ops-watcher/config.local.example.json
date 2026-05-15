@@ -7,6 +7,7 @@
       "kind": "http",
       "url": "http://example.home.invalid",
       "expectedStatus": 200,
+      "staleAfterHours": 2,
       "timeoutMs": 3000
     },
     {
@@ -23,6 +24,7 @@
       "kind": "json-status",
       "url": "http://127.0.0.1:4321/api/status",
       "statusPath": "summary.status",
+      "staleAfterHours": 2,
       "timeoutMs": 3000
     }
   ]

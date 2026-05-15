@@ -24,6 +24,7 @@ export function validateWatchTargets(value: unknown): WatchTarget[] {
       port: optionalFiniteNumber(target.port, `watch target ${index}.port`, { min: 1, max: 65535 }),
       expectedStatus: optionalFiniteNumber(target.expectedStatus, `watch target ${index}.expectedStatus`, { min: 100, max: 599 }),
       statusPath: optionalString(target.statusPath, `watch target ${index}.statusPath`),
+      staleAfterHours: optionalFiniteNumber(target.staleAfterHours, `watch target ${index}.staleAfterHours`, { min: 0.01 }),
       timeoutMs: optionalFiniteNumber(target.timeoutMs, `watch target ${index}.timeoutMs`, { min: 100, max: 120000 }),
       enabled: optionalBoolean(target.enabled, `watch target ${index}.enabled`),
     };

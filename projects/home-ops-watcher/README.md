@@ -17,6 +17,7 @@ This project is the first real consumer of the shared private `home-ops-framewor
 - Reads targets from `config.local.json`.
 - Stores check history in the private data directory as `watch-history.json`.
 - Supports HTTP, TCP, and JSON status checks for local Home Ops apps.
+- Marks targets as `warn` when no check has been recorded or when `staleAfterHours` is exceeded.
 - Exposes a compact local status UI with summary tiles, target cards, and JSON details.
 
 ## Setup
@@ -61,9 +62,10 @@ Use `kind: "json-status"` for local apps that expose a status payload. By defaul
 }
 ```
 
+Add `staleAfterHours` to any target that should become `warn` when checks stop running.
+
 ## Next Steps
 
 - Add the first real local device/service targets in private `config.local.json`.
-- Add stale-history detection so a target can be marked warn when it has not been checked recently.
 - Add a notification channel only after the status model is stable.
 - Add optional local advisor summary via Ollama once deterministic status data is useful.

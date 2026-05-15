@@ -10,6 +10,7 @@ export interface WatchTarget {
   port?: number;
   expectedStatus?: number;
   statusPath?: string;
+  staleAfterHours?: number;
   timeoutMs?: number;
   enabled?: boolean;
 }

@@ -6,7 +6,7 @@ import {
   sendJson,
 } from "@home-ops/framework";
 
-import { buildWatchReport, runTargetChecks } from "./checks.ts";
+import { buildWatchReport, latestResultsForTargets, runTargetChecks } from "./checks.ts";
 import { configuredTargets } from "./config.ts";
 import { appendWatchHistory, watchHistoryStore } from "./state.ts";
 import type { WatchCheckResult } from "./types.ts";
@@ -31,9 +31,10 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/api/status") {
       const targets = configuredTargets();
+      const results = latestResults.length ? latestResults : latestResultsForTargets(targets, watchHistoryStore.read());
       sendJson(res, {
         ok: true,
-        ...buildWatchReport(targets, latestResults),
+        ...buildWatchReport(targets, results),
       });
       return;
     }
