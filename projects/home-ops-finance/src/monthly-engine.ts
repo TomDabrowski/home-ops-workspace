@@ -11,6 +11,7 @@ import type {
   MonthlyBaseline,
   WealthBucket,
 } from "./types.js";
+import { remainingMonthFraction } from "@home-ops/framework/months";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 import { assertImportDraft } from "./persistence-validation.ts";
 import {
@@ -196,35 +197,6 @@ function monthlyReturnFromAnnualRate(rate: number, mode: "simple_division" | "co
   }
 
   return rate / 12;
-}
-
-function remainingMonthFraction(monthKey: string, snapshotDate?: string): number {
-  if (!snapshotDate || monthFromDate(snapshotDate) !== monthKey) {
-    return 1;
-  }
-
-  const year = Number(monthKey.slice(0, 4));
-  const month = Number(monthKey.slice(5, 7));
-  const day = Number(snapshotDate.slice(8, 10));
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-    return 1;
-  }
-
-  const hour = Number(snapshotDate.slice(11, 13) || 0);
-  const minute = Number(snapshotDate.slice(14, 16) || 0);
-  const second = Number(snapshotDate.slice(17, 19) || 0);
-  const monthStart = Date.UTC(year, month - 1, 1);
-  const nextMonthStart = Date.UTC(year, month, 1);
-  const snapshotTime = Date.UTC(
-    year,
-    month - 1,
-    day,
-    Number.isFinite(hour) ? hour : 0,
-    Number.isFinite(minute) ? minute : 0,
-    Number.isFinite(second) ? second : 0,
-  );
-  const remaining = (nextMonthStart - snapshotTime) / (nextMonthStart - monthStart);
-  return Math.max(0, Math.min(1, remaining));
 }
 
 function anchorCashAccountAmount(anchor: ForecastWealthAnchor | undefined, accountId: string, fallback: number): number {

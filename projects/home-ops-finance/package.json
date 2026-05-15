@@ -19,6 +19,9 @@
     "serve:app": "HOME_OPS_FINANCE_DEV_IMPORT_TOOLS=1 node --experimental-strip-types src/serve-app.ts",
     "serve:app:server": "HOME_OPS_FINANCE_SERVER_MODE=1 HOME_OPS_FINANCE_HOST=0.0.0.0 node --experimental-strip-types src/serve-app.ts"
   },
+  "dependencies": {
+    "@home-ops/framework": "file:../../../home-ops-framework"
+  },
   "devDependencies": {
     "@types/node": "^24.6.0",
     "typescript": "^5.9.2"
