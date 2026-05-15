@@ -8,7 +8,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
 
   const signals = [];
   const actionableStartMonthKey = currentMonthKey ?? reviewFocusMonthKey ?? monthlyPlan.rows[0]?.monthKey ?? "";
-  const actionableRows = monthlyPlan.rows.filter((row) => row.monthKey >= actionableStartMonthKey);
+  const actionableRows = monthlyPlan.rows.filter((row) => row.monthKey >= actionableStartMonthKey).slice(0, 12);
   const delta = draftReport.baselineSummary?.deltaToAnchor ?? 0;
   const negativeMonths = actionableRows.filter((row) => row.netAfterImportedFlows < 0);
   const suspiciousMonths = actionableRows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
@@ -46,7 +46,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
     const worstMonth = [...negativeMonths].sort((left, right) => left.netAfterImportedFlows - right.netAfterImportedFlows)[0];
     signals.push({
       level: "warn",
-      title: `${negativeMonths.length} Monate ab ${actionableStartMonthKey} liegen nach Importen im Minus`,
+      title: `${negativeMonths.length} Monate in den nächsten 12 Monaten liegen nach Importen im Minus`,
       body: `Schwächster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du zuerst kurz durchgehen.`,
     });
   }
@@ -58,7 +58,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
     )[0];
     signals.push({
       level: "warn",
-      title: `${suspiciousMonths.length} Monate ab ${actionableStartMonthKey} haben automatische Warnsignale`,
+      title: `${suspiciousMonths.length} Monate in den nächsten 12 Monaten haben automatische Warnsignale`,
       body: `${worstMatch.monthKey} hat aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Von dort lohnt sich der Einstieg in die Monatsprüfung.`,
     });
   }
@@ -130,7 +130,7 @@ export function renderMonthHealth(monthlyPlan, deps) {
   if (!target) return;
 
   const rows = monthlyPlan.rows;
-  const currentAndFutureRows = rows.filter((row) => !currentMonthKey || row.monthKey >= currentMonthKey);
+  const currentAndFutureRows = rows.filter((row) => !currentMonthKey || row.monthKey >= currentMonthKey).slice(0, 12);
   const healthRows = currentAndFutureRows.length > 0 ? currentAndFutureRows : rows;
   const negativeMonths = healthRows.filter((row) => row.netAfterImportedFlows < 0);
   const warningMonths = healthRows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
@@ -138,9 +138,9 @@ export function renderMonthHealth(monthlyPlan, deps) {
   const worstMonth = [...healthRows].sort((left, right) => left.netAfterImportedFlows - right.netAfterImportedFlows)[0];
   const lastMonth = healthRows.at(-1);
   const entries = [
-    ["Monate ab jetzt", String(healthRows.length)],
-    ["Defizit-Monate ab jetzt", String(negativeMonths.length)],
-    ["Warn-Monate ab jetzt", String(warningMonths.length)],
+    ["Monate im Cockpit", String(healthRows.length)],
+    ["Defizit-Monate", String(negativeMonths.length)],
+    ["Warn-Monate", String(warningMonths.length)],
     ["Bester Monat", bestMonth ? `${bestMonth.monthKey} · ${euro.format(bestMonth.netAfterImportedFlows)}` : "-"],
     ["Schwächster Monat", worstMonth ? `${worstMonth.monthKey} · ${euro.format(worstMonth.netAfterImportedFlows)}` : "-"],
     ["Letzter Monat", lastMonth ? `${lastMonth.monthKey} · ${euro.format(lastMonth.netAfterImportedFlows)}` : "-"],
