@@ -101,21 +101,6 @@
     </article>
 
     <section id="overview" class="tab-panel is-active">
-      <div class="grid four">
-        <article class="card stat">
-          <span>Importe gesamt netto</span>
-          <strong id="netFlow">-</strong>
-        </article>
-        <article class="card stat">
-          <span>Importe gesamt Einnahmen</span>
-          <strong id="incomeTotal">-</strong>
-        </article>
-        <article class="card stat">
-          <span>Importe gesamt Ausgaben</span>
-          <strong id="expenseTotal">-</strong>
-        </article>
-      </div>
-
       <div class="grid two overview-grid">
         <article class="card">
           <h2>Als Nächstes prüfen</h2>
@@ -136,26 +121,24 @@
         </div>
         <div id="priorityMonths" class="priority-list"></div>
       </article>
-
-      <div class="grid two">
-        <article class="card">
-          <h2>Top Ausgabenmonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topExpenseMonths"></tbody>
-          </table>
-        </article>
-        <article class="card">
-          <h2>Top Einnahmemonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topIncomeMonths"></tbody>
-          </table>
-        </article>
-      </div>
     </section>
 
     <section id="stats" class="tab-panel">
+      <div class="grid four">
+        <article class="card stat">
+          <span>Importe gesamt netto</span>
+          <strong id="netFlow">-</strong>
+        </article>
+        <article class="card stat">
+          <span>Importe gesamt Einnahmen</span>
+          <strong id="incomeTotal">-</strong>
+        </article>
+        <article class="card stat">
+          <span>Importe gesamt Ausgaben</span>
+          <strong id="expenseTotal">-</strong>
+        </article>
+      </div>
+
       <article class="card">
         <div class="section-head">
           <div>
@@ -217,6 +200,23 @@
           <tbody id="statsPlannedNextMonthRows"></tbody>
         </table>
       </article>
+
+      <div class="grid two">
+        <article class="card">
+          <h2>Top Ausgabenmonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topExpenseMonths"></tbody>
+          </table>
+        </article>
+        <article class="card">
+          <h2>Top Einnahmemonate</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="topIncomeMonths"></tbody>
+          </table>
+        </article>
+      </div>
 
       <article class="card">
         <div class="section-head">
