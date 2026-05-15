@@ -1193,6 +1193,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const startInvestmentAmount = Number(review.row.investmentBucketStartAmount ?? 0);
   const endSafetyAmount = Number(review.row.safetyBucketEndAmount ?? 0);
   const endInvestmentAmount = Number(review.row.investmentBucketEndAmount ?? 0);
+  const monthCashDeltaAmount = roundCurrency(endSafetyAmount - displayStartSafetyAmount);
+  const monthInvestmentDeltaAmount = roundCurrency(endInvestmentAmount - displayStartInvestmentAmount);
+  const monthWealthDeltaAmount = roundCurrency(endWealthAmount - startWealthAmount);
   const safetyAnchorAmount = Number(review.row.safetyBucketAnchorAmount ?? 0);
   const investmentAnchorAmount = Number(review.row.investmentBucketAnchorAmount ?? 0);
   const projectionExpenseAmount = Number(review.row.projectionExpenseAmount ?? review.row.importedExpenseAmount ?? 0);
@@ -1349,12 +1352,22 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       ? "im letzten Ist-Stand"
       : "zu Beginn des geöffneten Monats";
     const entries = [
-      ...monthSummaryAccounts.map((option) => ([
-        `${option.label} ${accountStartLabelSuffix}`,
-        euro.format(Number(startAccountBalances.get(option.id) ?? 0)),
-      ])),
       {
-        label: "Cash zu Beginn des geöffneten Monats",
+        label: "Gesamtvermögen Start",
+        value:
+          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
+          (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
+            ? euro.format(startWealthAmount)
+            : "-",
+        formula:
+          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
+            (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
+            ? `${euro.format(displayStartSafetyAmount)} Cash + ${euro.format(displayStartInvestmentAmount)} Investment = ${euro.format(startWealthAmount)}`
+            : "",
+        itemClass: "is-month-total",
+      },
+      {
+        label: "Cash Start",
         value:
           review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined
             ? euro.format(displayStartSafetyAmount)
@@ -1373,9 +1386,10 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
               label: "Cash",
             })
             : "",
+        itemClass: "is-month-total",
       },
       {
-        label: "Investment zu Beginn des geöffneten Monats",
+        label: "Investment Start",
         value:
           review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined
             ? euro.format(displayStartInvestmentAmount)
@@ -1394,20 +1408,12 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
               label: "Investment",
             })
             : "",
+        itemClass: "is-month-total",
       },
-      {
-        label: "Gesamtvermögen zu Beginn des geöffneten Monats",
-        value:
-          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
-          (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
-            ? euro.format(startWealthAmount)
-            : "-",
-        formula:
-          (review.row.safetyBucketStartAmount !== undefined || review.row.safetyBucketAnchorAmount !== undefined) &&
-            (review.row.investmentBucketStartAmount !== undefined || review.row.investmentBucketAnchorAmount !== undefined)
-            ? `${euro.format(displayStartSafetyAmount)} + ${euro.format(displayStartInvestmentAmount)} = ${euro.format(startWealthAmount)}`
-            : "",
-      },
+      ...monthSummaryAccounts.map((option) => ([
+        `${option.label} ${accountStartLabelSuffix}`,
+        euro.format(Number(startAccountBalances.get(option.id) ?? 0)),
+      ])),
       ["Nettogehalt im Monat", euro.format(review.row.netSalaryAmount)],
       {
         label: "Letzter Ist-Stand",
@@ -1542,6 +1548,27 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     const importedExpenseState = movementVisualState(remainingImportedExpenseAmount, importedExpenseAmount, hasActiveInMonthSnapshot);
     const manualExpenseState = movementVisualState(remainingManualExpenseAmount, manualExpenseAmount, hasActiveInMonthSnapshot);
     const entries = [
+      {
+        label: "Gesamtbewegung im Monat",
+        value: signedMoneyLabel(monthWealthDeltaAmount),
+        valueClass: monthWealthDeltaAmount >= 0 ? "positive" : "negative",
+        itemClass: "is-month-total",
+        formula: `${euro.format(endWealthAmount)} Ende - ${euro.format(startWealthAmount)} Start = ${signedMoneyLabel(monthWealthDeltaAmount)}`,
+      },
+      {
+        label: "Cash-Bewegung",
+        value: signedMoneyLabel(monthCashDeltaAmount),
+        valueClass: monthCashDeltaAmount >= 0 ? "positive" : "negative",
+        itemClass: "is-month-total",
+        formula: `${euro.format(endSafetyAmount)} Cash Ende - ${euro.format(displayStartSafetyAmount)} Cash Start = ${signedMoneyLabel(monthCashDeltaAmount)}`,
+      },
+      {
+        label: "Investment-Bewegung",
+        value: signedMoneyLabel(monthInvestmentDeltaAmount),
+        valueClass: monthInvestmentDeltaAmount >= 0 ? "positive" : "negative",
+        itemClass: "is-month-total",
+        formula: `${euro.format(endInvestmentAmount)} Investment Ende - ${euro.format(displayStartInvestmentAmount)} Investment Start = ${signedMoneyLabel(monthInvestmentDeltaAmount)}`,
+      },
       {
         label: "Fixkosten im Monat",
         value: euro.format(fixedMonthlyCosts),
@@ -1724,12 +1751,17 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       ? roundCurrency(endWealthAmount - Number(latestSnapshotWealthAmount ?? 0))
       : null;
     const entries = [
-      ...monthSummaryAccounts.map((option) => ([
-        `${option.label} am Ende des geöffneten Monats`,
-        euro.format(Number(endAccountBalances.get(option.id) ?? 0)),
-      ])),
       {
-        label: "Cash am Ende des geöffneten Monats",
+        label: "Gesamtvermögen Ende",
+        value: review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-",
+        formula:
+          review.row.projectedWealthEndAmount !== undefined
+            ? `${euro.format(endSafetyAmount)} Cash + ${euro.format(endInvestmentAmount)} Investment = ${euro.format(endWealthAmount)}`
+            : "",
+        itemClass: "is-month-total",
+      },
+      {
+        label: "Cash Ende",
         value: review.row.safetyBucketEndAmount !== undefined ? euro.format(review.row.safetyBucketEndAmount) : "-",
         formula:
           review.row.safetyBucketEndAmount !== undefined
@@ -1754,7 +1786,33 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
               salaryInvestmentTransferFromSafetyAmount: Number(review.row.salaryInvestmentTransferFromSafetyAmount ?? 0),
             })
             : "",
+        itemClass: "is-month-total",
       },
+      {
+        label: "Investment Ende",
+        value: review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
+        formula:
+          review.row.investmentBucketEndAmount !== undefined
+            ? monthEndInvestmentFormula({
+              monthKey,
+              latestSnapshot,
+              reviewRow: review.row,
+              investmentAnchorAmount,
+              startInvestmentAmount,
+              endInvestmentAmount,
+              salaryInvestmentConsumedAmount,
+              musicInvestmentConsumedAmount,
+              musicInvestmentRemainingAmount,
+              musicIncomeEntries,
+              musicNetConsumedAmount,
+            })
+            : "",
+        itemClass: "is-month-total",
+      },
+      ...monthSummaryAccounts.map((option) => ([
+        `${option.label} am Ende des geöffneten Monats`,
+        euro.format(Number(endAccountBalances.get(option.id) ?? 0)),
+      ])),
       ...(review.row.thresholdAccountEndAmount !== undefined
         ? [
           {
@@ -1778,34 +1836,6 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           },
         ]
         : []),
-      {
-        label: "Investment am Ende des geöffneten Monats",
-        value: review.row.investmentBucketEndAmount !== undefined ? euro.format(review.row.investmentBucketEndAmount) : "-",
-        formula:
-          review.row.investmentBucketEndAmount !== undefined
-            ? monthEndInvestmentFormula({
-              monthKey,
-              latestSnapshot,
-              reviewRow: review.row,
-              investmentAnchorAmount,
-              startInvestmentAmount,
-              endInvestmentAmount,
-              salaryInvestmentConsumedAmount,
-              musicInvestmentConsumedAmount,
-              musicInvestmentRemainingAmount,
-              musicIncomeEntries,
-              musicNetConsumedAmount,
-            })
-            : "",
-      },
-      {
-        label: "Gesamtvermögen am Ende des geöffneten Monats",
-        value: review.row.projectedWealthEndAmount !== undefined ? euro.format(review.row.projectedWealthEndAmount) : "-",
-        formula:
-          review.row.projectedWealthEndAmount !== undefined
-            ? `${euro.format(endSafetyAmount)} Cash am Ende + ${euro.format(endInvestmentAmount)} Investment am Ende = ${euro.format(endWealthAmount)}`
-            : "",
-      },
       ...(hasActiveInMonthSnapshot
         ? [
           {

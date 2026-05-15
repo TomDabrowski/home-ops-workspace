@@ -872,6 +872,17 @@ th:first-child {
   border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
   background: color-mix(in srgb, var(--accent) 10%, var(--card-strong));
 }
+.detail-list div.is-month-total {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--card-strong));
+}
+.detail-list div.is-month-total dt {
+  color: var(--text);
+  font-weight: 700;
+}
+.detail-list div.is-month-total .detail-value {
+  font-size: 1.08rem;
+}
 .detail-value.is-consumed {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
