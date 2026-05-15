@@ -198,6 +198,35 @@ function monthlyReturnFromAnnualRate(rate: number, mode: "simple_division" | "co
   return rate / 12;
 }
 
+function remainingMonthFraction(monthKey: string, snapshotDate?: string): number {
+  if (!snapshotDate || monthFromDate(snapshotDate) !== monthKey) {
+    return 1;
+  }
+
+  const year = Number(monthKey.slice(0, 4));
+  const month = Number(monthKey.slice(5, 7));
+  const day = Number(snapshotDate.slice(8, 10));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return 1;
+  }
+
+  const hour = Number(snapshotDate.slice(11, 13) || 0);
+  const minute = Number(snapshotDate.slice(14, 16) || 0);
+  const second = Number(snapshotDate.slice(17, 19) || 0);
+  const monthStart = Date.UTC(year, month - 1, 1);
+  const nextMonthStart = Date.UTC(year, month, 1);
+  const snapshotTime = Date.UTC(
+    year,
+    month - 1,
+    day,
+    Number.isFinite(hour) ? hour : 0,
+    Number.isFinite(minute) ? minute : 0,
+    Number.isFinite(second) ? second : 0,
+  );
+  const remaining = (nextMonthStart - snapshotTime) / (nextMonthStart - monthStart);
+  return Math.max(0, Math.min(1, remaining));
+}
+
 function anchorCashAccountAmount(anchor: ForecastWealthAnchor | undefined, accountId: string, fallback: number): number {
   const amount = anchor?.cashAccounts?.[accountId];
   return typeof amount === "number" && Number.isFinite(amount) ? amount : fallback;
@@ -342,6 +371,9 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
         ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
         : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
       : expenseAmountForProjection;
+    const thresholdAccountMonthlyReturn = anchorAppliesWithinMonth
+      ? safetyMonthlyReturn * remainingMonthFraction(monthKey, snapshotDate)
+      : safetyMonthlyReturn;
     const forecastRouting = buildMonthlyForecastRouting({
       monthKey,
       useForecastRouting,
@@ -366,7 +398,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     });
     const musicThresholdAccountProjectedEndAmount = useForecastRouting
       ? roundCurrency(
-          currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
+          currentMusicThresholdAccountAmount * (1 + thresholdAccountMonthlyReturn) +
             forecastRouting.salaryAllocationToThresholdAmount +
             forecastRouting.musicAllocationToSafetyAmount -
             thresholdAccountExpenseAmount,

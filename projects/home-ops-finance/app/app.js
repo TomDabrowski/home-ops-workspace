@@ -516,9 +516,16 @@ function monthEndInvestmentFormula({
   if (reviewRow.anchorAppliesWithinMonth && reviewRow.investmentBucketAnchorAmount !== undefined) {
     const snapshotDate = latestSnapshot?.snapshotDate ? formatDisplayDate(latestSnapshot.snapshotDate) : "dem aktiven Ist-Stand";
     const musicDateLabel = entryDatesLabel(musicIncomeEntries);
+    const remainingInvestmentReturnAmount = roundCurrency(
+      endInvestmentAmount -
+        investmentAnchorAmount -
+        Number(reviewRow.projectionSalaryAllocationToInvestmentAmount ?? 0) -
+        Number(musicInvestmentRemainingAmount ?? 0),
+    );
     const remaining = joinMoneyDeltas([
       moneyDeltaLabel(reviewRow.projectionSalaryAllocationToInvestmentAmount, "noch offenes Basis-Investment"),
       moneyDeltaLabel(musicInvestmentRemainingAmount, "noch aus Musik ins Investment"),
+      moneyDeltaLabel(remainingInvestmentReturnAmount, "anteilige Restmonatsrendite"),
     ]);
     return joinTooltipLines([
       `${monthKey}: Monatsanfang Investment ${euro.format(startInvestmentAmount)}.`,
@@ -1184,8 +1191,13 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const monthValueType = compareMonthKeys(monthKey, currentMonthKey()) > 0 ? "Prognostiziert" : "Berechnet";
   const latestSnapshot = latestActiveWealthSnapshotForMonth(monthKey);
   const latestSnapshotDate = String(latestSnapshot?.snapshotDate ?? "");
-  const latestSnapshotCashAmount = latestSnapshot ? Number(latestSnapshot.cashAmount ?? review.row.safetyBucketAnchorAmount ?? 0) : null;
+  const latestSnapshotCashAmount = latestSnapshot
+    ? Number(wealthSnapshotCashTotalForEntry(latestSnapshot) ?? review.row.safetyBucketAnchorAmount ?? 0)
+    : null;
   const latestSnapshotInvestmentAmount = latestSnapshot ? Number(latestSnapshot.investmentAmount ?? review.row.investmentBucketAnchorAmount ?? 0) : null;
+  const latestSnapshotWealthAmount = latestSnapshot
+    ? roundCurrency(Number(latestSnapshotCashAmount ?? 0) + Number(latestSnapshotInvestmentAmount ?? 0))
+    : null;
   const wealthSourceLabel = workflowState.persistence.wealthSnapshots === "project" ? "Projektdatei" : "Browser-Fallback";
   const hasActiveInMonthSnapshot = Boolean(review.row.anchorAppliesWithinMonth && latestSnapshotDate);
   const currentMonthIncludedIncomeIds = monthKey === currentMonthKey() ? monthClearingIncludedSet(monthKey, "income") : new Set();
@@ -1329,6 +1341,25 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           })
           : "",
       },
+      ...(latestSnapshot
+        ? [
+          {
+            label: "Cash im letzten Ist-Stand",
+            value: euro.format(latestSnapshotCashAmount ?? 0),
+            formula: `Gespeicherter Cash-Stand am ${formatDisplayDate(latestSnapshot.snapshotDate)}.`,
+          },
+          {
+            label: "Investment im letzten Ist-Stand",
+            value: euro.format(latestSnapshotInvestmentAmount ?? 0),
+            formula: `Gespeicherter Investment-Stand am ${formatDisplayDate(latestSnapshot.snapshotDate)}. Ab diesem Wert wird bis Monatsende weitergerechnet.`,
+          },
+          {
+            label: "Gesamtvermögen im letzten Ist-Stand",
+            value: euro.format(latestSnapshotWealthAmount ?? 0),
+            formula: `${euro.format(latestSnapshotCashAmount ?? 0)} Cash + ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment = ${euro.format(latestSnapshotWealthAmount ?? 0)}`,
+          },
+        ]
+        : []),
       ["Quelle Ist-Stand", latestSnapshot ? wealthSourceLabel : "-"],
     ];
     startSummary.innerHTML = renderDetailEntries(entries);

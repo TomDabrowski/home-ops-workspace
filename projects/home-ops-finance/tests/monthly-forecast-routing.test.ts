@@ -66,10 +66,10 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
   assert.equal(result.safetyBucketAnchorAmount, 6300);
   assert.equal(result.investmentBucketAnchorAmount, 12077);
-  assert.equal(result.safetyBucketEndAmount, 6300);
-  assert.equal(result.investmentBucketEndAmount, 13127);
+  assert.equal(result.safetyBucketEndAmount, 6307.13);
+  assert.equal(result.investmentBucketEndAmount, 13160.39);
   assert.equal(result.projectedWealthAnchorAmount, 18377);
-  assert.equal(result.projectedWealthEndAmount, 19427);
+  assert.equal(result.projectedWealthEndAmount, 19467.52);
 });
 
 test("late in-month wealth anchors do not re-add the base investment when the snapshot likely already contains it", () => {
@@ -102,7 +102,41 @@ test("late in-month wealth anchors do not re-add the base investment when the sn
 
   assert.equal(result.projectionSalaryAllocationToSafetyAmount, 0);
   assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 0);
-  assert.equal(result.investmentBucketEndAmount, 13258);
+  assert.equal(result.investmentBucketEndAmount, 13265.08);
+});
+
+test("prorates investment return after a current-month snapshot", () => {
+  const monthlyReturn = Math.pow(1 + 0.06, 1 / 12) - 1;
+  const result = buildMonthlyForecastRouting({
+    monthKey: "2026-05",
+    useForecastRouting: true,
+    musicThreshold: 10000,
+    safetyMonthlyReturn: 0,
+    investmentMonthlyReturn: monthlyReturn,
+    salaryAllocationToSafetyAmount: 0,
+    salaryAllocationToInvestmentAmount: 0,
+    importedIncomeAvailableAmount: 0,
+    importedIncomeReserveAmount: 0,
+    importedExpenseAmount: 0,
+    safetyBucketStartAmount: 0,
+    investmentBucketStartAmount: 50000,
+    explicitWealthAnchor: {
+      monthKey: "2026-05",
+      safetyBucketAmount: 0,
+      investmentBucketAmount: 50000,
+      totalWealthAmount: 50000,
+      sourceSheet: "manual_snapshot",
+      sourceRowNumber: 1,
+      isManualAnchor: true,
+      snapshotDate: "2026-05-14T12:00",
+    },
+    incomeAvailableAfterAnchorAmount: 0,
+    expenseAfterAnchorAmount: 0,
+  });
+
+  const fullMonthEnd = Math.round(50000 * (1 + monthlyReturn) * 100) / 100;
+  assert.equal(fullMonthEnd, 50243.38);
+  assert.equal(result.investmentBucketEndAmount, 50137.39);
 });
 
 test("month-start anchors do not re-add income that was already received before the anchored month begins", () => {

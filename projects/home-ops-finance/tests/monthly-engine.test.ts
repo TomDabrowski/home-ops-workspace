@@ -626,8 +626,8 @@ test("continues from the post-anchor month end instead of resetting next month t
   assert.ok(march);
   assert.ok(april);
   assert.equal(march?.investmentBucketAnchorAmount, 9200);
-  assert.equal(march?.investmentBucketEndAmount, 10952.14);
-  assert.equal(april?.investmentBucketStartAmount, 10952.14);
+  assert.equal(march?.investmentBucketEndAmount, 10961.81);
+  assert.equal(april?.investmentBucketStartAmount, 10961.81);
 });
 
 test("month-start anchors do not re-add music income that was already received before the month begins", () => {

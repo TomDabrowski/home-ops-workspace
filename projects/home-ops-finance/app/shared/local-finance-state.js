@@ -18,7 +18,7 @@ export function createLocalFinanceStateTools(deps) {
     readWealthSnapshots,
     readSalarySettings,
     readBaselineOverrides,
-    readMappingState,
+    readMappingState = () => ({}),
   } = deps;
 
   function applyImportMappingEntryPatches(importDraft, mappings) {
@@ -307,6 +307,35 @@ export function createLocalFinanceStateTools(deps) {
     }
 
     return rate / 12;
+  }
+
+  function remainingMonthFraction(monthKey, snapshotDate) {
+    if (!snapshotDate || monthFromDate(snapshotDate) !== monthKey) {
+      return 1;
+    }
+
+    const year = Number(monthKey.slice(0, 4));
+    const month = Number(monthKey.slice(5, 7));
+    const day = Number(String(snapshotDate).slice(8, 10));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return 1;
+    }
+
+    const hour = Number(String(snapshotDate).slice(11, 13) || 0);
+    const minute = Number(String(snapshotDate).slice(14, 16) || 0);
+    const second = Number(String(snapshotDate).slice(17, 19) || 0);
+    const monthStart = Date.UTC(year, month - 1, 1);
+    const nextMonthStart = Date.UTC(year, month, 1);
+    const snapshotTime = Date.UTC(
+      year,
+      month - 1,
+      day,
+      Number.isFinite(hour) ? hour : 0,
+      Number.isFinite(minute) ? minute : 0,
+      Number.isFinite(second) ? second : 0,
+    );
+    const remaining = (nextMonthStart - snapshotTime) / (nextMonthStart - monthStart);
+    return Math.max(0, Math.min(1, remaining));
   }
 
   function formatCurrency(value) {
@@ -638,6 +667,14 @@ export function createLocalFinanceStateTools(deps) {
       const investmentBucketStartAmount = useForecastRouting
         ? (anchorAppliesAtMonthStart ? investmentBucketAnchorAmount : investmentBucketEndAmount)
         : undefined;
+      const shouldProrateMonthlyReturn =
+        (anchorAppliesAtMonthStart || anchorAppliesWithinMonth) && monthFromDate(snapshotDate) === monthKey;
+      const effectiveSafetyMonthlyReturn = shouldProrateMonthlyReturn
+        ? safetyMonthlyReturn * remainingMonthFraction(monthKey, snapshotDate)
+        : safetyMonthlyReturn;
+      const effectiveInvestmentMonthlyReturn = shouldProrateMonthlyReturn
+        ? investmentMonthlyReturn * remainingMonthFraction(monthKey, snapshotDate)
+        : investmentMonthlyReturn;
       const incomeAvailableForProjection = anchorUsesSnapshotCutoff
         ? sumIncomeAvailableAfterDate(importDraft.incomeEntries, monthKey, snapshotDate)
         : importedIncomeAvailableAmount;
@@ -710,7 +747,7 @@ export function createLocalFinanceStateTools(deps) {
       );
       const safetyBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
-            (safetyBucketStartAmount ?? 0) * (1 + safetyMonthlyReturn) +
+            (safetyBucketStartAmount ?? 0) * (1 + effectiveSafetyMonthlyReturn) +
               projectionSalaryAllocationToSafetyAmount +
               musicAllocationToSafetyAmount -
               effectiveExpenseAmountForProjection -
@@ -719,7 +756,7 @@ export function createLocalFinanceStateTools(deps) {
         : undefined;
       const investmentBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
-            (investmentBucketStartAmount ?? 0) * (1 + investmentMonthlyReturn) +
+            (investmentBucketStartAmount ?? 0) * (1 + effectiveInvestmentMonthlyReturn) +
               projectionSalaryAllocationToInvestmentAmount +
               musicAllocationToInvestmentAmount,
           )
@@ -731,7 +768,7 @@ export function createLocalFinanceStateTools(deps) {
       const anchoredSafetyEndAmount =
         anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
           ? roundCurrency(
-              safetyBucketAnchorAmount +
+              safetyBucketAnchorAmount * (1 + effectiveSafetyMonthlyReturn) +
                 projectionSalaryAllocationToSafetyAmount +
                 musicAllocationToSafetyAmount -
                 effectiveExpenseAmountForProjection -
@@ -741,7 +778,7 @@ export function createLocalFinanceStateTools(deps) {
       const anchoredInvestmentEndAmount =
         anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
           ? roundCurrency(
-              investmentBucketAnchorAmount +
+              investmentBucketAnchorAmount * (1 + effectiveInvestmentMonthlyReturn) +
                 projectionSalaryAllocationToInvestmentAmount +
                 musicAllocationToInvestmentAmount,
             )
@@ -764,7 +801,7 @@ export function createLocalFinanceStateTools(deps) {
           : undefined;
       const musicThresholdAccountProjectedEndAmount = useForecastRouting
         ? roundCurrency(
-            currentMusicThresholdAccountAmount * (1 + safetyMonthlyReturn) +
+            currentMusicThresholdAccountAmount * (1 + effectiveSafetyMonthlyReturn) +
               salaryAllocationToThresholdAmount +
               musicAllocationToSafetyAmount -
               thresholdAccountExpenseAmount,

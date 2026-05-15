@@ -54,12 +54,51 @@ function snapshotCapturesBaseInvestment(snapshotDate?: string): boolean {
   return Number.isFinite(day) && day >= 25;
 }
 
+function remainingMonthFraction(monthKey: string, snapshotDate?: string): number {
+  if (!snapshotDate || monthFromDate(snapshotDate) !== monthKey) {
+    return 1;
+  }
+
+  const year = Number(monthKey.slice(0, 4));
+  const month = Number(monthKey.slice(5, 7));
+  const day = Number(String(snapshotDate).slice(8, 10));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return 1;
+  }
+
+  const hour = Number(String(snapshotDate).slice(11, 13) || 0);
+  const minute = Number(String(snapshotDate).slice(14, 16) || 0);
+  const second = Number(String(snapshotDate).slice(17, 19) || 0);
+  const monthStart = Date.UTC(year, month - 1, 1);
+  const nextMonthStart = Date.UTC(year, month, 1);
+  const snapshotTime = Date.UTC(
+    year,
+    month - 1,
+    day,
+    Number.isFinite(hour) ? hour : 0,
+    Number.isFinite(minute) ? minute : 0,
+    Number.isFinite(second) ? second : 0,
+  );
+  const remaining = (nextMonthStart - snapshotTime) / (nextMonthStart - monthStart);
+  return Math.max(0, Math.min(1, remaining));
+}
+
+function prorateMonthlyReturn(monthlyReturn: number, monthKey: string, snapshotDate?: string): number {
+  return monthlyReturn * remainingMonthFraction(monthKey, snapshotDate);
+}
+
 export function buildMonthlyForecastRouting(
   input: MonthlyForecastRoutingInput,
 ): MonthlyForecastRoutingResult {
   const snapshotDate = input.explicitWealthAnchor?.snapshotDate;
   const anchorAppliesAtMonthStart = Boolean(snapshotDate && monthFromDate(snapshotDate) !== input.monthKey);
   const anchorAppliesWithinMonth = Boolean(snapshotDate && monthFromDate(snapshotDate) === input.monthKey);
+  const remainingSafetyMonthlyReturn = anchorAppliesWithinMonth
+    ? prorateMonthlyReturn(input.safetyMonthlyReturn, input.monthKey, snapshotDate)
+    : input.safetyMonthlyReturn;
+  const remainingInvestmentMonthlyReturn = anchorAppliesWithinMonth
+    ? prorateMonthlyReturn(input.investmentMonthlyReturn, input.monthKey, snapshotDate)
+    : input.investmentMonthlyReturn;
   const projectionIncomeAvailableAmount = snapshotDate
     ? roundCurrency(input.incomeAvailableAfterAnchorAmount ?? 0)
     : roundCurrency(input.importedIncomeAvailableAmount);
@@ -133,7 +172,7 @@ export function buildMonthlyForecastRouting(
   const anchoredSafetyEndAmount =
     anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
       ? roundCurrency(
-          safetyBucketAnchorAmount +
+          safetyBucketAnchorAmount * (1 + remainingSafetyMonthlyReturn) +
             projectionSalaryAllocationToSafetyAmount +
             musicAllocationToSafetyAmount -
             effectiveProjectionExpenseAmount -
@@ -143,7 +182,7 @@ export function buildMonthlyForecastRouting(
   const anchoredInvestmentEndAmount =
     anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
       ? roundCurrency(
-          investmentBucketAnchorAmount +
+          investmentBucketAnchorAmount * (1 + remainingInvestmentMonthlyReturn) +
             projectionSalaryAllocationToInvestmentAmount +
             musicAllocationToInvestmentAmount,
         )
