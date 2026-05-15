@@ -1,3 +1,6 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { createLocalConfigResolver } from "@home-ops/framework";
 
 import type { BackupJob } from "./types.ts";
@@ -9,6 +12,7 @@ export interface BackupControlConfig extends Record<string, unknown> {
 }
 
 export const backupConfig = createLocalConfigResolver<BackupControlConfig>({
+  projectRoot: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   envPrefix: "HOME_OPS_BACKUP",
   defaultDataDir: "data",
   parseConfig(value) {

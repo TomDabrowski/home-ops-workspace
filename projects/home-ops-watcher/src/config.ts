@@ -1,3 +1,6 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { createLocalConfigResolver } from "@home-ops/framework";
 
 import type { WatchStatus, WatchTarget } from "./types.ts";
@@ -21,6 +24,7 @@ function parseNotificationMinimumStatus(value: unknown): WatchStatus | undefined
 }
 
 export const watcherConfig = createLocalConfigResolver<WatcherConfig>({
+  projectRoot: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   envPrefix: "HOME_OPS_WATCHER",
   defaultDataDir: "data",
   parseConfig(value) {
