@@ -352,13 +352,47 @@ test("validation signals show the monthly Tagesgeld withdrawal need and the no-w
           currency: "EUR",
           maximumFractionDigits: 2,
         }),
+        currentMonthKey: "2026-04",
       },
     );
 
     assert.match(target.innerHTML, /Tagesgeld-Entnahme für den Monatsplan einplanen/);
     assert.match(target.innerHTML, /2026-04 braucht voraussichtlich 245,50/);
     assert.match(target.innerHTML, /Ziel: Girokonto/);
-    assert.match(target.innerHTML, /Ausgleich des Monatsdefizits/);
+    assert.match(target.innerHTML, /nächste offene Monat ab 2026-04/);
+
+    renderValidationSignals(
+      { baselineSummary: { deltaToAnchor: 0 } },
+      {
+        rows: [
+          {
+            monthKey: "2023-01",
+            requiredTagesgeldWithdrawalAmount: 840.55,
+            requiredTagesgeldWithdrawalDestinationLabel: "Girokonto",
+            netAfterImportedFlows: -840.55,
+            consistencySignals: [],
+          },
+          {
+            monthKey: "2026-05",
+            requiredTagesgeldWithdrawalAmount: 120,
+            requiredTagesgeldWithdrawalDestinationLabel: "Girokonto",
+            netAfterImportedFlows: -120,
+            consistencySignals: [],
+          },
+        ],
+      },
+      {
+        euro: new Intl.NumberFormat("de-DE", {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 2,
+        }),
+        currentMonthKey: "2026-05",
+      },
+    );
+
+    assert.doesNotMatch(target.innerHTML, /2023-01 braucht/);
+    assert.match(target.innerHTML, /2026-05 braucht voraussichtlich 120,00/);
 
     renderValidationSignals(
       { baselineSummary: { deltaToAnchor: 0 } },
@@ -374,6 +408,7 @@ test("validation signals show the monthly Tagesgeld withdrawal need and the no-w
           currency: "EUR",
           maximumFractionDigits: 2,
         }),
+        currentMonthKey: "2026-04",
       },
     );
 

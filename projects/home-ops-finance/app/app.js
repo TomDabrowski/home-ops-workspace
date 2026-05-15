@@ -2083,11 +2083,16 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
     retirementInitialized = true;
   };
 
-  renderValidationSignalsView(draftReport, monthlyPlan, { euro });
+  renderValidationSignalsView(draftReport, monthlyPlan, {
+    euro,
+    reviewFocusMonthKey,
+    currentMonthKey: currentMonthKey(),
+  });
   renderWorkbookAnchorChecksView(importDraft, monthlyPlan, { euro });
-  renderMonthHealthView(monthlyPlan, { euro });
+  renderMonthHealthView(monthlyPlan, { euro, currentMonthKey: currentMonthKey() });
   renderPriorityMonthsView(monthlyPlan, {
     reviewFocusMonthKey,
+    currentMonthKey: currentMonthKey(),
     planProfileLabel,
     euro,
     openMonthReview,

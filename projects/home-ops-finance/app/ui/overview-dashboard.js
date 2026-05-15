@@ -2,16 +2,18 @@
 // month-review navigation. The app shell should only wire these surfaces up.
 
 export function renderValidationSignals(draftReport, monthlyPlan, deps) {
-  const { euro } = deps;
+  const { euro, reviewFocusMonthKey, currentMonthKey } = deps;
   const target = document.getElementById("validationSignals");
   if (!target) return;
 
   const signals = [];
+  const actionableStartMonthKey = currentMonthKey ?? reviewFocusMonthKey ?? monthlyPlan.rows[0]?.monthKey ?? "";
+  const actionableRows = monthlyPlan.rows.filter((row) => row.monthKey >= actionableStartMonthKey);
   const delta = draftReport.baselineSummary?.deltaToAnchor ?? 0;
-  const negativeMonths = monthlyPlan.rows.filter((row) => row.netAfterImportedFlows < 0);
-  const suspiciousMonths = monthlyPlan.rows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
-  const futureRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
-  const withdrawalMonths = monthlyPlan.rows.filter((row) => Number(row.requiredTagesgeldWithdrawalAmount ?? 0) > 0);
+  const negativeMonths = actionableRows.filter((row) => row.netAfterImportedFlows < 0);
+  const suspiciousMonths = actionableRows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
+  const futureRows = actionableRows.filter((row) => row.monthKey > actionableStartMonthKey);
+  const withdrawalMonths = actionableRows.filter((row) => Number(row.requiredTagesgeldWithdrawalAmount ?? 0) > 0);
   const nextWithdrawalMonth = [...withdrawalMonths].sort((left, right) => left.monthKey.localeCompare(right.monthKey))[0];
 
   if (Math.abs(delta) > 0.01) {
@@ -30,7 +32,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
       title: "Tagesgeld-Entnahme für den Monatsplan einplanen",
       body:
         `${nextWithdrawalMonth.monthKey} braucht voraussichtlich ${euro.format(withdrawalAmount)} aus dem Tagesgeld. ` +
-        `Ziel: ${destinationLabel}. Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.`,
+        `Ziel: ${destinationLabel}. Das ist der nächste offene Monat ab ${actionableStartMonthKey}.`,
     });
   } else {
     signals.push({
@@ -44,7 +46,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
     const worstMonth = [...negativeMonths].sort((left, right) => left.netAfterImportedFlows - right.netAfterImportedFlows)[0];
     signals.push({
       level: "warn",
-      title: `${negativeMonths.length} Monate liegen nach Importen im Minus`,
+      title: `${negativeMonths.length} Monate ab ${actionableStartMonthKey} liegen nach Importen im Minus`,
       body: `Schwächster Monat aktuell: ${worstMonth.monthKey} mit ${euro.format(worstMonth.netAfterImportedFlows)}. Diese Monate solltest du zuerst kurz durchgehen.`,
     });
   }
@@ -56,7 +58,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
     )[0];
     signals.push({
       level: "warn",
-      title: `${suspiciousMonths.length} Monate haben automatische Warnsignale`,
+      title: `${suspiciousMonths.length} Monate ab ${actionableStartMonthKey} haben automatische Warnsignale`,
       body: `${worstMatch.monthKey} hat aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Von dort lohnt sich der Einstieg in die Monatsprüfung.`,
     });
   }
@@ -123,20 +125,22 @@ export function renderWorkbookAnchorChecks(importDraft, monthlyPlan, deps) {
 }
 
 export function renderMonthHealth(monthlyPlan, deps) {
-  const { euro } = deps;
+  const { euro, currentMonthKey } = deps;
   const target = document.getElementById("monthHealth");
   if (!target) return;
 
   const rows = monthlyPlan.rows;
-  const negativeMonths = rows.filter((row) => row.netAfterImportedFlows < 0);
-  const warningMonths = rows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
-  const bestMonth = [...rows].sort((left, right) => right.netAfterImportedFlows - left.netAfterImportedFlows)[0];
-  const worstMonth = [...rows].sort((left, right) => left.netAfterImportedFlows - right.netAfterImportedFlows)[0];
-  const lastMonth = rows.at(-1);
+  const currentAndFutureRows = rows.filter((row) => !currentMonthKey || row.monthKey >= currentMonthKey);
+  const healthRows = currentAndFutureRows.length > 0 ? currentAndFutureRows : rows;
+  const negativeMonths = healthRows.filter((row) => row.netAfterImportedFlows < 0);
+  const warningMonths = healthRows.filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"));
+  const bestMonth = [...healthRows].sort((left, right) => right.netAfterImportedFlows - left.netAfterImportedFlows)[0];
+  const worstMonth = [...healthRows].sort((left, right) => left.netAfterImportedFlows - right.netAfterImportedFlows)[0];
+  const lastMonth = healthRows.at(-1);
   const entries = [
-    ["Monate im Plan", String(rows.length)],
-    ["Defizit-Monate", String(negativeMonths.length)],
-    ["Warn-Monate", String(warningMonths.length)],
+    ["Monate ab jetzt", String(healthRows.length)],
+    ["Defizit-Monate ab jetzt", String(negativeMonths.length)],
+    ["Warn-Monate ab jetzt", String(warningMonths.length)],
     ["Bester Monat", bestMonth ? `${bestMonth.monthKey} · ${euro.format(bestMonth.netAfterImportedFlows)}` : "-"],
     ["Schwächster Monat", worstMonth ? `${worstMonth.monthKey} · ${euro.format(worstMonth.netAfterImportedFlows)}` : "-"],
     ["Letzter Monat", lastMonth ? `${lastMonth.monthKey} · ${euro.format(lastMonth.netAfterImportedFlows)}` : "-"],
@@ -147,27 +151,35 @@ export function renderMonthHealth(monthlyPlan, deps) {
     .join("");
 }
 
-function reviewPriorityRows(monthlyPlan, reviewFocusMonthKey) {
+function reviewPriorityRows(monthlyPlan, reviewFocusMonthKey, currentMonthKey) {
+  const actionableStartMonthKey = currentMonthKey ?? reviewFocusMonthKey;
+  const focusWindowRows = monthlyPlan.rows
+    .filter((row) => row.monthKey >= actionableStartMonthKey)
+    .slice(0, 12);
+  const sourceRows = focusWindowRows.length > 0 ? focusWindowRows : monthlyPlan.rows;
   const prioritized = monthlyPlan.rows
-    .filter((row) => row.consistencySignals.some((signal) => signal.severity === "warn"))
+    .filter((row) => sourceRows.some((sourceRow) => sourceRow.monthKey === row.monthKey))
+    .filter((row) => row.netAfterImportedFlows < 0 || row.consistencySignals.some((signal) => signal.severity === "warn"))
     .map((row) => ({
       ...row,
       warningCount: row.consistencySignals.filter((signal) => signal.severity === "warn").length,
       priorityScore:
-        (row.monthKey >= reviewFocusMonthKey ? 1000000 : 0) +
-        row.consistencySignals.filter((signal) => signal.severity === "warn").length * 100000 +
+        (row.monthKey === currentMonthKey ? 1000000 : 0) +
+        (row.netAfterImportedFlows < 0 ? 500000 : 0) +
+        (Number(row.requiredTagesgeldWithdrawalAmount ?? 0) > 0 ? 250000 : 0) +
+        row.consistencySignals.filter((signal) => signal.severity === "warn").length * 50000 +
         Math.abs(Math.min(row.netAfterImportedFlows, 0)) +
         row.importedExpenseAmount,
     }))
     .sort((left, right) => right.priorityScore - left.priorityScore);
 
-  const focusRows = prioritized.filter((row) => row.monthKey >= reviewFocusMonthKey).slice(0, 9);
-  return focusRows.length > 0 ? focusRows : prioritized.slice(0, 9);
+  return prioritized.slice(0, 9);
 }
 
 export function renderPriorityMonths(monthlyPlan, deps) {
   const {
     reviewFocusMonthKey,
+    currentMonthKey,
     planProfileLabel,
     euro,
     openMonthReview,
@@ -177,7 +189,7 @@ export function renderPriorityMonths(monthlyPlan, deps) {
   const monthSelect = document.getElementById("monthReviewSelect");
   if (!target || !monthSelect) return;
 
-  const rows = reviewPriorityRows(monthlyPlan, reviewFocusMonthKey);
+  const rows = reviewPriorityRows(monthlyPlan, reviewFocusMonthKey, currentMonthKey);
   target.innerHTML = rows
     .map((row, index) => `
       <article class="priority-card">
