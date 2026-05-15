@@ -342,6 +342,14 @@ export function createLocalFinanceStateTools(deps) {
     return `${Number(value ?? 0).toFixed(2)} EUR`;
   }
 
+  function baselineSignalSeverity(input) {
+    if (input.monthKey === input.baselineAnchorMonthKey) {
+      return "warn";
+    }
+
+    return input.baselineAvailableAmount < -50 ? "warn" : "info";
+  }
+
   function buildConsistencySignals(input) {
     const signals = [];
     const mismatchEntries = [
@@ -366,7 +374,7 @@ export function createLocalFinanceStateTools(deps) {
 
       signals.push({
         code: "baseline_anchor_mismatch",
-        severity: "warn",
+        severity: baselineSignalSeverity(input),
         title: "Baseline passt nicht sauber zum Anchor",
         detail: detailParts.join(" · "),
       });
@@ -375,7 +383,7 @@ export function createLocalFinanceStateTools(deps) {
     if (input.baselineAvailableAmount < 0) {
       signals.push({
         code: "baseline_deficit",
-        severity: "warn",
+        severity: input.baselineAvailableAmount < -50 ? "warn" : "info",
         title: "Baseline selbst liegt unter null",
         detail: `${input.monthKey} startet schon vor Importen mit ${formatCurrency(input.baselineAvailableAmount)}.`,
       });
@@ -393,7 +401,7 @@ export function createLocalFinanceStateTools(deps) {
     if (input.importedExpenseAmount > input.baselineAvailableAmount && input.importedExpenseAmount > 0) {
       signals.push({
         code: "expense_over_baseline_available",
-        severity: "warn",
+        severity: "info",
         title: "Importierte Ausgaben uebersteigen freie Baseline",
         detail:
           `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen freie Baseline ${formatCurrency(input.baselineAvailableAmount)}. ` +

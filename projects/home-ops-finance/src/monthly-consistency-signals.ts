@@ -14,6 +14,18 @@ function formatCurrency(value: number): string {
   return `${value.toFixed(2)} EUR`;
 }
 
+function baselineSignalSeverity(input: {
+  monthKey: string;
+  baselineAnchorMonthKey: string;
+  baselineAvailableAmount: number;
+}): "info" | "warn" {
+  if (input.monthKey === input.baselineAnchorMonthKey) {
+    return "warn";
+  }
+
+  return input.baselineAvailableAmount < -50 ? "warn" : "info";
+}
+
 export function buildConsistencySignals(input: {
   monthKey: string;
   baselineAnchorMonthKey: string;
@@ -54,7 +66,7 @@ export function buildConsistencySignals(input: {
 
     signals.push({
       code: "baseline_anchor_mismatch",
-      severity: "warn",
+      severity: baselineSignalSeverity(input),
       title: "Baseline passt nicht sauber zum Anchor",
       detail: detailParts.join(" · "),
     });
@@ -63,7 +75,7 @@ export function buildConsistencySignals(input: {
   if (input.baselineAvailableAmount < 0) {
     signals.push({
       code: "baseline_deficit",
-      severity: "warn",
+      severity: input.baselineAvailableAmount < -50 ? "warn" : "info",
       title: "Baseline selbst liegt unter null",
       detail: `${input.monthKey} startet schon vor Importen mit ${formatCurrency(input.baselineAvailableAmount)}.`,
     });
@@ -81,7 +93,7 @@ export function buildConsistencySignals(input: {
   if (input.importedExpenseAmount > input.baselineAvailableAmount && input.importedExpenseAmount > 0) {
     signals.push({
       code: "expense_over_baseline_available",
-      severity: "warn",
+      severity: "info",
       title: "Importierte Ausgaben uebersteigen freie Baseline",
       detail:
         `Ausgaben ${formatCurrency(input.importedExpenseAmount)} gegen freie Baseline ${formatCurrency(input.baselineAvailableAmount)}. ` +

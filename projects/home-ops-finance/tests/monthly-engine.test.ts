@@ -176,6 +176,7 @@ test("builds monthly rows with historical and investing profiles", () => {
     investing?.consistencySignals.map((signal) => signal.code),
     ["expense_over_baseline_available"],
   );
+  assert.equal(investing?.consistencySignals[0]?.severity, "info");
 });
 
 test("routes music to the configured threshold account instead of total safety cash", () => {
@@ -523,6 +524,10 @@ test("flags anchor mismatches and negative months automatically", () => {
   assert.deepEqual(
     row?.consistencySignals.map((signal) => signal.code),
     ["baseline_anchor_mismatch", "monthly_deficit", "expense_over_baseline_available", "expense_spike"],
+  );
+  assert.deepEqual(
+    row?.consistencySignals.map((signal) => signal.severity),
+    ["warn", "warn", "info", "info"],
   );
 });
 
