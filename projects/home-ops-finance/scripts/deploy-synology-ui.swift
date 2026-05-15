@@ -237,7 +237,7 @@ final class DeployWindowController: NSWindowController, NSWindowDelegate {
           return
         }
 
-        if self?.usedSavedPassword == true {
+        if self?.usedSavedPassword == true && self?.outputLooksLikePasswordFailure() == true {
           self?.appendLog("\nGespeichertes Passwort war offenbar nicht mehr gültig. Bitte erneut eingeben.\n")
           self?.usedSavedPassword = false
           if let retry = self?.promptForPassword() {
@@ -259,6 +259,11 @@ final class DeployWindowController: NSWindowController, NSWindowDelegate {
       finish(status: "Deploy konnte nicht gestartet werden.", success: false)
       appendLog("\(error.localizedDescription)\n")
     }
+  }
+
+  private func outputLooksLikePasswordFailure() -> Bool {
+    outputBuffer.contains("Sorry, try again.") ||
+      outputBuffer.contains("sudo:") && outputBuffer.localizedCaseInsensitiveContains("password")
   }
 
   private func updateStatus(from chunk: String) {
