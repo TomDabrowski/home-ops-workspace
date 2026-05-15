@@ -1,6 +1,10 @@
 // Overview dashboard UI: health signals, priority months, month filters, and
 // month-review navigation. The app shell should only wire these surfaces up.
 
+function warningCountLabel(count) {
+  return count === 1 ? "1 Warnhinweis" : `${count} Warnhinweise`;
+}
+
 export function renderValidationSignals(draftReport, monthlyPlan, deps) {
   const { euro, reviewFocusMonthKey, currentMonthKey } = deps;
   const target = document.getElementById("validationSignals");
@@ -59,7 +63,7 @@ export function renderValidationSignals(draftReport, monthlyPlan, deps) {
     signals.push({
       level: "warn",
       title: `${suspiciousMonths.length} Monate in den nächsten 12 Monaten haben automatische Warnsignale`,
-      body: `${worstMatch.monthKey} hat aktuell ${worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length} Warnhinweise. Von dort lohnt sich der Einstieg in die Monatsprüfung.`,
+      body: `${worstMatch.monthKey} hat aktuell ${warningCountLabel(worstMatch.consistencySignals.filter((signal) => signal.severity === "warn").length)}. Von dort lohnt sich der Einstieg in die Monatsprüfung.`,
     });
   }
 
@@ -198,7 +202,7 @@ export function renderPriorityMonths(monthlyPlan, deps) {
           <span class="priority-pill">${planProfileLabel(row.baselineProfile)}</span>
         </div>
         <h3>${row.monthKey}</h3>
-        <p>${row.warningCount} Warnhinweise · Monatssaldo ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
+        <p>${warningCountLabel(row.warningCount)} · Monatssaldo ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
         <button class="pill" type="button" data-priority-month="${row.monthKey}">Im Review öffnen</button>
       </article>
     `)
