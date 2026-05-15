@@ -324,7 +324,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
     const expenseAmountForProjection = snapshotDate
       ? sumExpensesAfterDate(draft.expenseEntries, monthKey, snapshotDate!)
       : importedExpenseAmount;
-    const currentMusicThresholdAccountAmount = musicThresholdAccountId
+    const rawCurrentMusicThresholdAccountAmount = musicThresholdAccountId
       ? anchorAppliesAtMonthStart
         ? (
           anchorCashAccountAmountOrUndefined(explicitWealthAnchor, musicThresholdAccountId) ??
@@ -338,6 +338,12 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
             )
         : musicThresholdAccountEndAmount
       : Number(safetyBucketStartAmount ?? 0);
+    const currentMusicThresholdAccountAmount = roundCurrency(
+      Math.min(
+        Math.max(0, rawCurrentMusicThresholdAccountAmount),
+        Math.max(0, Number(safetyBucketStartAmount ?? explicitWealthAnchor?.safetyBucketAmount ?? rawCurrentMusicThresholdAccountAmount)),
+      ),
+    );
     const thresholdAccountExpenseAmount = musicThresholdAccountId
       ? snapshotDate
         ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
@@ -368,7 +374,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       basisInvestmentState: explicitWealthAnchor?.monthlyStatus?.basisInvestmentState,
       extraExpensesIncluded: explicitWealthAnchor?.monthlyStatus?.extraExpensesIncluded === true,
     });
-    const musicThresholdAccountProjectedEndAmount = useForecastRouting
+    const rawMusicThresholdAccountProjectedEndAmount = useForecastRouting
       ? roundCurrency(
           currentMusicThresholdAccountAmount * (1 + thresholdAccountMonthlyReturn) +
             forecastRouting.salaryAllocationToThresholdAmount +
@@ -376,6 +382,15 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
             thresholdAccountExpenseAmount,
         )
       : undefined;
+    const musicThresholdAccountProjectedEndAmount =
+      rawMusicThresholdAccountProjectedEndAmount !== undefined
+        ? roundCurrency(
+            Math.min(
+              rawMusicThresholdAccountProjectedEndAmount,
+              Number(forecastRouting.safetyBucketEndAmount ?? rawMusicThresholdAccountProjectedEndAmount),
+            ),
+          )
+        : undefined;
     if (forecastRouting.safetyBucketEndAmount !== undefined) {
       safetyBucketEndAmount = forecastRouting.safetyBucketEndAmount;
     }

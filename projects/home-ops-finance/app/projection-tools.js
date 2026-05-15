@@ -97,11 +97,15 @@ export function createProjectionTools(deps) {
 
     let safetyStartAmount = startTemplate.safetyBucketStartAmount ?? 0;
     let investmentStartAmount = startTemplate.investmentBucketStartAmount ?? 0;
-    let thresholdAccountStartAmount =
-      startTemplate.thresholdAccountEndAmount ??
-      startTemplate.thresholdAccountStartAmount ??
-      startTemplate.safetyBucketStartAmount ??
-      0;
+    let thresholdAccountStartAmount = Math.min(
+      Number(startTemplate.safetyBucketStartAmount ?? 0),
+      Number(
+        startTemplate.thresholdAccountEndAmount ??
+          startTemplate.thresholdAccountStartAmount ??
+          startTemplate.safetyBucketStartAmount ??
+          0,
+      ),
+    );
     const results = [];
 
     for (let index = 0; index < months; index += 1) {
@@ -130,10 +134,13 @@ export function createProjectionTools(deps) {
       if (firstMonthUsesSnapshotAnchor) {
         safetyStartAmount = Number(monthAnchor.safetyBucketAmount ?? safetyStartAmount);
         investmentStartAmount = Number(monthAnchor.investmentBucketAmount ?? investmentStartAmount);
-        thresholdAccountStartAmount = Number(
-          monthAnchor.cashAccounts?.[musicThresholdAccountId] ??
-            monthAnchor.safetyBucketAmount ??
-            thresholdAccountStartAmount,
+        thresholdAccountStartAmount = Math.min(
+          Number(monthAnchor.safetyBucketAmount ?? safetyStartAmount),
+          Number(
+            monthAnchor.cashAccounts?.[musicThresholdAccountId] ??
+              monthAnchor.safetyBucketAmount ??
+              thresholdAccountStartAmount,
+          ),
         );
       }
       const effectiveSafetyMonthlyReturn = firstMonthUsesSnapshotAnchor
@@ -166,7 +173,9 @@ export function createProjectionTools(deps) {
         0,
         Number(template.projectionSalaryAllocationToInvestmentAmount ?? plannedSavingsAmount),
       );
-      const currentThresholdAmount = musicThresholdAccountId ? thresholdAccountStartAmount : safetyStartAmount;
+      const currentThresholdAmount = musicThresholdAccountId
+        ? Math.min(safetyStartAmount, thresholdAccountStartAmount)
+        : safetyStartAmount;
       const musicSafetyGapAmount = Math.max(0, musicThreshold - currentThresholdAmount);
       const musicNetNeededForThreshold = Math.max(0, Math.min(musicNetAvailable, musicSafetyGapAmount - musicReserveAmount));
       const musicToSafety = Math.max(0, musicReserveAmount + musicNetNeededForThreshold);
@@ -181,11 +190,13 @@ export function createProjectionTools(deps) {
         safetyGrowthAmount +
         salaryToSafety +
         musicToSafety;
-      const thresholdAccountEndAmount =
+      const thresholdAccountEndAmount = Math.min(
+        safetyEndAmount,
         currentThresholdAmount +
-        thresholdAccountGrowthAmount +
-        salaryToThreshold +
-        musicToSafety;
+          thresholdAccountGrowthAmount +
+          salaryToThreshold +
+          musicToSafety,
+      );
       const investmentEndAmount =
         investmentStartAmount +
         investmentGrowthAmount +

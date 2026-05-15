@@ -720,13 +720,19 @@ export function createLocalFinanceStateTools(deps) {
       const currentSafetyAmount = anchorAppliesWithinMonth
         ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
         : (safetyBucketStartAmount ?? 0);
-      const currentMusicThresholdAccountAmount = musicThresholdAccountId
+      const rawCurrentMusicThresholdAccountAmount = musicThresholdAccountId
         ? anchorAppliesAtMonthStart
           ? (anchorCashAccountAmountOrUndefined(explicitWealthAnchor, musicThresholdAccountId) ?? musicThresholdAccountEndAmount)
           : anchorAppliesWithinMonth
             ? Number(explicitWealthAnchor?.cashAccounts?.[musicThresholdAccountId] ?? currentSafetyAmount)
           : musicThresholdAccountEndAmount
         : currentSafetyAmount;
+      const currentMusicThresholdAccountAmount = roundCurrency(
+        Math.min(
+          Math.max(0, rawCurrentMusicThresholdAccountAmount),
+          Math.max(0, currentSafetyAmount),
+        ),
+      );
       const thresholdAccountInstructionStartAmount =
         typeof explicitWealthAnchor?.monthlyStatus?.musicThresholdBeforeAmount === "number" &&
         Number.isFinite(explicitWealthAnchor.monthlyStatus.musicThresholdBeforeAmount)
@@ -807,7 +813,7 @@ export function createLocalFinanceStateTools(deps) {
         safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
           ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
           : undefined;
-      const musicThresholdAccountProjectedEndAmount = useForecastRouting
+      const rawMusicThresholdAccountProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             currentMusicThresholdAccountAmount * (1 + effectiveSafetyMonthlyReturn) +
               salaryAllocationToThresholdAmount +
@@ -815,6 +821,15 @@ export function createLocalFinanceStateTools(deps) {
               thresholdAccountExpenseAmount,
           )
         : undefined;
+      const musicThresholdAccountProjectedEndAmount =
+        rawMusicThresholdAccountProjectedEndAmount !== undefined
+          ? roundCurrency(
+              Math.min(
+                rawMusicThresholdAccountProjectedEndAmount,
+                Number(safetyBucketResolvedEndAmount ?? rawMusicThresholdAccountProjectedEndAmount),
+              ),
+            )
+          : undefined;
 
       if (safetyBucketResolvedEndAmount !== undefined) {
         safetyBucketEndAmount = safetyBucketResolvedEndAmount;

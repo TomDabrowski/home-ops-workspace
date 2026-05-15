@@ -1217,9 +1217,76 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const defaultCashRemainderAccountId = accountOptions.some((option) => option.id === "giro")
     ? "giro"
     : accountOptions[0]?.id;
-  function deriveAccountBalances(totalCashAmount, thresholdAccountAmount) {
+  function normalizeAccountBalanceMap(source) {
     const balances = new Map(accountOptions.map((option) => [option.id, 0]));
+    if (!source) {
+      return balances;
+    }
+
+    const entries = source instanceof Map ? source.entries() : Object.entries(source);
+    for (const [accountId, amount] of entries) {
+      if (balances.has(accountId)) {
+        balances.set(accountId, roundCurrency(Math.max(0, Number(amount ?? 0))));
+      }
+    }
+
+    return balances;
+  }
+
+  function sumAccountBalances(balances) {
+    return roundCurrency(
+      Array.from(balances.values()).reduce((sum, amount) => sum + Number(amount ?? 0), 0),
+    );
+  }
+
+  function addDeltaToAccountBalances(baseBalances, preferredAccountId, deltaAmount) {
+    const balances = new Map(baseBalances);
+    const preferredId = balances.has(preferredAccountId)
+      ? preferredAccountId
+      : balances.has(defaultCashRemainderAccountId)
+        ? defaultCashRemainderAccountId
+        : accountOptions[0]?.id;
+
+    if (!preferredId) {
+      return balances;
+    }
+
+    let remainingDelta = roundCurrency(Number(deltaAmount ?? 0));
+    const preferredAmount = Number(balances.get(preferredId) ?? 0);
+    const preferredResult = roundCurrency(preferredAmount + remainingDelta);
+
+    if (preferredResult >= 0) {
+      balances.set(preferredId, preferredResult);
+      return balances;
+    }
+
+    balances.set(preferredId, 0);
+    remainingDelta = preferredResult;
+
+    for (const option of accountOptions) {
+      if (option.id === preferredId || remainingDelta >= 0) {
+        continue;
+      }
+
+      const currentAmount = Number(balances.get(option.id) ?? 0);
+      const reductionAmount = Math.min(currentAmount, Math.abs(remainingDelta));
+      balances.set(option.id, roundCurrency(currentAmount - reductionAmount));
+      remainingDelta = roundCurrency(remainingDelta + reductionAmount);
+    }
+
+    return balances;
+  }
+
+  function deriveAccountBalances(totalCashAmount, thresholdAccountAmount, baseAccountBalances = null) {
     const totalCash = Number.isFinite(Number(totalCashAmount)) ? Math.max(0, Number(totalCashAmount)) : 0;
+
+    if (baseAccountBalances) {
+      const balances = normalizeAccountBalanceMap(baseAccountBalances);
+      const delta = roundCurrency(totalCash - sumAccountBalances(balances));
+      return addDeltaToAccountBalances(balances, resolvedThresholdAccountId, delta);
+    }
+
+    const balances = new Map(accountOptions.map((option) => [option.id, 0]));
     const thresholdAmount = Number.isFinite(Number(thresholdAccountAmount))
       ? Math.max(0, Math.min(totalCash, Number(thresholdAccountAmount)))
       : 0;
@@ -1237,21 +1304,25 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
     return balances;
   }
+  const latestSnapshotAccountBalances = latestSnapshot
+    ? normalizeAccountBalanceMap(wealthSnapshotCashAccounts(latestSnapshot))
+    : null;
+  const startAccountBalanceBase =
+    latestSnapshotAccountBalances && (hasActiveInMonthSnapshot || review.row.anchorAppliesAtMonthStart)
+      ? latestSnapshotAccountBalances
+      : null;
+  const startAccountBalanceTotal =
+    hasActiveInMonthSnapshot && latestSnapshotCashAmount !== null
+      ? latestSnapshotCashAmount
+      : displayStartSafetyAmount;
   const startAccountBalances =
-    latestSnapshot && review.row.anchorAppliesAtMonthStart
-      ? new Map(
-        monthSummaryAccounts.map((option) => [
-          option.id,
-          roundCurrency(Number(wealthSnapshotCashAccounts(latestSnapshot)[option.id] ?? 0)),
-        ]),
-      )
-      : deriveAccountBalances(
-        displayStartSafetyAmount,
-        review.row.thresholdAccountStartAmount ?? displayStartSafetyAmount,
-      );
+    startAccountBalanceBase
+      ? deriveAccountBalances(startAccountBalanceTotal, review.row.thresholdAccountStartAmount ?? startAccountBalanceTotal, startAccountBalanceBase)
+      : deriveAccountBalances(displayStartSafetyAmount, review.row.thresholdAccountStartAmount ?? displayStartSafetyAmount);
   const endAccountBalances = deriveAccountBalances(
     endSafetyAmount,
     review.row.thresholdAccountEndAmount ?? endSafetyAmount,
+    latestSnapshotAccountBalances,
   );
   const remainingImportedExpenseAmount = hasActiveInMonthSnapshot
     ? roundCurrency(
@@ -1274,9 +1345,12 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   renderMonthDataStatus(monthlyPlan, monthKey);
 
   if (startSummary) {
+    const accountStartLabelSuffix = hasActiveInMonthSnapshot
+      ? "im letzten Ist-Stand"
+      : "zu Beginn des geöffneten Monats";
     const entries = [
       ...monthSummaryAccounts.map((option) => ([
-        `${option.label} zu Beginn des geöffneten Monats`,
+        `${option.label} ${accountStartLabelSuffix}`,
         euro.format(Number(startAccountBalances.get(option.id) ?? 0)),
       ])),
       {
@@ -1626,8 +1700,8 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       accountOptions,
       review.row.thresholdAccountId ?? assumptionString(importDraft, "music_threshold_account_id", "savings"),
     );
-    const thresholdStartAmount = Number(review.row.thresholdAccountStartAmount ?? 0);
-    const thresholdEndAmount = Number(review.row.thresholdAccountEndAmount ?? 0);
+    const thresholdStartAmount = Number(startAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountStartAmount ?? 0);
+    const thresholdEndAmount = Number(endAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountEndAmount ?? 0);
     const thresholdDeltaAmount =
       review.row.thresholdAccountEndAmount !== undefined
         ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
@@ -1698,13 +1772,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
           },
           {
             label: `${thresholdTargetLabel} am Ende des geöffneten Monats`,
-            value: euro.format(review.row.thresholdAccountEndAmount),
+            value: euro.format(thresholdEndAmount),
             formula:
-              `${euro.format(review.row.thresholdAccountStartAmount ?? 0)} Start + ` +
-              `${euro.format(musicSafetyRemainingAmountDisplay)} aus Musik + ` +
-              `${euro.format(review.row.salaryAllocationToThresholdAmount ?? 0)} aus Gehalt - ` +
-              `${euro.format(importedExpenseAmount)} Ausgaben = ` +
-              `${euro.format(review.row.thresholdAccountEndAmount)}`,
+              `${euro.format(thresholdStartAmount)} Start + ${signedMoneyLabel(thresholdDeltaAmount)} Netto-Bewegung = ${euro.format(thresholdEndAmount)}`,
           },
         ]
         : []),
