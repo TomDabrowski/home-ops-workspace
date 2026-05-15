@@ -22,6 +22,8 @@ DEPLOY_IMAGE_TAG="${DEPLOY_IMAGE_TAG:-home-ops-finance:synology}"
 DEPLOY_SSH_IDENTITY="${DEPLOY_SSH_IDENTITY:-}"
 DEPLOY_REMOTE_SUDO_PASSWORD="${DEPLOY_REMOTE_SUDO_PASSWORD:-}"
 FRAMEWORK_ROOT="$(cd "${PROJECT_ROOT}/../../../home-ops-framework" && pwd)"
+BUILD_NUMBER="$(git -C "${PROJECT_ROOT}" rev-list --count HEAD 2>/dev/null || echo 0)"
+GIT_REVISION="$(git -C "${PROJECT_ROOT}" rev-parse --short HEAD 2>/dev/null || echo "")"
 
 if [[ -z "${DEPLOY_HOST}" || -z "${DEPLOY_USER}" ]]; then
   cat <<'EOF' >&2
@@ -87,7 +89,10 @@ REMOTE_BUILD_CMD="set -euo pipefail; \
  else \
    sudo_run() { sudo \"\$@\"; }; \
  fi; \
- sudo_run \"\${docker_bin}\" build --network host -t '${DEPLOY_IMAGE_TAG}' '${DEPLOY_APP_DIR}'; \
+ sudo_run \"\${docker_bin}\" build --network host \
+   --build-arg HOME_OPS_FINANCE_BUILD_NUMBER='${BUILD_NUMBER}' \
+   --build-arg HOME_OPS_FINANCE_GIT_REVISION='${GIT_REVISION}' \
+   -t '${DEPLOY_IMAGE_TAG}' '${DEPLOY_APP_DIR}'; \
  if sudo_run \"\${docker_bin}\" ps -a --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
    if sudo_run \"\${docker_bin}\" ps --format '{{.Names}}' | grep -Fxq '${DEPLOY_CONTAINER_NAME}'; then \
      sudo_run \"\${docker_bin}\" stop --time 20 '${DEPLOY_CONTAINER_NAME}' >/dev/null; \

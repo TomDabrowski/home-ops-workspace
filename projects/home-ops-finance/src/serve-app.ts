@@ -45,6 +45,11 @@ const appVersion = (() => {
   }
 })();
 const gitRevision = (() => {
+  const envRevision = process.env.HOME_OPS_FINANCE_GIT_REVISION?.trim();
+  if (envRevision) {
+    return envRevision;
+  }
+
   try {
     return execFileSync("git", ["-C", root, "rev-parse", "--short", "HEAD"], {
       encoding: "utf8",
@@ -59,6 +64,21 @@ const gitRevision = (() => {
     } catch {
       return null;
     }
+  }
+})();
+const buildNumber = (() => {
+  const envBuildNumber = process.env.HOME_OPS_FINANCE_BUILD_NUMBER?.trim();
+  if (envBuildNumber && /^\d+$/.test(envBuildNumber)) {
+    return envBuildNumber;
+  }
+
+  try {
+    return execFileSync("git", ["-C", root, "rev-list", "--count", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return null;
   }
 })();
 const buildFallbackId = buildStartedAt.replace(/[-:TZ.]/g, "").slice(0, 12);
@@ -500,8 +520,11 @@ const server = createServer(async (req, res) => {
       dataMode: dataDir === join(root, "data") ? "repo-default" : "external",
       appVersion,
       gitRevision,
+      buildNumber,
       buildStartedAt,
-      buildLabel: gitRevision ? `v${appVersion} (${gitRevision})` : `v${appVersion} (dev-${buildFallbackId})`,
+      buildLabel: buildNumber
+        ? `v${appVersion} build ${buildNumber}${gitRevision ? ` (${gitRevision})` : ""}`
+        : gitRevision ? `v${appVersion} (${gitRevision})` : `v${appVersion} (dev-${buildFallbackId})`,
     });
   }
 
