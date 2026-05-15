@@ -401,6 +401,14 @@ function moneyDeltaLabel(amount, label) {
   return Number(amount ?? 0) !== 0 ? `${euro.format(amount)} ${label}` : "";
 }
 
+function signedMoneyLabel(amount) {
+  const value = roundCurrency(Number(amount ?? 0));
+  if (Math.abs(value) < 0.005) {
+    return euro.format(0);
+  }
+  return `${value > 0 ? "+" : "-"}${euro.format(Math.abs(value))}`;
+}
+
 function joinMoneyDeltas(parts) {
   const filtered = parts.filter(Boolean);
   if (filtered.length === 0) {
@@ -1624,6 +1632,23 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       review.row.thresholdAccountEndAmount !== undefined
         ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
         : 0;
+    const restMonthInvestmentReturnAmount = hasActiveInMonthSnapshot
+      ? roundCurrency(
+        endInvestmentAmount -
+          investmentAnchorAmount -
+          Number(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0) -
+          Number(musicInvestmentRemainingAmount ?? 0),
+      )
+      : null;
+    const snapshotToMonthEndCashDelta = hasActiveInMonthSnapshot
+      ? roundCurrency(endSafetyAmount - Number(latestSnapshotCashAmount ?? 0))
+      : null;
+    const snapshotToMonthEndInvestmentDelta = hasActiveInMonthSnapshot
+      ? roundCurrency(endInvestmentAmount - Number(latestSnapshotInvestmentAmount ?? 0))
+      : null;
+    const snapshotToMonthEndWealthDelta = hasActiveInMonthSnapshot
+      ? roundCurrency(endWealthAmount - Number(latestSnapshotWealthAmount ?? 0))
+      : null;
     const entries = [
       ...monthSummaryAccounts.map((option) => ([
         `${option.label} am Ende des geöffneten Monats`,
@@ -1711,6 +1736,36 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
             ? `${euro.format(endSafetyAmount)} Cash am Ende + ${euro.format(endInvestmentAmount)} Investment am Ende = ${euro.format(endWealthAmount)}`
             : "",
       },
+      ...(hasActiveInMonthSnapshot
+        ? [
+          {
+            label: "Auswirkung seit letztem Ist-Stand",
+            value: signedMoneyLabel(snapshotToMonthEndWealthDelta),
+            valueClass: Number(snapshotToMonthEndWealthDelta ?? 0) >= 0 ? "positive" : "negative",
+            itemClass: "is-snapshot-impact",
+            note: `Cash ${signedMoneyLabel(snapshotToMonthEndCashDelta)} · Investment ${signedMoneyLabel(snapshotToMonthEndInvestmentDelta)}`,
+            formula: joinTooltipLines([
+              `Ist-Stand am ${formatDisplayDate(latestSnapshotDate)}: ${euro.format(latestSnapshotWealthAmount ?? 0)} Gesamtvermögen.`,
+              `Prognose Monatsende: ${euro.format(endWealthAmount)} Gesamtvermögen.`,
+              `Differenz: ${signedMoneyLabel(snapshotToMonthEndWealthDelta)}.`,
+            ]),
+          },
+          {
+            label: "Restmonatsrendite ab Ist-Stand",
+            value: signedMoneyLabel(restMonthInvestmentReturnAmount),
+            valueClass: Number(restMonthInvestmentReturnAmount ?? 0) >= 0 ? "positive" : "negative",
+            itemClass: "is-snapshot-impact",
+            note: `Nur der Zeitraum nach dem Ist-Stand wird weitergerechnet.`,
+            formula: joinTooltipLines([
+              `Investment im Ist-Stand: ${euro.format(investmentAnchorAmount)}.`,
+              `Offenes Basis-Investment: ${euro.format(review.row.projectionSalaryAllocationToInvestmentAmount ?? 0)}.`,
+              `Noch offenes Musik-Investment: ${euro.format(musicInvestmentRemainingAmount ?? 0)}.`,
+              `Investment am Monatsende: ${euro.format(endInvestmentAmount)}.`,
+              `Restmonatsrendite: ${signedMoneyLabel(restMonthInvestmentReturnAmount)}.`,
+            ]),
+          },
+        ]
+        : []),
       ["Werttyp", monthValueType],
       ["Ist-Stand für diesen Monat", review.row.wealthAnchorApplied ? "Aktiv" : "Nein"],
     ];

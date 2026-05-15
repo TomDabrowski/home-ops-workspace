@@ -846,6 +846,10 @@ th:first-child {
 .detail-list div.is-partial {
   border-style: dashed;
 }
+.detail-list div.is-snapshot-impact {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--card-strong));
+}
 .detail-value.is-consumed {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
