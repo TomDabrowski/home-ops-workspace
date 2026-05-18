@@ -1310,10 +1310,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const latestSnapshotAccountBalances = latestSnapshot
     ? normalizeAccountBalanceMap(wealthSnapshotCashAccounts(latestSnapshot))
     : null;
-  const startAccountBalanceBase =
-    latestSnapshotAccountBalances && (hasActiveInMonthSnapshot || review.row.anchorAppliesAtMonthStart)
-      ? latestSnapshotAccountBalances
-      : null;
+  const startAccountBalanceBase = latestSnapshotAccountBalances;
   const startAccountBalanceTotal =
     hasActiveInMonthSnapshot && latestSnapshotCashAmount !== null
       ? latestSnapshotCashAmount
