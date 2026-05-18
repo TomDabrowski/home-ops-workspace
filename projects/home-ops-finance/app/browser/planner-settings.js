@@ -10,13 +10,14 @@ export function createPlannerSettingsStore({ storageKey }) {
       : 1700;
 
     return {
-      currentAge: 35,
+      currentAge: 26,
       targetAge: 50,
+      spendingBasis: "actual",
       retirementSpend: defaultMonthlySpend,
       replacementRate: 76,
       withdrawalRate: 3.5,
       inflationRate: 2,
-      salaryGrowthRate: 3,
+      salaryGrowthRate: 2.5,
       rentGrowthRate: 1,
       expenseGrowthRate: 2,
       musicGrowthRate: 0,
@@ -30,9 +31,11 @@ export function createPlannerSettingsStore({ storageKey }) {
 
     try {
       const saved = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}");
+      const spendingBasis = saved.spendingBasis === "replacement" ? "replacement" : "actual";
       return {
         currentAge: Number(saved.currentAge) || defaults.currentAge,
         targetAge: Number(saved.targetAge) || defaults.targetAge,
+        spendingBasis,
         retirementSpend: Number(saved.retirementSpend) || defaults.retirementSpend,
         replacementRate: Number(saved.replacementRate) || defaults.replacementRate,
         withdrawalRate: Number(saved.withdrawalRate) || defaults.withdrawalRate,

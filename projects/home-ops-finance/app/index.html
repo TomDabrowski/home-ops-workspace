@@ -1023,7 +1023,7 @@
         <div class="section-head">
           <div>
             <h2>Ziele & Rente</h2>
-            <p class="section-copy">Hier siehst du, wann du Vermögens-Meilensteine erreichst und wie viel Musikumsatz du ab jetzt mindestens brauchst, um ein Rentenziel bis zu einem Wunschalter zu schaffen.</p>
+            <p class="section-copy">Finanzielle Unabhängigkeit (FIRE) nach heutiger Kaufkraft: Zielvermögen aus deinen Ist-Ausgaben und Entnahmerate. Optional Vergleich mit % vom Netto. Gesetzliche Rente ab ~63–67 ist hier nicht automatisch enthalten.</p>
           </div>
         </div>
         <div class="grid two planner-grid">
@@ -1037,17 +1037,24 @@
                 <span>Zielalter Rente</span>
                 <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
               </label>
-              <label class="select-wrap">
+              <label class="select-wrap planner-span-two">
+                <span>Bedarf basiert auf</span>
+                <select id="plannerSpendingBasis">
+                  <option value="actual">Ist-Ausgaben (heutige Kaufkraft)</option>
+                  <option value="replacement">% vom Nettogehalt</option>
+                </select>
+              </label>
+              <label class="select-wrap" id="plannerReplacementRateWrap">
                 <span>Bedarf in Rente (% vom Netto)</span>
                 <input id="plannerReplacementRate" type="number" min="40" max="120" step="1">
               </label>
-              <div class="filter-group planner-span-two">
+              <div class="filter-group planner-span-two" id="plannerReplacementPresetWrap">
                 <button class="pill" type="button" data-replacement-rate-preset="70">70 %</button>
                 <button class="pill is-active" type="button" data-replacement-rate-preset="76">76 %</button>
                 <button class="pill" type="button" data-replacement-rate-preset="90">90 %</button>
               </div>
               <label class="select-wrap currency-wrap">
-                <span>Bedarf pro Monat in Rente</span>
+                <span>Monatsbedarf (heutige Kaufkraft)</span>
                 <input id="plannerRetirementSpend" type="number" min="0" step="50" readonly tabindex="-1">
               </label>
               <label class="select-wrap">
