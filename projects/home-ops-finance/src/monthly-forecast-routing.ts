@@ -46,6 +46,7 @@ export interface MonthlyForecastRoutingResult {
   projectedWealthCalculatedEndAmount?: number;
   projectedWealthAnchorAmount?: number;
   projectedWealthEndAmount?: number;
+  safetyOverflowToInvestmentAmount: number;
   wealthAnchorApplied: boolean;
 }
 
@@ -118,7 +119,7 @@ export function buildMonthlyForecastRouting(
     !input.useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
   );
 
-  const safetyBucketCalculatedEndAmount = input.useForecastRouting
+  const rawSafetyBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
           Number(input.safetyBucketStartAmount ?? 0) * (1 + input.safetyMonthlyReturn) +
           projectionSalaryAllocationToSafetyAmount +
@@ -127,12 +128,23 @@ export function buildMonthlyForecastRouting(
           salaryInvestmentTransferFromSafetyAmount,
       )
     : undefined;
-  const investmentBucketCalculatedEndAmount = input.useForecastRouting
+  const rawInvestmentBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
         Number(input.investmentBucketStartAmount ?? 0) * (1 + input.investmentMonthlyReturn) +
           projectionSalaryAllocationToInvestmentAmount +
           musicAllocationToInvestmentAmount,
       )
+    : undefined;
+  // Cap safety bucket at musicThreshold; overflow goes to investment
+  const calculatedSafetyOverflowAmount =
+    rawSafetyBucketCalculatedEndAmount !== undefined && rawSafetyBucketCalculatedEndAmount > input.musicThreshold
+      ? roundCurrency(rawSafetyBucketCalculatedEndAmount - input.musicThreshold)
+      : 0;
+  const safetyBucketCalculatedEndAmount = rawSafetyBucketCalculatedEndAmount !== undefined
+    ? roundCurrency(rawSafetyBucketCalculatedEndAmount - calculatedSafetyOverflowAmount)
+    : undefined;
+  const investmentBucketCalculatedEndAmount = rawInvestmentBucketCalculatedEndAmount !== undefined
+    ? roundCurrency(rawInvestmentBucketCalculatedEndAmount + calculatedSafetyOverflowAmount)
     : undefined;
   const projectedWealthCalculatedEndAmount =
     safetyBucketCalculatedEndAmount !== undefined && investmentBucketCalculatedEndAmount !== undefined
@@ -141,7 +153,7 @@ export function buildMonthlyForecastRouting(
 
   const safetyBucketAnchorAmount = input.explicitWealthAnchor?.safetyBucketAmount;
   const investmentBucketAnchorAmount = input.explicitWealthAnchor?.investmentBucketAmount;
-  const anchoredSafetyEndAmount =
+  const rawAnchoredSafetyEndAmount =
     anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
       ? roundCurrency(
           safetyBucketAnchorAmount * (1 + remainingSafetyMonthlyReturn) +
@@ -151,7 +163,7 @@ export function buildMonthlyForecastRouting(
             salaryInvestmentTransferFromSafetyAmount,
         )
       : undefined;
-  const anchoredInvestmentEndAmount =
+  const rawAnchoredInvestmentEndAmount =
     anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
       ? roundCurrency(
           investmentBucketAnchorAmount * (1 + remainingInvestmentMonthlyReturn) +
@@ -159,6 +171,17 @@ export function buildMonthlyForecastRouting(
             musicAllocationToInvestmentAmount,
         )
       : undefined;
+  // Cap anchored safety bucket at musicThreshold as well
+  const anchoredSafetyOverflowAmount =
+    rawAnchoredSafetyEndAmount !== undefined && rawAnchoredSafetyEndAmount > input.musicThreshold
+      ? roundCurrency(rawAnchoredSafetyEndAmount - input.musicThreshold)
+      : 0;
+  const anchoredSafetyEndAmount = rawAnchoredSafetyEndAmount !== undefined
+    ? roundCurrency(rawAnchoredSafetyEndAmount - anchoredSafetyOverflowAmount)
+    : undefined;
+  const anchoredInvestmentEndAmount = rawAnchoredInvestmentEndAmount !== undefined
+    ? roundCurrency(rawAnchoredInvestmentEndAmount + anchoredSafetyOverflowAmount)
+    : undefined;
   const projectedWealthAnchorAmount =
     safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
       ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
@@ -198,6 +221,7 @@ export function buildMonthlyForecastRouting(
     projectedWealthCalculatedEndAmount,
     projectedWealthAnchorAmount,
     projectedWealthEndAmount,
+    safetyOverflowToInvestmentAmount: calculatedSafetyOverflowAmount + anchoredSafetyOverflowAmount,
     wealthAnchorApplied: Boolean(input.explicitWealthAnchor),
   };
 }

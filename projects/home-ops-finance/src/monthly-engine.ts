@@ -107,6 +107,7 @@ export interface MonthlyPlanRow {
   projectedWealthCalculatedEndAmount?: number;
   projectedWealthAnchorAmount?: number;
   projectedWealthEndAmount?: number;
+  safetyOverflowToInvestmentAmount?: number;
   wealthAnchorApplied?: boolean;
   importedExpenseAmount: number;
   requiredTagesgeldWithdrawalAmount: number;
@@ -460,6 +461,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       projectedWealthCalculatedEndAmount: forecastRouting.projectedWealthCalculatedEndAmount,
       projectedWealthAnchorAmount: forecastRouting.projectedWealthAnchorAmount,
       projectedWealthEndAmount: forecastRouting.projectedWealthEndAmount,
+      safetyOverflowToInvestmentAmount: forecastRouting.safetyOverflowToInvestmentAmount || undefined,
       wealthAnchorApplied: forecastRouting.wealthAnchorApplied,
       importedExpenseAmount,
       requiredTagesgeldWithdrawalAmount,
