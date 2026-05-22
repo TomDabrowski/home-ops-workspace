@@ -675,7 +675,7 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
     return `
       <div class="mapping-card">
         <strong>${instruction.title}</strong>
-        <p>${euro.format(instruction.reserveAmount)} für Steuer parken. Von ${euro.format(instruction.availableAmount)} nach Steuer gehen ${euro.format(instruction.toCashAmount)} zu ${thresholdTarget} und ${euro.format(instruction.toInvestmentAmount)} ins Investment.</p>
+        <p>${euro.format(instruction.reserveAmount)} für Steuer parken. ${euro.format(instruction.expenseReserveAmount ?? 0)} für Monatsausgaben zurückhalten. Von ${euro.format(instruction.availableAmount)} nach Steuer gehen ${euro.format(instruction.toCashAmount)} zu ${thresholdTarget} und ${euro.format(instruction.toInvestmentAmount)} ins Investment.</p>
         <p class="mapping-source">${thresholdReason}</p>
         <p class="mapping-source">${statusReason}</p>
         <div class="filter-group">

@@ -58,6 +58,8 @@ export function buildMonthAllocationInstructionsFromReview(review, importDraft) 
   );
 
   const instructions = [];
+  let remainingExpenseReserveAmount = reservedExpenseTotal;
+  let thresholdRunningAmount = thresholdStartAmount;
 
   if (reservedExpenseTotal > 0) {
     instructions.push({
@@ -108,20 +110,16 @@ export function buildMonthAllocationInstructionsFromReview(review, importDraft) 
     const effectiveDate = String(entry.entryDate);
     const happenedBeforeMonthStart = effectiveDate < monthStartDate;
 
-    const priorMusicRetainedAmount = roundCurrency(
-      instructions
-        .filter((item) => item.kind === "music" && item.effectiveDate < effectiveDate)
-        .reduce((sum, item) => sum + Number(item.reserveAmount ?? 0) + Number(item.toCashAmount ?? 0), 0),
-    );
-    const thresholdAmountBeforeEntry = roundCurrency(
-      Math.max(0, thresholdStartAmount - reservedExpenseTotal + priorMusicRetainedAmount),
-    );
     const reserveAmount = Number(entry.reserveAmount ?? 0);
     const availableAmount = Number(entry.availableAmount ?? Number(entry.amount ?? 0) - Number(entry.reserveAmount ?? 0));
+    const expenseReserveAmount = roundCurrency(Math.min(availableAmount, remainingExpenseReserveAmount));
+    remainingExpenseReserveAmount = roundCurrency(Math.max(0, remainingExpenseReserveAmount - expenseReserveAmount));
+    const thresholdAmountBeforeEntry = roundCurrency(thresholdRunningAmount);
     const gapAmount = Math.max(0, musicThreshold - thresholdAmountBeforeEntry);
-    const availableGapAmount = Math.max(0, gapAmount - reserveAmount);
-    const toCashAmount = roundCurrency(Math.min(availableAmount, availableGapAmount));
-    const toInvestmentAmount = roundCurrency(Math.max(0, availableAmount - toCashAmount));
+    const availableAfterExpenseReserveAmount = roundCurrency(Math.max(0, availableAmount - expenseReserveAmount));
+    const toCashAmount = roundCurrency(Math.min(availableAfterExpenseReserveAmount, gapAmount));
+    thresholdRunningAmount = roundCurrency(Math.min(musicThreshold, thresholdRunningAmount + reserveAmount + toCashAmount));
+    const toInvestmentAmount = roundCurrency(Math.max(0, availableAmount - expenseReserveAmount - toCashAmount));
 
     instructions.push({
       kind: "music",
@@ -133,6 +131,7 @@ export function buildMonthAllocationInstructionsFromReview(review, importDraft) 
       thresholdAmountBeforeEntry,
       thresholdGapBeforeEntry: roundCurrency(gapAmount),
       reserveAmount,
+      expenseReserveAmount,
       availableAmount: roundCurrency(availableAmount),
       toCashAmount,
       toInvestmentAmount,

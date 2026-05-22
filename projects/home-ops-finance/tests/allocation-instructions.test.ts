@@ -52,8 +52,9 @@ test("builds stable month allocation instructions for next-month music from late
   assert.equal(instructions[0]?.effectiveDate, "2026-04-01");
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
-  assert.equal(musicInstruction?.toCashAmount, 521.65);
-  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
+  assert.equal(musicInstruction?.toCashAmount, 940.51);
+  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.expenseReserveAmount, 0);
 });
 
 test("keeps April music instructions visible when the money arrived before month start", () => {
@@ -156,8 +157,9 @@ test("prefers the reviewed threshold-account start over total cash when building
   assert.ok(musicInstruction);
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
-  assert.equal(musicInstruction?.toCashAmount, 521.65);
-  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
+  assert.equal(musicInstruction?.toCashAmount, 940.51);
+  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.expenseReserveAmount, 0);
 });
 
 test("adds a month-start reserve instruction for future-dated threshold expenses", () => {
@@ -202,4 +204,63 @@ test("adds a month-start reserve instruction for future-dated threshold expenses
   assert.equal(reserveInstruction.expenseEntries?.[0]?.entryDate, "2026-06-22");
   assert.equal(salaryInstruction?.toCashAmount, 0);
   assert.equal(salaryInstruction?.toInvestmentAmount, 1333.51);
+});
+
+test("splits music between monthly expenses, threshold top-up, and investment", () => {
+  const importDraft = {
+    forecastAssumptions: [
+      { key: "safety_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+    ],
+    forecastWealthAnchors: [],
+  };
+
+  const review = {
+    row: {
+      monthKey: "2026-06",
+      anchorAppliesWithinMonth: true,
+      thresholdAccountInstructionStartAmount: 9873,
+      thresholdAccountStartAmount: 9873,
+      safetyBucketStartAmount: 10193,
+      salaryAllocationToSafetyAmount: 53.51,
+      salaryAllocationToThresholdAmount: 0,
+      salaryAllocationToInvestmentAmount: 1200,
+    },
+    incomeEntries: [
+      {
+        incomeStreamId: "music-income",
+        entryDate: "2026-06-01",
+        amount: 2160,
+        reserveAmount: 0,
+        availableAmount: 2160,
+      },
+    ],
+    expenseEntries: [
+      {
+        id: "imported-expense",
+        entryDate: "2026-06-22",
+        description: "PayPal spaeter",
+        amount: 500,
+      },
+      {
+        id: "manual-expense",
+        entryDate: "2026-06-22",
+        description: "Manuell",
+        amount: 220,
+      },
+    ],
+  };
+
+  const instructions = buildMonthAllocationInstructionsFromReview(review, importDraft);
+  const reserveInstruction = instructions.find((entry: { kind?: string }) => entry.kind === "expense_reserve");
+  const musicInstruction = instructions.find((entry: { kind?: string }) => entry.kind === "music");
+
+  assert.equal(reserveInstruction?.toCashAmount, 720);
+  assert.ok(musicInstruction);
+  assert.equal(musicInstruction?.expenseReserveAmount, 720);
+  assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9873);
+  assert.equal(musicInstruction?.thresholdGapBeforeEntry, 127);
+  assert.equal(musicInstruction?.toCashAmount, 127);
+  assert.equal(musicInstruction?.toInvestmentAmount, 1313);
 });

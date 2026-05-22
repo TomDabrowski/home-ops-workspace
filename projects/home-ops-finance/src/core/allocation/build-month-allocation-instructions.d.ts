@@ -2,7 +2,10 @@ export interface AllocationReviewRowLike {
   monthKey: string;
   anchorAppliesWithinMonth?: boolean;
   safetyBucketStartAmount?: number;
+  thresholdAccountInstructionStartAmount?: number;
+  thresholdAccountStartAmount?: number;
   salaryAllocationToSafetyAmount?: number;
+  salaryAllocationToThresholdAmount?: number;
   salaryAllocationToInvestmentAmount?: number;
 }
 
@@ -16,8 +19,10 @@ export interface AllocationIncomeEntryLike {
 }
 
 export interface AllocationExpenseEntryLike {
+  id?: string;
   accountId?: string;
   entryDate: string;
+  description?: string;
   amount?: number;
 }
 
@@ -44,7 +49,7 @@ export interface AllocationImportDraftLike {
 }
 
 export interface AllocationInstruction {
-  kind: "salary" | "music";
+  kind: "expense_reserve" | "salary" | "music";
   effectiveDate: string;
   title: string;
   thresholdAccountId?: string | null;
@@ -52,9 +57,11 @@ export interface AllocationInstruction {
   thresholdAmountBeforeEntry?: number;
   thresholdGapBeforeEntry?: number;
   reserveAmount: number;
+  expenseReserveAmount?: number;
   toCashAmount: number;
   toInvestmentAmount: number;
   availableAmount: number;
+  expenseEntries?: AllocationExpenseEntryLike[];
 }
 
 export function buildMonthAllocationInstructionsFromReview(

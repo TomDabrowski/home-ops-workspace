@@ -1280,7 +1280,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     return balances;
   }
 
-  function deriveAccountBalances(totalCashAmount, thresholdAccountAmount, baseAccountBalances = null) {
+  function deriveAccountBalances(totalCashAmount, thresholdAccountAmount, baseAccountBalances = null, options = {}) {
     const totalCash = Number.isFinite(Number(totalCashAmount)) ? Math.max(0, Number(totalCashAmount)) : 0;
     const thresholdAmount = Number.isFinite(Number(thresholdAccountAmount))
       ? Math.max(0, Math.min(totalCash, Number(thresholdAccountAmount)))
@@ -1288,7 +1288,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
     if (baseAccountBalances) {
       const balances = normalizeAccountBalanceMap(baseAccountBalances);
-      if (balances.has(resolvedThresholdAccountId)) {
+      if (!options.preserveThresholdAccount && balances.has(resolvedThresholdAccountId)) {
         balances.set(resolvedThresholdAccountId, thresholdAmount);
       }
       const delta = roundCurrency(totalCash - sumAccountBalances(balances));
@@ -1323,7 +1323,9 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
       : displayStartSafetyAmount;
   const startAccountBalances =
     startAccountBalanceBase
-      ? deriveAccountBalances(startAccountBalanceTotal, review.row.thresholdAccountStartAmount ?? startAccountBalanceTotal, startAccountBalanceBase)
+      ? deriveAccountBalances(startAccountBalanceTotal, review.row.thresholdAccountStartAmount ?? startAccountBalanceTotal, startAccountBalanceBase, {
+          preserveThresholdAccount: hasActiveInMonthSnapshot,
+        })
       : deriveAccountBalances(displayStartSafetyAmount, review.row.thresholdAccountStartAmount ?? displayStartSafetyAmount);
   const endAccountBalances = deriveAccountBalances(
     endSafetyAmount,

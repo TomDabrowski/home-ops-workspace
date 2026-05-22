@@ -1240,3 +1240,123 @@ test("local forecast uses music before salary to refill Scalable and invests the
   assert.equal(row.safetyBucketEndAmount, 10193);
   assert.equal(row.investmentBucketEndAmount, 104229.99);
 });
+
+test("current month snapshots keep the real threshold account before forecasting refill", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2026-05"];
+    },
+    assumptionNumber(_draft: unknown, key: string, fallback: number) {
+      return key === "music_threshold" || key === "safety_threshold" ? 10000 : fallback;
+    },
+    assumptionString(_draft: unknown, key: string, fallback: string) {
+      return key === "music_threshold_account_id" ? "savings" : fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [
+        {
+          id: "may-actual",
+          snapshotDate: "2026-05-22T12:00",
+          cashAmount: 10193.18,
+          cashAccounts: { giro: 285.18, cash: 35, savings: 9873 },
+          investmentAmount: 17645.02,
+          isActive: true,
+        },
+      ];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+    readMappingState() {
+      return {};
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "music-2026-05",
+          incomeStreamId: "music-income",
+          entryDate: "2026-05-25",
+          amount: 300,
+          reserveAmount: 90,
+          availableAmount: 210,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [
+        {
+          id: "may-expense",
+          entryDate: "2026-05-26",
+          amount: 100,
+          isPlanned: true,
+        },
+      ],
+      debtSnapshots: [],
+      forecastAssumptions: [
+        { key: "safety_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+      ],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 10000, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 17000, expectedAnnualReturn: 0 },
+      ],
+      forecastWealthAnchors: [],
+      monthlyBaselines: [
+        {
+          monthKey: "2026-05",
+          netSalaryAmount: 2814,
+          fixedExpensesAmount: 1560.49,
+          baselineVariableAmount: 0,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1200,
+          availableBeforeIrregulars: 53.51,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1560.49, category: "fixed", effectiveFrom: "2026-05" },
+        { id: "invest", label: "Investment", amount: 1200, category: "savings", effectiveFrom: "2026-05" },
+      ],
+    },
+  });
+
+  const row = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2026-05");
+  assert.ok(row);
+  assert.equal(row.anchorAppliesWithinMonth, true);
+  assert.equal(row.thresholdAccountStartAmount, 9873);
+  assert.equal(row.thresholdAccountEndAmount, 10000);
+  assert.equal(row.musicAllocationToSafetyAmount, 227);
+});
