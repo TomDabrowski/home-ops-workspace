@@ -1282,17 +1282,23 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
 
   function deriveAccountBalances(totalCashAmount, thresholdAccountAmount, baseAccountBalances = null) {
     const totalCash = Number.isFinite(Number(totalCashAmount)) ? Math.max(0, Number(totalCashAmount)) : 0;
-
-    if (baseAccountBalances) {
-      const balances = normalizeAccountBalanceMap(baseAccountBalances);
-      const delta = roundCurrency(totalCash - sumAccountBalances(balances));
-      return addDeltaToAccountBalances(balances, resolvedThresholdAccountId, delta);
-    }
-
-    const balances = new Map(accountOptions.map((option) => [option.id, 0]));
     const thresholdAmount = Number.isFinite(Number(thresholdAccountAmount))
       ? Math.max(0, Math.min(totalCash, Number(thresholdAccountAmount)))
       : 0;
+
+    if (baseAccountBalances) {
+      const balances = normalizeAccountBalanceMap(baseAccountBalances);
+      if (balances.has(resolvedThresholdAccountId)) {
+        balances.set(resolvedThresholdAccountId, thresholdAmount);
+      }
+      const delta = roundCurrency(totalCash - sumAccountBalances(balances));
+      const adjustmentAccountId = balances.has(defaultCashRemainderAccountId)
+        ? defaultCashRemainderAccountId
+        : resolvedThresholdAccountId;
+      return addDeltaToAccountBalances(balances, adjustmentAccountId, delta);
+    }
+
+    const balances = new Map(accountOptions.map((option) => [option.id, 0]));
     const remainder = roundCurrency(Math.max(0, totalCash - thresholdAmount));
 
     if (balances.has(resolvedThresholdAccountId)) {

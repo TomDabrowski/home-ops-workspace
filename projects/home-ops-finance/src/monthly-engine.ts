@@ -345,11 +345,7 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
         Math.max(0, Number(safetyBucketStartAmount ?? explicitWealthAnchor?.safetyBucketAmount ?? rawCurrentMusicThresholdAccountAmount)),
       ),
     );
-    const thresholdAccountExpenseAmount = musicThresholdAccountId
-      ? snapshotDate
-        ? sumExpensesAfterDateAndAccount(draft.expenseEntries, monthKey, snapshotDate!, musicThresholdAccountId)
-        : sumExpensesForMonthAndAccount(draft.expenseEntries, monthKey, musicThresholdAccountId)
-      : expenseAmountForProjection;
+    const thresholdAccountExpenseAmount = expenseAmountForProjection;
     const thresholdAccountMonthlyReturn = anchorAppliesWithinMonth
       ? safetyMonthlyReturn * remainingMonthFraction(monthKey, snapshotDate)
       : safetyMonthlyReturn;
@@ -383,20 +379,39 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
             thresholdAccountExpenseAmount,
         )
       : undefined;
+    const canMoveThresholdOverflow =
+      (!explicitWealthAnchor || forecastRouting.anchorAppliesAtMonthStart || forecastRouting.anchorAppliesWithinMonth) &&
+      forecastRouting.safetyBucketCalculatedEndAmount !== undefined;
+    const thresholdOverflowToInvestmentAmount =
+      canMoveThresholdOverflow && rawMusicThresholdAccountProjectedEndAmount !== undefined && rawMusicThresholdAccountProjectedEndAmount > musicThreshold
+        ? roundCurrency(rawMusicThresholdAccountProjectedEndAmount - musicThreshold)
+        : 0;
+    const safetyBucketResolvedEndAmount =
+      forecastRouting.safetyBucketEndAmount !== undefined
+        ? roundCurrency(Math.max(0, forecastRouting.safetyBucketEndAmount - thresholdOverflowToInvestmentAmount))
+        : undefined;
+    const investmentBucketResolvedEndAmount =
+      forecastRouting.investmentBucketEndAmount !== undefined
+        ? roundCurrency(forecastRouting.investmentBucketEndAmount + thresholdOverflowToInvestmentAmount)
+        : undefined;
+    const projectedWealthResolvedEndAmount =
+      safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
+        ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
+        : forecastRouting.projectedWealthEndAmount;
     const musicThresholdAccountProjectedEndAmount =
       rawMusicThresholdAccountProjectedEndAmount !== undefined
         ? roundCurrency(
             Math.min(
-              rawMusicThresholdAccountProjectedEndAmount,
-              Number(forecastRouting.safetyBucketEndAmount ?? rawMusicThresholdAccountProjectedEndAmount),
+              rawMusicThresholdAccountProjectedEndAmount - thresholdOverflowToInvestmentAmount,
+              Number(safetyBucketResolvedEndAmount ?? rawMusicThresholdAccountProjectedEndAmount),
             ),
           )
         : undefined;
-    if (forecastRouting.safetyBucketEndAmount !== undefined) {
-      safetyBucketEndAmount = forecastRouting.safetyBucketEndAmount;
+    if (safetyBucketResolvedEndAmount !== undefined) {
+      safetyBucketEndAmount = safetyBucketResolvedEndAmount;
     }
-    if (forecastRouting.investmentBucketEndAmount !== undefined) {
-      investmentBucketEndAmount = forecastRouting.investmentBucketEndAmount;
+    if (investmentBucketResolvedEndAmount !== undefined) {
+      investmentBucketEndAmount = investmentBucketResolvedEndAmount;
     }
     if (musicThresholdAccountId && musicThresholdAccountProjectedEndAmount !== undefined) {
       musicThresholdAccountEndAmount = musicThresholdAccountProjectedEndAmount;
@@ -453,15 +468,19 @@ export function buildMonthlyRows(draft: ImportDraft): MonthlyPlanRow[] {
       safetyBucketStartAmount,
       safetyBucketCalculatedEndAmount: forecastRouting.safetyBucketCalculatedEndAmount,
       safetyBucketAnchorAmount: forecastRouting.safetyBucketAnchorAmount,
-      safetyBucketEndAmount: forecastRouting.safetyBucketEndAmount,
+      safetyBucketEndAmount: safetyBucketResolvedEndAmount,
       investmentBucketStartAmount,
       investmentBucketCalculatedEndAmount: forecastRouting.investmentBucketCalculatedEndAmount,
       investmentBucketAnchorAmount: forecastRouting.investmentBucketAnchorAmount,
-      investmentBucketEndAmount: forecastRouting.investmentBucketEndAmount,
+      investmentBucketEndAmount: investmentBucketResolvedEndAmount,
       projectedWealthCalculatedEndAmount: forecastRouting.projectedWealthCalculatedEndAmount,
       projectedWealthAnchorAmount: forecastRouting.projectedWealthAnchorAmount,
-      projectedWealthEndAmount: forecastRouting.projectedWealthEndAmount,
-      safetyOverflowToInvestmentAmount: forecastRouting.safetyOverflowToInvestmentAmount || undefined,
+      projectedWealthEndAmount: projectedWealthResolvedEndAmount,
+      safetyOverflowToInvestmentAmount: thresholdOverflowToInvestmentAmount || undefined,
+      thresholdAccountId: musicThresholdAccountId || undefined,
+      thresholdAccountStartAmount: musicThresholdAccountId ? currentMusicThresholdAccountAmount : undefined,
+      thresholdAccountInstructionStartAmount: musicThresholdAccountId ? currentMusicThresholdAccountAmount : undefined,
+      thresholdAccountEndAmount: musicThresholdAccountId ? musicThresholdAccountProjectedEndAmount : undefined,
       wealthAnchorApplied: forecastRouting.wealthAnchorApplied,
       importedExpenseAmount,
       requiredTagesgeldWithdrawalAmount,

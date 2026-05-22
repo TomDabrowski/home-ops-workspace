@@ -22,10 +22,10 @@ test("routes forecast music into safety until the threshold is filled", () => {
   assert.equal(result.anchorAppliesWithinMonth, false);
   assert.equal(result.projectionIncomeAvailableAmount, 490);
   assert.equal(result.projectionExpenseAmount, 300);
-  assert.equal(result.musicAllocationToSafetyAmount, 84);
-  assert.equal(result.musicAllocationToInvestmentAmount, 406);
-  assert.equal(result.safetyBucketEndAmount, 10000.04);
-  assert.equal(result.investmentBucketEndAmount, 11412.4);
+  assert.equal(result.musicAllocationToSafetyAmount, 384);
+  assert.equal(result.musicAllocationToInvestmentAmount, 106);
+  assert.equal(result.safetyBucketEndAmount, 10000);
+  assert.equal(result.investmentBucketEndAmount, 11412.44);
   assert.equal(result.projectedWealthEndAmount, 21412.44);
 });
 
@@ -66,8 +66,8 @@ test("resolves explicit in-month wealth anchors before continuing the forecast",
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
   assert.equal(result.safetyBucketAnchorAmount, 6300);
   assert.equal(result.investmentBucketAnchorAmount, 12077);
-  assert.equal(result.safetyBucketEndAmount, 6307.13);
-  assert.equal(result.investmentBucketEndAmount, 13160.39);
+  assert.equal(result.safetyBucketEndAmount, 7357.13);
+  assert.equal(result.investmentBucketEndAmount, 12110.39);
   assert.equal(result.projectedWealthAnchorAmount, 18377);
   assert.equal(result.projectedWealthEndAmount, 19467.52);
 });
@@ -102,7 +102,7 @@ test("late in-month wealth anchors do not re-add the base investment when the sn
 
   assert.equal(result.projectionSalaryAllocationToSafetyAmount, 0);
   assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 0);
-  assert.equal(result.investmentBucketEndAmount, 13265.08);
+  assert.equal(result.investmentBucketEndAmount, 13439.3);
 });
 
 test("prorates investment return after a current-month snapshot", () => {
@@ -173,7 +173,7 @@ test("month-start anchors do not re-add income that was already received before 
   assert.equal(result.musicAllocationToSafetyAmount, 0);
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
   assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 1050);
-  assert.equal(result.investmentBucketEndAmount, 14362.01);
+  assert.equal(result.investmentBucketEndAmount, 15207.45);
 });
 
 test("routes against the configured threshold account when it differs from total safety cash", () => {
@@ -251,7 +251,7 @@ test("includes threshold-account expenses when filling the 10k target", () => {
 
   assert.equal(result.musicAllocationToSafetyAmount, 200);
   assert.equal(result.musicAllocationToInvestmentAmount, 0);
-  assert.equal(result.salaryAllocationToThresholdAmount, 250);
+  assert.equal(result.salaryAllocationToThresholdAmount, 300);
 });
 
 test("keeps pending basis investment wealth-neutral when it is still sitting in cash", () => {
@@ -286,8 +286,8 @@ test("keeps pending basis investment wealth-neutral when it is still sitting in 
 
   assert.equal(result.projectionSalaryAllocationToInvestmentAmount, 1050);
   assert.equal(result.salaryInvestmentTransferFromSafetyAmount, 1050);
-  assert.equal(result.safetyBucketEndAmount, 5950);
-  assert.equal(result.investmentBucketEndAmount, 13050);
+  assert.equal(result.safetyBucketEndAmount, 7000);
+  assert.equal(result.investmentBucketEndAmount, 12000);
   assert.equal(result.projectedWealthEndAmount, 19000);
 });
 

@@ -632,13 +632,33 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
     const isDone = actionState?.done === true;
     const completedAt = actionState?.completedAt ? formatHistoryTimestamp(actionState.completedAt) : "";
     if (instruction.kind === "salary") {
+      const thresholdTarget = instruction.thresholdAccountId ? thresholdAccountLabel(instruction.thresholdAccountId) : "dein Cash-Puffer";
       return `
         <div class="mapping-card">
           <strong>${instruction.title}</strong>
-          <p>${euro.format(instruction.toInvestmentAmount)} direkt ins Investment. ${euro.format(instruction.toCashAmount)} bleiben zunächst im Cash-Puffer.</p>
+          <p>${euro.format(instruction.toInvestmentAmount)} direkt ins Investment. ${euro.format(instruction.toCashAmount)} bleiben zunächst in ${thresholdTarget}.</p>
           <p class="mapping-source">Monatslogik für ${review.row.monthKey}. Das ist deine sofortige Aktion beim Gehaltseingang.</p>
           <div class="filter-group">
             <button class="pill ${isDone ? "is-active" : ""}" type="button" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Erledigt" : "Als erledigt markieren"}</button>
+          </div>
+          ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
+        </div>
+      `;
+    }
+
+    if (instruction.kind === "expense_reserve") {
+      const thresholdTarget = instruction.thresholdAccountId ? thresholdAccountLabel(instruction.thresholdAccountId) : "dein Cash-Puffer";
+      const expenseList = (instruction.expenseEntries ?? [])
+        .map((entry) => `${formatDisplayDate(entry.entryDate)}: ${escapeHtml(entry.description ?? "Geplante Ausgabe")} ${euro.format(entry.amount ?? 0)}`)
+        .join(" · ");
+      return `
+        <div class="mapping-card">
+          <strong>${instruction.title}</strong>
+          <p>${euro.format(instruction.toCashAmount)} fuer spaetere Abbuchungen reservieren. Falls die Abbuchung nicht direkt aus ${thresholdTarget} laeuft, bis zum Faelligkeitsdatum auf das Abbuchungskonto legen.</p>
+          <p class="mapping-source">${expenseList}</p>
+          <p class="mapping-source">Diese Ausgabe ist fachlich dem Monat ${review.row.monthKey} zugeordnet, auch wenn du sie frueher angelegt hast. Das Abbuchungsdatum steuert die Monatsreserve.</p>
+          <div class="filter-group">
+            <button class="pill ${isDone ? "is-active" : ""}" type="button" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Reserviert" : "Als reserviert markieren"}</button>
           </div>
           ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
         </div>

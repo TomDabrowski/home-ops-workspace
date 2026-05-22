@@ -101,8 +101,9 @@ export function buildMonthlyForecastRouting(
     ? Number(input.explicitWealthAnchor?.safetyBucketAmount ?? 0)
     : Number(input.safetyBucketStartAmount ?? 0);
   const thresholdAmount = Number(input.thresholdAccountCurrentAmount ?? currentSafetyAmount);
+  const thresholdAccountExpenseAmount = Number(input.thresholdAccountExpenseAmount ?? effectiveProjectionExpenseAmount);
   const thresholdAmountAfterExpenses = roundCurrency(
-    Math.max(0, thresholdAmount - Number(input.thresholdAccountExpenseAmount ?? 0)),
+    Math.max(0, thresholdAmount - thresholdAccountExpenseAmount),
   );
   const musicSafetyGapAmount = Math.max(0, input.musicThreshold - thresholdAmountAfterExpenses);
   const musicNetNeededForThresholdAmount = roundCurrency(
@@ -115,14 +116,20 @@ export function buildMonthlyForecastRouting(
     !input.useForecastRouting ? 0 : Math.max(0, projectionIncomeAvailableAmount - musicNetNeededForThresholdAmount),
   );
   const salarySafetyGapAmount = Math.max(0, musicSafetyGapAmount - musicAllocationToSafetyAmount);
+  const salaryAllocationCapacityAmount = roundCurrency(
+    projectionSalaryAllocationToSafetyAmount + projectionSalaryAllocationToInvestmentAmount,
+  );
   const salaryAllocationToThresholdAmount = roundCurrency(
-    !input.useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
+    !input.useForecastRouting ? 0 : Math.min(salaryAllocationCapacityAmount, salarySafetyGapAmount),
+  );
+  const salaryAllocationToInvestmentAfterThresholdAmount = roundCurrency(
+    !input.useForecastRouting ? 0 : Math.max(0, salaryAllocationCapacityAmount - salaryAllocationToThresholdAmount),
   );
 
   const rawSafetyBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
           Number(input.safetyBucketStartAmount ?? 0) * (1 + input.safetyMonthlyReturn) +
-          projectionSalaryAllocationToSafetyAmount +
+          salaryAllocationToThresholdAmount +
           musicAllocationToSafetyAmount -
           effectiveProjectionExpenseAmount -
           salaryInvestmentTransferFromSafetyAmount,
@@ -131,13 +138,14 @@ export function buildMonthlyForecastRouting(
   const rawInvestmentBucketCalculatedEndAmount = input.useForecastRouting
     ? roundCurrency(
         Number(input.investmentBucketStartAmount ?? 0) * (1 + input.investmentMonthlyReturn) +
-          projectionSalaryAllocationToInvestmentAmount +
+          salaryAllocationToInvestmentAfterThresholdAmount +
           musicAllocationToInvestmentAmount,
       )
     : undefined;
-  // Cap safety bucket at musicThreshold; overflow goes to investment
   const calculatedSafetyOverflowAmount =
-    rawSafetyBucketCalculatedEndAmount !== undefined && rawSafetyBucketCalculatedEndAmount > input.musicThreshold
+    input.thresholdAccountCurrentAmount === undefined &&
+    rawSafetyBucketCalculatedEndAmount !== undefined &&
+    rawSafetyBucketCalculatedEndAmount > input.musicThreshold
       ? roundCurrency(rawSafetyBucketCalculatedEndAmount - input.musicThreshold)
       : 0;
   const safetyBucketCalculatedEndAmount = rawSafetyBucketCalculatedEndAmount !== undefined
@@ -157,7 +165,7 @@ export function buildMonthlyForecastRouting(
     anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
       ? roundCurrency(
           safetyBucketAnchorAmount * (1 + remainingSafetyMonthlyReturn) +
-            projectionSalaryAllocationToSafetyAmount +
+            salaryAllocationToThresholdAmount +
             musicAllocationToSafetyAmount -
             effectiveProjectionExpenseAmount -
             salaryInvestmentTransferFromSafetyAmount,
@@ -167,13 +175,14 @@ export function buildMonthlyForecastRouting(
     anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
       ? roundCurrency(
           investmentBucketAnchorAmount * (1 + remainingInvestmentMonthlyReturn) +
-            projectionSalaryAllocationToInvestmentAmount +
+            salaryAllocationToInvestmentAfterThresholdAmount +
             musicAllocationToInvestmentAmount,
         )
       : undefined;
-  // Cap anchored safety bucket at musicThreshold as well
   const anchoredSafetyOverflowAmount =
-    rawAnchoredSafetyEndAmount !== undefined && rawAnchoredSafetyEndAmount > input.musicThreshold
+    input.thresholdAccountCurrentAmount === undefined &&
+    rawAnchoredSafetyEndAmount !== undefined &&
+    rawAnchoredSafetyEndAmount > input.musicThreshold
       ? roundCurrency(rawAnchoredSafetyEndAmount - input.musicThreshold)
       : 0;
   const anchoredSafetyEndAmount = rawAnchoredSafetyEndAmount !== undefined

@@ -167,8 +167,8 @@ test("builds monthly rows with historical and investing profiles", () => {
   assert.equal(investing?.baselineAvailableAmount, 283.51);
   assert.equal(investing?.importedIncomeReserveAmount, 210);
   assert.equal(investing?.importedIncomeAvailableAmount, 490);
-  assert.equal(investing?.musicAllocationToSafetyAmount, 210);
-  assert.equal(investing?.musicAllocationToInvestmentAmount, 490);
+  assert.equal(investing?.musicAllocationToSafetyAmount, 384);
+  assert.equal(investing?.musicAllocationToInvestmentAmount, 316);
   assert.equal(investing?.requiredTagesgeldWithdrawalAmount, 0);
   assert.equal(investing?.netAfterImportedFlows, 473.51);
   assert.equal(investing?.consistencySignals.length, 1);
@@ -363,14 +363,16 @@ test("builds date-based allocation instructions for salary and music", () => {
 
   const instructions = buildMonthAllocationInstructions(draft, "2026-03");
 
-  assert.equal(instructions.length, 2);
-  assert.equal(instructions[0]?.kind, "salary");
-  assert.equal(instructions[0]?.toInvestmentAmount, 1050);
-  assert.equal(instructions[1]?.kind, "music");
-  assert.equal(instructions[1]?.effectiveDate, "2026-03-10");
-  assert.equal(instructions[1]?.reserveAmount, 576.21);
-  assert.equal(instructions[1]?.toCashAmount, 1223.79);
-  assert.equal(instructions[1]?.toInvestmentAmount, 0);
+  assert.equal(instructions.length, 3);
+  assert.equal(instructions[0]?.kind, "expense_reserve");
+  assert.equal(instructions[0]?.toCashAmount, 250);
+  assert.equal(instructions[1]?.kind, "salary");
+  assert.equal(instructions[1]?.toInvestmentAmount, 1333.51);
+  assert.equal(instructions[2]?.kind, "music");
+  assert.equal(instructions[2]?.effectiveDate, "2026-03-10");
+  assert.equal(instructions[2]?.reserveAmount, 576.21);
+  assert.equal(instructions[2]?.toCashAmount, 673.79);
+  assert.equal(instructions[2]?.toInvestmentAmount, 550);
 });
 
 test("uses the latest prior wealth snapshot for next-month threshold instructions", () => {
@@ -418,8 +420,8 @@ test("uses the latest prior wealth snapshot for next-month threshold instruction
   assert.equal(musicInstruction?.effectiveDate, "2026-04-01");
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
-  assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toCashAmount, 521.65);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
 });
 
 test("keeps a planned month instruction when music was already received before month start", () => {
@@ -491,7 +493,7 @@ test("builds a month review with baseline and imported flows", () => {
   assert.equal(review?.expenseEntries.length, 1);
   assert.equal(review?.row.baselineAvailableAmount, 283.51);
   assert.equal(review?.row.safetyBucketStartAmount, 9916);
-  assert.equal(review?.row.safetyBucketEndAmount, 10126.04);
+  assert.equal(review?.row.safetyBucketEndAmount, 10000);
   assert.deepEqual(
     review?.row.consistencySignals.map((signal) => signal.title),
     ["Importierte Ausgaben uebersteigen freie Baseline"],
@@ -631,8 +633,8 @@ test("continues from the post-anchor month end instead of resetting next month t
   assert.ok(march);
   assert.ok(april);
   assert.equal(march?.investmentBucketAnchorAmount, 9200);
-  assert.equal(march?.investmentBucketEndAmount, 10961.81);
-  assert.equal(april?.investmentBucketStartAmount, 10961.81);
+  assert.equal(march?.investmentBucketEndAmount, 11249.22);
+  assert.equal(april?.investmentBucketStartAmount, 11249.22);
 });
 
 test("month-start anchors do not re-add music income that was already received before the month begins", () => {
@@ -700,5 +702,5 @@ test("month-start anchors do not re-add music income that was already received b
   assert.equal(april?.musicAllocationToInvestmentAmount, 0);
   assert.equal(april?.safetyBucketStartAmount, 10172);
   assert.equal(april?.investmentBucketStartAmount, 13258);
-  assert.equal(april?.investmentBucketEndAmount, 14362.01);
+  assert.equal(april?.investmentBucketEndAmount, 14662.19);
 });

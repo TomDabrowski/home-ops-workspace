@@ -706,17 +706,7 @@ export function createLocalFinanceStateTools(deps) {
         explicitWealthAnchor?.monthlyStatus?.basisInvestmentState === "pending_cash"
           ? roundCurrency(salaryAllocationToInvestmentAmount)
           : 0;
-      const thresholdAccountExpenseAmount = musicThresholdAccountId
-        ? roundCurrency(
-            (importDraft.expenseEntries ?? [])
-              .filter((entry) => monthFromDate(entry.entryDate) === monthKey)
-              .filter((entry) =>
-                entry.accountId === musicThresholdAccountId &&
-                (!anchorUsesSnapshotCutoff || String(entry.entryDate) > String(snapshotDate)),
-              )
-              .reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0),
-          )
-        : expenseAmountForProjection;
+      const thresholdAccountExpenseAmount = expenseAmountForProjection;
       const currentSafetyAmount = anchorAppliesWithinMonth
         ? Number(explicitWealthAnchor?.safetyBucketAmount ?? 0)
         : (safetyBucketStartAmount ?? 0);
@@ -756,63 +746,81 @@ export function createLocalFinanceStateTools(deps) {
       const musicAllocationToSafetyAmount = musicAlreadyHandledBySnapshot ? 0 : rawMusicAllocationToSafetyAmount;
       const musicAllocationToInvestmentAmount = musicAlreadyHandledBySnapshot ? 0 : rawMusicAllocationToInvestmentAmount;
       const salarySafetyGapAmount = Math.max(0, musicSafetyGapAmount - musicAllocationToSafetyAmount);
-      const salaryAllocationToThresholdAmount = roundCurrency(
-        !useForecastRouting ? 0 : Math.min(projectionSalaryAllocationToSafetyAmount, salarySafetyGapAmount),
+      const salaryAllocationCapacityAmount = roundCurrency(
+        projectionSalaryAllocationToSafetyAmount + projectionSalaryAllocationToInvestmentAmount,
       );
-      const safetyBucketProjectedEndAmount = useForecastRouting
+      const salaryAllocationToThresholdAmount = roundCurrency(
+        !useForecastRouting ? 0 : Math.min(salaryAllocationCapacityAmount, salarySafetyGapAmount),
+      );
+      const salaryAllocationToInvestmentAfterThresholdAmount = roundCurrency(
+        !useForecastRouting ? 0 : Math.max(0, salaryAllocationCapacityAmount - salaryAllocationToThresholdAmount),
+      );
+      const rawSafetyBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             (safetyBucketStartAmount ?? 0) * (1 + effectiveSafetyMonthlyReturn) +
-              projectionSalaryAllocationToSafetyAmount +
+              salaryAllocationToThresholdAmount +
               musicAllocationToSafetyAmount -
               effectiveExpenseAmountForProjection -
               salaryInvestmentTransferFromSafetyAmount,
           )
         : undefined;
-      const investmentBucketProjectedEndAmount = useForecastRouting
+      const rawInvestmentBucketProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             (investmentBucketStartAmount ?? 0) * (1 + effectiveInvestmentMonthlyReturn) +
-              projectionSalaryAllocationToInvestmentAmount +
+              salaryAllocationToInvestmentAfterThresholdAmount +
               musicAllocationToInvestmentAmount,
           )
         : undefined;
+      const safetyBucketProjectedEndAmount =
+        rawSafetyBucketProjectedEndAmount !== undefined
+          ? roundCurrency(rawSafetyBucketProjectedEndAmount)
+          : undefined;
+      const investmentBucketProjectedEndAmount =
+        rawInvestmentBucketProjectedEndAmount !== undefined
+          ? roundCurrency(rawInvestmentBucketProjectedEndAmount)
+          : undefined;
       const projectedWealthCalculatedEndAmount =
         safetyBucketProjectedEndAmount !== undefined && investmentBucketProjectedEndAmount !== undefined
           ? roundCurrency(safetyBucketProjectedEndAmount + investmentBucketProjectedEndAmount)
           : undefined;
-      const anchoredSafetyEndAmount =
+      const rawAnchoredSafetyEndAmount =
         anchorAppliesWithinMonth && safetyBucketAnchorAmount !== undefined
           ? roundCurrency(
               safetyBucketAnchorAmount * (1 + effectiveSafetyMonthlyReturn) +
-                projectionSalaryAllocationToSafetyAmount +
+                salaryAllocationToThresholdAmount +
                 musicAllocationToSafetyAmount -
                 effectiveExpenseAmountForProjection -
                 salaryInvestmentTransferFromSafetyAmount,
-            )
-          : undefined;
-      const anchoredInvestmentEndAmount =
+          )
+        : undefined;
+      const rawAnchoredInvestmentEndAmount =
         anchorAppliesWithinMonth && investmentBucketAnchorAmount !== undefined
           ? roundCurrency(
               investmentBucketAnchorAmount * (1 + effectiveInvestmentMonthlyReturn) +
-                projectionSalaryAllocationToInvestmentAmount +
+                salaryAllocationToInvestmentAfterThresholdAmount +
                 musicAllocationToInvestmentAmount,
-            )
+          )
+        : undefined;
+      const anchoredSafetyEndAmount =
+        rawAnchoredSafetyEndAmount !== undefined
+          ? roundCurrency(rawAnchoredSafetyEndAmount)
+          : undefined;
+      const anchoredInvestmentEndAmount =
+        rawAnchoredInvestmentEndAmount !== undefined
+          ? roundCurrency(rawAnchoredInvestmentEndAmount)
           : undefined;
       const projectedWealthAnchorAmount =
         safetyBucketAnchorAmount !== undefined && investmentBucketAnchorAmount !== undefined
           ? roundCurrency(safetyBucketAnchorAmount + investmentBucketAnchorAmount)
           : explicitWealthAnchor?.totalWealthAmount;
-      const safetyBucketResolvedEndAmount =
+      const rawSafetyBucketResolvedEndAmount =
         anchoredSafetyEndAmount ??
         (anchorAppliesAtMonthStart ? safetyBucketProjectedEndAmount : safetyBucketAnchorAmount) ??
         safetyBucketProjectedEndAmount;
-      const investmentBucketResolvedEndAmount =
+      const rawInvestmentBucketResolvedEndAmount =
         anchoredInvestmentEndAmount ??
         (anchorAppliesAtMonthStart ? investmentBucketProjectedEndAmount : investmentBucketAnchorAmount) ??
         investmentBucketProjectedEndAmount;
-      const projectedWealthEndAmount =
-        safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
-          ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
-          : undefined;
       const rawMusicThresholdAccountProjectedEndAmount = useForecastRouting
         ? roundCurrency(
             currentMusicThresholdAccountAmount * (1 + effectiveSafetyMonthlyReturn) +
@@ -821,11 +829,30 @@ export function createLocalFinanceStateTools(deps) {
               thresholdAccountExpenseAmount,
           )
         : undefined;
+      const canMoveThresholdOverflow =
+        (!explicitWealthAnchor || anchorAppliesAtMonthStart || anchorAppliesWithinMonth) &&
+        safetyBucketProjectedEndAmount !== undefined;
+      const thresholdOverflowToInvestmentAmount =
+        canMoveThresholdOverflow && rawMusicThresholdAccountProjectedEndAmount !== undefined && rawMusicThresholdAccountProjectedEndAmount > musicThreshold
+          ? roundCurrency(rawMusicThresholdAccountProjectedEndAmount - musicThreshold)
+          : 0;
+      const safetyBucketResolvedEndAmount =
+        rawSafetyBucketResolvedEndAmount !== undefined
+          ? roundCurrency(Math.max(0, rawSafetyBucketResolvedEndAmount - thresholdOverflowToInvestmentAmount))
+          : undefined;
+      const investmentBucketResolvedEndAmount =
+        rawInvestmentBucketResolvedEndAmount !== undefined
+          ? roundCurrency(rawInvestmentBucketResolvedEndAmount + thresholdOverflowToInvestmentAmount)
+          : undefined;
+      const projectedWealthEndAmount =
+        safetyBucketResolvedEndAmount !== undefined && investmentBucketResolvedEndAmount !== undefined
+          ? roundCurrency(safetyBucketResolvedEndAmount + investmentBucketResolvedEndAmount)
+          : undefined;
       const musicThresholdAccountProjectedEndAmount =
         rawMusicThresholdAccountProjectedEndAmount !== undefined
           ? roundCurrency(
               Math.min(
-                rawMusicThresholdAccountProjectedEndAmount,
+                rawMusicThresholdAccountProjectedEndAmount - thresholdOverflowToInvestmentAmount,
                 Number(safetyBucketResolvedEndAmount ?? rawMusicThresholdAccountProjectedEndAmount),
               ),
             )
@@ -889,6 +916,7 @@ export function createLocalFinanceStateTools(deps) {
         projectedWealthCalculatedEndAmount,
         projectedWealthAnchorAmount,
         projectedWealthEndAmount,
+        safetyOverflowToInvestmentAmount: thresholdOverflowToInvestmentAmount || undefined,
         thresholdAccountId: musicThresholdAccountId || undefined,
         thresholdAccountEndAmount: musicThresholdAccountId ? musicThresholdAccountProjectedEndAmount : undefined,
         wealthAnchorApplied: Boolean(explicitWealthAnchor),

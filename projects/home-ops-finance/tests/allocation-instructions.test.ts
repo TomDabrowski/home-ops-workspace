@@ -52,8 +52,8 @@ test("builds stable month allocation instructions for next-month music from late
   assert.equal(instructions[0]?.effectiveDate, "2026-04-01");
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
-  assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toCashAmount, 521.65);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
 });
 
 test("keeps April music instructions visible when the money arrived before month start", () => {
@@ -156,6 +156,50 @@ test("prefers the reviewed threshold-account start over total cash when building
   assert.ok(musicInstruction);
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
-  assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toCashAmount, 521.65);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
+});
+
+test("adds a month-start reserve instruction for future-dated threshold expenses", () => {
+  const importDraft = {
+    forecastAssumptions: [
+      { key: "safety_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold", value: 10000, valueType: "number" },
+      { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+    ],
+    forecastWealthAnchors: [],
+  };
+
+  const review = {
+    row: {
+      monthKey: "2026-06",
+      anchorAppliesWithinMonth: false,
+      safetyBucketStartAmount: 10000,
+      thresholdAccountStartAmount: 10000,
+      salaryAllocationToSafetyAmount: 283.51,
+      salaryAllocationToThresholdAmount: 0,
+      salaryAllocationToInvestmentAmount: 1050,
+    },
+    incomeEntries: [],
+    expenseEntries: [
+      {
+        id: "paypal-later-denon",
+        entryDate: "2026-06-22",
+        description: "Denon PayPal spaeter bezahlen",
+        amount: 500,
+        accountId: "savings",
+      },
+    ],
+  };
+
+  const instructions = buildMonthAllocationInstructionsFromReview(review, importDraft);
+  const reserveInstruction = instructions.find((entry: { kind?: string }) => entry.kind === "expense_reserve");
+  const salaryInstruction = instructions.find((entry: { kind?: string }) => entry.kind === "salary");
+
+  assert.ok(reserveInstruction);
+  assert.equal(reserveInstruction.effectiveDate, "2026-06-01");
+  assert.equal(reserveInstruction.toCashAmount, 500);
+  assert.equal(reserveInstruction.expenseEntries?.[0]?.entryDate, "2026-06-22");
+  assert.equal(salaryInstruction?.toCashAmount, 0);
+  assert.equal(salaryInstruction?.toInvestmentAmount, 1333.51);
 });

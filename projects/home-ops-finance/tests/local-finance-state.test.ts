@@ -987,3 +987,256 @@ test("local music overrides use only the newest active entry for a month", () =>
   assert.equal(musicEntries[0]?.amount, 1300);
   assert.equal(musicEntries[0]?.availableAmount, 1300);
 });
+
+test("local forecast fills the threshold account to 10k without capping total cash", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2028-10"];
+    },
+    assumptionNumber(_draft: unknown, key: string, fallback: number) {
+      return key === "music_threshold" || key === "safety_threshold" ? 10000 : fallback;
+    },
+    assumptionString(_draft: unknown, key: string, fallback: string) {
+      return key === "music_threshold_account_id" ? "savings" : fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+    readMappingState() {
+      return {};
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "music-2028-05",
+          incomeStreamId: "music-income",
+          entryDate: "2028-10-01",
+          amount: 1300,
+          reserveAmount: 0,
+          availableAmount: 1300,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [
+        {
+          id: "savings-expense",
+          entryDate: "2028-10-02",
+          amount: 300,
+          accountId: "savings",
+          isPlanned: true,
+        },
+      ],
+      debtSnapshots: [],
+      forecastAssumptions: [
+        { key: "safety_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+      ],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 10000, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 82351.76, expectedAnnualReturn: 0.06 },
+      ],
+      forecastWealthAnchors: [
+        {
+          monthKey: "2028-10",
+          safetyBucketAmount: 10000,
+          investmentBucketAmount: 82351.76,
+          totalWealthAmount: 92351.76,
+          cashAccounts: { giro: 158, cash: 35, savings: 9807 },
+          sourceSheet: "manual_snapshot",
+          sourceRowNumber: 1,
+          isManualAnchor: true,
+          anchorMode: "month_start",
+          snapshotDate: "2028-09-20T18:00",
+        },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2028-10",
+          netSalaryAmount: 2814,
+          fixedExpensesAmount: 1549.49,
+          baselineVariableAmount: 0,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1150,
+          availableBeforeIrregulars: 114.51,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1549.49, category: "fixed", effectiveFrom: "2028-10" },
+        { id: "invest", label: "Investment", amount: 1150, category: "savings", effectiveFrom: "2028-10" },
+      ],
+    },
+  });
+
+  const row = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2028-10");
+  assert.ok(row);
+  assert.equal(row.safetyBucketEndAmount, 10193);
+  assert.equal(row.thresholdAccountEndAmount, 10000);
+  assert.equal(row.safetyOverflowToInvestmentAmount, undefined);
+  assert.equal(row.musicAllocationToSafetyAmount, 493);
+});
+
+test("local forecast uses music before salary to refill Scalable and invests the rest", () => {
+  const tools = createLocalFinanceStateTools({
+    monthFromDate(value: string) {
+      return String(value).slice(0, 7);
+    },
+    incomeMonthKey(entry: { monthKey?: string; entryDate?: string }) {
+      return entry.monthKey || String(entry.entryDate ?? "").slice(0, 7);
+    },
+    compareMonthKeys(left: string, right: string) {
+      return String(left).localeCompare(String(right));
+    },
+    uniqueMonthKeys() {
+      return ["2029-03"];
+    },
+    assumptionNumber(_draft: unknown, key: string, fallback: number) {
+      return key === "music_threshold" || key === "safety_threshold" ? 10000 : fallback;
+    },
+    assumptionString(_draft: unknown, key: string, fallback: string) {
+      return key === "music_threshold_account_id" ? "savings" : fallback;
+    },
+    roundCurrency(value: number) {
+      return Math.round(value * 100) / 100;
+    },
+    wealthSnapshotCashAccounts(entry: { cashAccounts?: Record<string, number> }) {
+      return entry.cashAccounts ?? {};
+    },
+    wealthSnapshotCashTotalForEntry(entry: { cashAmount?: number }) {
+      return Number(entry.cashAmount ?? 0);
+    },
+    readMonthlyExpenseOverrides() {
+      return [];
+    },
+    readMonthlyMusicIncomeOverrides() {
+      return [];
+    },
+    readWealthSnapshots() {
+      return [];
+    },
+    readSalarySettings() {
+      return [];
+    },
+    readBaselineOverrides() {
+      return [];
+    },
+    readMappingState() {
+      return {};
+    },
+  });
+
+  const state = tools.applyLocalWorkflowState({
+    draftReport: {},
+    monthlyPlan: { rows: [] },
+    accounts: [],
+    importDraft: {
+      workbookPath: "",
+      incomeEntries: [
+        {
+          id: "music-2029-03",
+          incomeStreamId: "music-income",
+          monthKey: "2029-03",
+          entryDate: "2029-03-01",
+          amount: 1300,
+          reserveAmount: 0,
+          availableAmount: 1300,
+          isPlanned: true,
+        },
+      ],
+      expenseEntries: [
+        {
+          id: "scalable-expense-2029-03",
+          entryDate: "2029-03-02",
+          amount: 884,
+          accountId: "savings",
+          isPlanned: true,
+        },
+      ],
+      debtSnapshots: [],
+      forecastAssumptions: [
+        { key: "safety_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold", value: 10000, valueType: "number" },
+        { key: "music_threshold_account_id", value: "savings", valueType: "string" },
+      ],
+      wealthBuckets: [
+        { kind: "safety", currentAmount: 10046.16, expectedAnnualReturn: 0 },
+        { kind: "investment", currentAmount: 102696.32, expectedAnnualReturn: 0 },
+      ],
+      forecastWealthAnchors: [
+        {
+          monthKey: "2029-03",
+          safetyBucketAmount: 10046.16,
+          investmentBucketAmount: 102696.32,
+          totalWealthAmount: 112742.48,
+          cashAccounts: { giro: 158, cash: 35, savings: 9853.16 },
+          sourceSheet: "manual_snapshot",
+          sourceRowNumber: 1,
+          isManualAnchor: true,
+          anchorMode: "month_start",
+          snapshotDate: "2029-02-20T18:00",
+        },
+      ],
+      monthlyBaselines: [
+        {
+          monthKey: "2029-03",
+          netSalaryAmount: 2814,
+          fixedExpensesAmount: 1549.49,
+          baselineVariableAmount: 0,
+          annualReserveAmount: 0,
+          plannedSavingsAmount: 1150,
+          availableBeforeIrregulars: 114.51,
+        },
+      ],
+      baselineLineItems: [
+        { id: "fixed", label: "Fix", amount: 1549.49, category: "fixed", effectiveFrom: "2029-03" },
+        { id: "invest", label: "Investment", amount: 1150, category: "savings", effectiveFrom: "2029-03" },
+      ],
+    },
+  });
+
+  const row = state.monthlyPlan.rows.find((entry: { monthKey: string }) => entry.monthKey === "2029-03");
+  assert.ok(row);
+  assert.equal(row.thresholdAccountEndAmount, 10000);
+  assert.equal(row.musicAllocationToSafetyAmount, 1030.84);
+  assert.equal(row.musicAllocationToInvestmentAmount, 269.16);
+  assert.equal(row.salaryAllocationToThresholdAmount, 0);
+  assert.equal(row.safetyBucketEndAmount, 10193);
+  assert.equal(row.investmentBucketEndAmount, 104229.99);
+});
