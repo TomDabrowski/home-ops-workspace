@@ -40,7 +40,10 @@ import {
   sumMusicIncomeForMonth,
   uniqueMonthKeys,
 } from "./monthly-planning-helpers.ts";
-import { buildMonthAllocationInstructionsFromReview } from "./core/allocation/build-month-allocation-instructions.js";
+import {
+  buildMonthAllocationInstructionsFromReview,
+  type AllocationExpenseEntryLike,
+} from "./core/allocation/build-month-allocation-instructions.js";
 
 export {
   buildBaselineForMonth,
@@ -127,7 +130,7 @@ export interface MonthReview {
 }
 
 export interface MonthAllocationInstruction {
-  kind: "salary" | "music";
+  kind: "expense_reserve" | "salary" | "music";
   effectiveDate: string;
   title: string;
   thresholdAccountId?: string | null;
@@ -135,9 +138,11 @@ export interface MonthAllocationInstruction {
   thresholdAmountBeforeEntry?: number;
   thresholdGapBeforeEntry?: number;
   reserveAmount: number;
+  expenseReserveAmount?: number;
   toCashAmount: number;
   toInvestmentAmount: number;
   availableAmount: number;
+  expenseEntries?: AllocationExpenseEntryLike[];
 }
 
 export interface MonthlyPlanReport {
