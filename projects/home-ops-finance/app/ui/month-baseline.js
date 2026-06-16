@@ -73,8 +73,8 @@ export function renderSelectedMonthSharedUi(importDraft, monthKey, deps) {
       <td>${baselineCategoryLabel(row.category)}</td>
       <td>${baselineAmountLabel(row, importDraft)}</td>
       <td><div class="filter-group">
-        <button class="pill" type="button" data-baseline-edit="${row.id}">Ab Datum ändern</button>
-        <button class="pill" type="button" data-baseline-stop="${row.id}">Ab Datum beenden</button>
+        <ui5-button class="pill" design="Transparent" data-baseline-edit="${row.id}">Ab Datum ändern</ui5-button>
+        <ui5-button class="pill" design="Transparent" data-baseline-stop="${row.id}">Ab Datum beenden</ui5-button>
       </div></td>
     </tr>
   `);

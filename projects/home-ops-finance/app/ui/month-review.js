@@ -167,7 +167,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
             <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${unifiedEntrySourceLabel(entry, "income")}</p>
           </div>
           <div class="filter-group">
-            <button class="pill" type="button" data-month-income-toggle="${escapeHtml(rowKey)}" data-income-list-scope="${escapeHtml(incomeListScope)}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Bearbeiten"}</button>
+            <ui5-button class="pill" design="${expanded ? "Emphasized" : "Transparent"}" data-month-income-toggle="${escapeHtml(rowKey)}" data-income-list-scope="${escapeHtml(incomeListScope)}">${expanded ? "Schließen" : "Bearbeiten"}</ui5-button>
           </div>
         </div>
         ${expanded ? (
@@ -176,52 +176,52 @@ export function renderMonthIncomeList(importDraft, review, deps) {
               <div class="mapping-fields month-inline-form">
                 <label class="select-wrap currency-wrap">
                   <span>${amountLabel}</span>
-                  <input type="number" min="0" step="0.01" data-month-income-amount="${escapeHtml(rowKey)}" value="${escapeHtml(entry.amount)}">
+                  <ui5-input type="Number" data-month-income-amount="${escapeHtml(rowKey)}" value="${escapeHtml(entry.amount)}"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Bezeichnung</span>
-                  <input type="text" data-month-income-description="${escapeHtml(rowKey)}" value="${escapeHtml(isManualMusicIncome ? "" : (manualOverride?.description ?? ""))}" ${isManualMusicIncome ? "disabled" : ""}>
+                  <ui5-input data-month-income-description="${escapeHtml(rowKey)}" value="${escapeHtml(isManualMusicIncome ? "" : (manualOverride?.description ?? ""))}" ${isManualMusicIncome ? "disabled" : ""}></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Monat</span>
-                  <input type="month" data-month-income-date="${escapeHtml(rowKey)}" value="${escapeHtml(entry.monthKey ?? monthFromDate(entry.entryDate))}">
+                  <ui5-input data-month-income-date="${escapeHtml(rowKey)}" value="${escapeHtml(entry.monthKey ?? monthFromDate(entry.entryDate))}" placeholder="YYYY-MM"></ui5-input>
                 </label>
                 <label class="select-wrap planner-span-two">
                   <span>Notiz</span>
-                  <input type="text" data-month-income-notes="${escapeHtml(rowKey)}" value="${escapeHtml(entry.notes ?? "")}">
+                  <ui5-input data-month-income-notes="${escapeHtml(rowKey)}" value="${escapeHtml(entry.notes ?? "")}"></ui5-input>
                 </label>
               </div>
               <div class="filter-group">
-                <button class="pill is-active" type="button" data-month-income-save="${escapeHtml(rowKey)}">Speichern</button>
-                <button class="pill pill-danger" type="button" data-month-income-delete="${escapeHtml(rowKey)}">Löschen</button>
+                <ui5-button class="pill is-active" design="Emphasized" data-month-income-save="${escapeHtml(rowKey)}">Speichern</ui5-button>
+                <ui5-button class="pill pill-danger" design="Negative" data-month-income-delete="${escapeHtml(rowKey)}">Löschen</ui5-button>
               </div>
             `
             : `
               <div class="mapping-fields month-inline-form">
                 <label class="select-wrap">
                   <span>Einnahme-Kategorie</span>
-                  <select data-import-income-stream="${escapeHtml(rowKey)}">${optionMarkup(incomeStreamOptions, entry.incomeStreamId)}</select>
+                  <ui5-select data-import-income-stream="${escapeHtml(rowKey)}">${optionMarkup(incomeStreamOptions, entry.incomeStreamId)}</ui5-select>
                 </label>
                 <label class="select-wrap currency-wrap">
                   <span>Betrag brutto</span>
-                  <input type="number" min="0" step="0.01" data-import-income-amount="${escapeHtml(rowKey)}" value="${escapeHtml(entry.amount)}">
+                  <ui5-input type="Number" data-import-income-amount="${escapeHtml(rowKey)}" value="${escapeHtml(entry.amount)}"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Datum / Zeit</span>
-                  <input type="datetime-local" data-import-income-entrydate="${escapeHtml(rowKey)}" value="${escapeHtml(incomeEntryDateForDatetimeLocal(entry.entryDate))}">
+                  <ui5-input data-import-income-entrydate="${escapeHtml(rowKey)}" value="${escapeHtml(incomeEntryDateForDatetimeLocal(entry.entryDate))}" placeholder="YYYY-MM-DDTHH:mm"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Zielkonto</span>
-                  <select data-import-income-account="${escapeHtml(rowKey)}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                  <ui5-select data-import-income-account="${escapeHtml(rowKey)}">${optionMarkup(accountOptions, entry.accountId || "giro")}</ui5-select>
                 </label>
                 <label class="select-wrap planner-span-two">
                   <span>Notiz</span>
-                  <input type="text" data-import-income-notes="${escapeHtml(rowKey)}" value="${escapeHtml(entry.notes ?? "")}">
+                  <ui5-input data-import-income-notes="${escapeHtml(rowKey)}" value="${escapeHtml(entry.notes ?? "")}"></ui5-input>
                 </label>
               </div>
               <p class="mapping-source">Änderungen landen in den Import-Mappings (Projektdatei oder Browser-Fallback) und überschreiben die importierte Zeile für diese Ansicht.</p>
               <div class="filter-group">
-                <button class="pill is-active" type="button" data-import-income-save="${escapeHtml(rowKey)}">Speichern</button>
+                <ui5-button class="pill is-active" design="Emphasized" data-import-income-save="${escapeHtml(rowKey)}">Speichern</ui5-button>
               </div>
             `
         ) : ""}
@@ -410,7 +410,7 @@ export function renderMonthExpenseList(importDraft, review, deps) {
             <p>${entry.entryDate} · ${euro.format(entry.amount)} · ${expenseCategoryLabel(importDraft, entry.expenseCategoryId)} · ${unifiedEntrySourceLabel(entry, "expense")}</p>
           </div>
           <div class="filter-group">
-            <button class="pill" type="button" data-month-expense-toggle="${entry.id}" data-expense-list-scope="${escapeHtml(expenseListScope)}">${expanded ? "Schließen" : isManual ? "Bearbeiten" : "Bearbeiten"}</button>
+            <ui5-button class="pill" design="${expanded ? "Emphasized" : "Transparent"}" data-month-expense-toggle="${entry.id}" data-expense-list-scope="${escapeHtml(expenseListScope)}">${expanded ? "Schließen" : "Bearbeiten"}</ui5-button>
           </div>
         </div>
         ${expanded ? (
@@ -419,64 +419,64 @@ export function renderMonthExpenseList(importDraft, review, deps) {
               <div class="mapping-fields month-inline-form">
                 <label class="select-wrap">
                   <span>Beschreibung</span>
-                  <input type="text" data-month-expense-description="${entry.id}" value="${escapeHtml(entry.description)}">
+                  <ui5-input data-month-expense-description="${entry.id}" value="${escapeHtml(entry.description)}"></ui5-input>
                 </label>
                 <label class="select-wrap currency-wrap">
                   <span>Betrag</span>
-                  <input type="number" min="0" step="0.01" data-month-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                  <ui5-input type="Number" data-month-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Datum</span>
-                  <input type="date" data-month-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}">
+                  <ui5-input data-month-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}" placeholder="YYYY-MM-DD"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Kategorie</span>
-                  <select data-month-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</select>
+                  <ui5-select data-month-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Konto</span>
-                  <select data-month-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                  <ui5-select data-month-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Notiz</span>
-                  <input type="text" data-month-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}">
+                  <ui5-input data-month-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}"></ui5-input>
                 </label>
               </div>
               <div class="filter-group">
-                <button class="pill is-active" type="button" data-month-expense-save="${entry.id}">Speichern</button>
-                <button class="pill pill-danger" type="button" data-month-expense-delete="${entry.id}">Löschen</button>
+                <ui5-button class="pill is-active" design="Emphasized" data-month-expense-save="${entry.id}">Speichern</ui5-button>
+                <ui5-button class="pill pill-danger" design="Negative" data-month-expense-delete="${entry.id}">Löschen</ui5-button>
               </div>
             `
             : `
               <div class="mapping-fields month-inline-form">
                 <label class="select-wrap">
                   <span>Beschreibung</span>
-                  <input type="text" data-import-expense-description="${entry.id}" value="${escapeHtml(entry.description)}">
+                  <ui5-input data-import-expense-description="${entry.id}" value="${escapeHtml(entry.description)}"></ui5-input>
                 </label>
                 <label class="select-wrap currency-wrap">
                   <span>Betrag</span>
-                  <input type="number" min="0" step="0.01" data-import-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}">
+                  <ui5-input type="Number" data-import-expense-amount="${entry.id}" value="${escapeHtml(entry.amount)}"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Datum</span>
-                  <input type="date" data-import-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}">
+                  <ui5-input data-import-expense-date="${entry.id}" value="${escapeHtml(entryDateValue)}" placeholder="YYYY-MM-DD"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Kategorie</span>
-                  <select data-import-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</select>
+                  <ui5-select data-import-expense-category="${entry.id}">${optionMarkup(buildCategoryOptions(importDraft.expenseCategories), entry.expenseCategoryId || "other")}</ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Konto</span>
-                  <select data-import-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</select>
+                  <ui5-select data-import-expense-account="${entry.id}">${optionMarkup(accountOptions, entry.accountId || "giro")}</ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Notiz</span>
-                  <input type="text" data-import-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}">
+                  <ui5-input data-import-expense-notes="${entry.id}" value="${escapeHtml(entry.notes ?? "")}"></ui5-input>
                 </label>
               </div>
               <p class="mapping-source">Änderungen landen in den Import-Mappings (Projektdatei oder Browser-Fallback) und überschreiben die importierte Zeile für diese Ansicht.</p>
               <div class="filter-group">
-                <button class="pill is-active" type="button" data-import-expense-save="${entry.id}">Speichern</button>
+                <ui5-button class="pill is-active" design="Emphasized" data-import-expense-save="${entry.id}">Speichern</ui5-button>
               </div>
             `
         ) : ""}
@@ -635,7 +635,7 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
           <p>${euro.format(instruction.toInvestmentAmount)} direkt ins Investment. ${euro.format(instruction.toCashAmount)} bleiben zunächst in ${thresholdTarget}.</p>
           <p class="mapping-source">Monatslogik für ${review.row.monthKey}. Das ist deine sofortige Aktion beim Gehaltseingang.</p>
           <div class="filter-group">
-            <button class="pill ${isDone ? "is-active" : ""}" type="button" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Erledigt" : "Als erledigt markieren"}</button>
+            <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Erledigt" : "Als erledigt markieren"}</ui5-button>
           </div>
           ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
         </div>
@@ -654,7 +654,7 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
           <p class="mapping-source">${expenseList}</p>
           <p class="mapping-source">Diese Ausgabe ist fachlich dem Monat ${review.row.monthKey} zugeordnet, auch wenn du sie frueher angelegt hast. Das Abbuchungsdatum steuert die Monatsreserve.</p>
           <div class="filter-group">
-            <button class="pill ${isDone ? "is-active" : ""}" type="button" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Reserviert" : "Als reserviert markieren"}</button>
+            <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Reserviert" : "Als reserviert markieren"}</ui5-button>
           </div>
           ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
         </div>
@@ -675,7 +675,7 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
         <p class="mapping-source">${thresholdReason}</p>
         <p class="mapping-source">${statusReason}</p>
         <div class="filter-group">
-          <button class="pill ${isDone ? "is-active" : ""}" type="button" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Umbuchung erledigt" : "Umbuchung fertig"}</button>
+          <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Umbuchung erledigt" : "Umbuchung fertig"}</ui5-button>
         </div>
         ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
       </div>

@@ -120,7 +120,7 @@ export function createMonthReviewDataTools(deps) {
 
   function expenseWarningsForInput(importDraft, monthKey, draftValue, editingId = "") {
     const warnings = [];
-    const description = draftValue.description.trim();
+    const description = String(draftValue.description ?? "").trim();
     const amount = Number(draftValue.amount);
     const entryMonthKey = monthFromDate(draftValue.entryDate || `${monthKey}-01`);
     const normalizedDescription = description.toLowerCase();
@@ -133,7 +133,7 @@ export function createMonthReviewDataTools(deps) {
 
     const duplicates = allMonthExpenses.filter((entry) =>
       entry.id !== editingId &&
-      entry.description.trim().toLowerCase() === normalizedDescription &&
+      String(entry.description ?? "").trim().toLowerCase() === normalizedDescription &&
       Math.abs(Number(entry.amount) - amount) < 0.01,
     );
     if (duplicates.length > 0) {

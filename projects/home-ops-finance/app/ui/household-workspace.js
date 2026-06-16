@@ -86,8 +86,8 @@ export function renderHouseholdWorkspace(deps) {
             <p>${householdAreaLabel(item.area)} · ${euro.format(Number(item.estimatedValue ?? 0))}</p>
           </div>
           <div class="filter-group">
-            <button class="pill" type="button" data-household-edit="${item.id}">Bearbeiten</button>
-            <button class="pill pill-danger" type="button" data-household-delete="${item.id}">Löschen</button>
+            <ui5-button class="pill" design="Transparent" data-household-edit="${item.id}">Bearbeiten</ui5-button>
+            <ui5-button class="pill pill-danger" design="Negative" data-household-delete="${item.id}">Löschen</ui5-button>
           </div>
         </div>
         <p class="section-copy">${escapeHtml(item.notes || "Keine Notiz.")}</p>
@@ -138,10 +138,10 @@ export function renderHouseholdWorkspace(deps) {
 
   saveButton.onclick = async () => {
     const editingId = saveButton.dataset.editingId ?? "";
-    const name = nameField.value.trim();
+    const name = String(nameField.value ?? "").trim();
     const area = areaField.value === "music" ? "music" : "general";
     const estimatedValue = Number(valueField.value);
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!name || !Number.isFinite(estimatedValue) || estimatedValue < 0) {
       metaTarget.textContent = "Bitte Name und gültigen Wert eintragen.";
@@ -189,7 +189,7 @@ export function renderHouseholdWorkspace(deps) {
 
   coverageSaveButton.onclick = async () => {
     const insuranceCoverageAmount = Number(coverageAmountField.value);
-    const insuranceCoverageLabel = coverageLabelField.value.trim();
+    const insuranceCoverageLabel = String(coverageLabelField.value ?? "").trim();
 
     if (!Number.isFinite(insuranceCoverageAmount) || insuranceCoverageAmount < 0) {
       coverageMetaTarget.textContent = "Bitte eine gültige Versicherungssumme eintragen.";

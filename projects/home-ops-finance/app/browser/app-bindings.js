@@ -146,6 +146,9 @@ export function createAppBindingTools(deps) {
       panel.hidden = !open;
       toggleButton.setAttribute("aria-expanded", open ? "true" : "false");
       toggleButton.classList.toggle("is-active", open);
+      if (toggleButton.tagName === "UI5-BUTTON") {
+        toggleButton.setAttribute("design", open ? "Emphasized" : "Transparent");
+      }
     };
 
     setOpen(false);

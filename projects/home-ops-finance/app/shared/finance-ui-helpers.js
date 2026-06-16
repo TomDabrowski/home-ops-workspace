@@ -43,7 +43,7 @@ export function buildAccountOptions(items, fallbackAccountOptions) {
 
 export function optionMarkup(options, selectedValue) {
   return options
-    .map((option) => `<option value="${option.id}" ${option.id === selectedValue ? "selected" : ""}>${option.label}</option>`)
+    .map((option) => `<ui5-option value="${option.id}" ${option.id === selectedValue ? "selected" : ""}>${option.label}</ui5-option>`)
     .join("");
 }
 

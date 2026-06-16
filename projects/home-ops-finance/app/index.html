@@ -8,44 +8,45 @@
   <link rel="apple-touch-icon" href="/app/assets/home-ops-finance-icon-512.png">
   <meta name="theme-color" content="#0b1320">
   <link rel="stylesheet" href="/app/styles.css">
-  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Option.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Select.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Button.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents/dist/MessageStrip.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Panel.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/Bar.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/Card.js"></script>
-  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/CardHeader.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "@ui5/": "/app/vendor/@ui5/",
+        "@sap-theming/": "/app/vendor/@sap-theming/",
+        "@lit-labs/": "/app/vendor/@lit-labs/",
+        "lit-html": "/app/vendor/lit-html/lit-html.js",
+        "lit-html/": "/app/vendor/lit-html/",
+        "ts-custom-error": "/app/vendor/ts-custom-error/dist/custom-error.mjs"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="appStatusBar" class="app-status" hidden></div>
   <div class="floating-controls">
     <div class="settings-shell">
-      <button
+      <ui5-button
         class="pill settings-trigger"
         id="settingsToggleButton"
-        type="button"
+        design="Transparent"
         aria-expanded="false"
         aria-controls="settingsPanel"
-      >
-        <span aria-hidden="true">⚙</span>
-        <span>Einstellungen</span>
-      </button>
+      >Einstellungen</ui5-button>
       <div class="settings-panel" id="settingsPanel" hidden>
         <div class="settings-panel-head">
           <p class="eyebrow">Oberfläche</p>
           <strong>Einstellungen</strong>
         </div>
         <div class="settings-panel-body">
-          <button class="pill settings-option" id="themeModeButton" type="button">
+          <ui5-button class="pill settings-option" id="themeModeButton" design="Transparent">
             Dark Mode aus
-          </button>
-          <button class="pill settings-option" id="developerModeButton" type="button">
+          </ui5-button>
+          <ui5-button class="pill settings-option" id="developerModeButton" design="Transparent">
             Entwicklermodus aus
-          </button>
-          <button class="pill settings-option" id="formulaTooltipButton" type="button">
+          </ui5-button>
+          <ui5-button class="pill settings-option" id="formulaTooltipButton" design="Transparent">
             Rechen-Tooltips an
-          </button>
+          </ui5-button>
         </div>
       </div>
     </div>
@@ -62,9 +63,9 @@
           <span>Ansicht &amp; JSON-Daten</span>
           <strong id="generatedAt">-</strong>
         </div>
-        <button class="pill pill-danger hero-quit" id="shutdownAppButton" type="button">
+        <ui5-button class="pill pill-danger hero-quit" id="shutdownAppButton" design="Negative">
           App beenden
-        </button>
+        </ui5-button>
       </div>
     </section>
 
@@ -105,14 +106,24 @@
           <div class="month-nav-actions">
             <ui5-button id="monthPrevButton" design="Transparent">Vorheriger</ui5-button>
             <label class="select-wrap month-picker">
-              <span>Direkt wählen</span>
-              <ui5-select id="monthReviewSelect"></ui5-select>
+              <span>Geöffneter Monat</span>
+              <ui5-input id="monthReviewSelect" readonly></ui5-input>
             </label>
+            <ui5-button id="monthPickerButton" design="Emphasized">Monat wählen</ui5-button>
             <ui5-button id="monthNextButton" design="Transparent">Nächster</ui5-button>
           </div>
         </div>
       </div>
     </ui5-card>
+    <ui5-dialog id="monthPickerDialog" header-text="Monat wählen">
+      <div class="month-picker-dialog-copy">
+        Spring direkt in einen anderen Monat, ohne dass oben alles dauerhaft offen herumliegt.
+      </div>
+      <div id="monthPickerDialogList" class="month-picker-dialog-list"></div>
+      <div slot="footer" class="month-picker-dialog-footer">
+        <ui5-button id="monthPickerCloseButton" design="Transparent">Schließen</ui5-button>
+      </div>
+    </ui5-dialog>
 
     <section id="overview" class="tab-panel is-active">
       <div class="grid two overview-grid">
@@ -240,7 +251,7 @@
           </div>
           <label class="select-wrap">
             <span>Jahr</span>
-            <select id="statsYearSelect"></select>
+            <ui5-select id="statsYearSelect"></ui5-select>
           </label>
         </div>
         <div class="grid two">
@@ -267,133 +278,161 @@
         <div class="section-head">
           <div>
             <h2>Depot- & Cash-Stand</h2>
-            <p class="section-copy">Das ist der schnellste Realitätsabgleich für deine Planung. Wenn du den Ist-Stand häufiger pflegst, findest du ihn hier bewusst ganz oben.</p>
+            <p class="section-copy">Nur der nächste sinnvolle Schritt soll sichtbar sein: schneller Positions-Update, kompletter Snapshot oder Verlauf im Detail.</p>
           </div>
         </div>
-        <div class="grid two">
-          <div class="subcard">
-            <h3 class="subhead">Ist-Stand speichern</h3>
-            <div class="planner-inputs">
-              <label class="select-wrap">
-                <span>Datum</span>
-                <input id="wealthSnapshotDate" type="datetime-local">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>CHECK24 aktuell</span>
-                <input id="wealthSnapshotCashGiroAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Trade Republic Cash aktuell</span>
-                <input id="wealthSnapshotCashTradeRepublicAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Scalable aktuell</span>
-                <input id="wealthSnapshotCashScalableAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Investment aktuell</span>
-                <input id="wealthSnapshotInvestmentAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Cash gesamt</span>
-                <input id="wealthSnapshotCashTotal" type="text" readonly tabindex="-1">
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span>Notiz</span>
-                <input id="wealthSnapshotNotes" type="text" placeholder="z. B. nach starkem Marktmove aktualisiert">
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span><input id="wealthSnapshotMonthStartEnabled" type="checkbox"> Als Monatsanfang festsetzen</span>
-              </label>
-              <label class="select-wrap">
-                <span>Gilt als Monatsanfang für</span>
-                <input id="wealthSnapshotMonthStartMonth" type="month" disabled>
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span><input id="wealthSnapshotFixedExpensesIncluded" type="checkbox"> Fixkosten dieses Monats sind im Ist-Stand schon drin</span>
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span>
-                  <input id="wealthSnapshotSalaryIncluded" type="checkbox">
-                  Gehalt ist im Ist-Stand schon drin (für
-                  <input id="wealthSnapshotSalaryIncludedForMonth" type="month" disabled>
-                  )
-                </span>
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span>
-                  <input id="wealthSnapshotMusicIncluded" type="checkbox">
-                  Musik-Einnahmen sind im Ist-Stand schon drin (für
-                  <input id="wealthSnapshotMusicIncludedForMonth" type="month" disabled>
-                  )
-                </span>
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span>
-                  <span class="subnote">Optional: Schwellenkonto-Stand vor Musik (damit die Split-Empfehlung stimmt, auch wenn dein Snapshot schon den Endstand enthält)</span>
-                  <input id="wealthSnapshotMusicThresholdBeforeAmount" type="number" min="0" step="0.01" placeholder="z. B. 8448.28" disabled>
-                </span>
-              </label>
-              <label class="select-wrap">
-                <span>Basis-Investment dieses Monats</span>
-                <select id="wealthSnapshotBasisInvestmentState">
-                  <option value="open">Noch offen</option>
-                  <option value="pending_cash">Liegt noch im Cash</option>
-                  <option value="included">Schon im Investment</option>
-                </select>
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span><input id="wealthSnapshotExtraExpensesIncluded" type="checkbox"> Zusatz-Ausgaben dieses Monats sind im Ist-Stand schon drin</span>
-              </label>
-            </div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="wealthSnapshotMeta">Noch kein manueller Vermögensstand gespeichert.</p>
-              <div class="filter-group">
-                <button class="pill" id="clearWealthSnapshotsButton" type="button" hidden>Lokale Ist-Stände löschen</button>
-                <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
+        <div class="wealth-workspace">
+          <div class="wealth-workspace-switcher">
+            <ui5-button class="pill is-active" design="Emphasized" data-wealth-view="quick">Schnellupdate</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-wealth-view="snapshot">Voller Snapshot</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-wealth-view="history">Verlauf</ui5-button>
+          </div>
+          <div id="wealthSnapshotOverview" class="wealth-overview-grid"></div>
+          <p class="section-copy" id="wealthWorkspaceViewInfo">Schnellupdate ist für einzelne Konten oder Depotstände gedacht. Alles andere bleibt dabei automatisch erhalten.</p>
+
+          <section id="wealthQuickUpdatePanel" class="wealth-workspace-panel is-active">
+            <div class="subcard">
+              <h3 class="subhead">Einzelne Position aktualisieren</h3>
+              <p class="section-copy">Nur eine Position ändern, Rest automatisch übernehmen. Das ist der Standardweg für zwischendurch.</p>
+              <div class="planner-inputs">
+                <label class="select-wrap">
+                  <span>Datum</span>
+                  <ui5-input id="wealthPositionUpdateDate" placeholder="2026-06-16T15:31"></ui5-input>
+                </label>
+                <label class="select-wrap">
+                  <span>Position</span>
+                  <ui5-select id="wealthPositionUpdateTarget">
+                    <ui5-option value="giro">CHECK24</ui5-option>
+                    <ui5-option value="cash">Trade Republic Cash</ui5-option>
+                    <ui5-option value="savings">Scalable</ui5-option>
+                    <ui5-option value="investment">Investment / Portfolio</ui5-option>
+                  </ui5-select>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Neuer Ist-Wert</span>
+                  <ui5-input id="wealthPositionUpdateAmount" placeholder="0"></ui5-input>
+                </label>
+                <label class="select-wrap planner-span-two">
+                  <span>Notiz</span>
+                  <ui5-input id="wealthPositionUpdateNotes" placeholder="z. B. Depot nach Börsenschluss aktualisiert"></ui5-input>
+                </label>
+              </div>
+              <div id="wealthPositionUpdateQuickTargets" class="mapping-list planner-quick-grid"></div>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="wealthPositionUpdateMeta">Noch kein Positions-Istwert gespeichert.</p>
+                <ui5-button class="pill" id="saveWealthPositionUpdateButton" design="Emphasized">Positions-Istwert speichern</ui5-button>
               </div>
             </div>
-            <div class="planner-divider"></div>
-            <h3 class="subhead">Einzelne Position aktualisieren</h3>
-            <p class="section-copy">Wenn sich nur eine Position ändert, speicherst du hier nur diesen einen Ist-Wert. Alle anderen Positionen werden automatisch aus dem letzten Ist-Stand übernommen.</p>
-            <div class="planner-inputs">
-              <label class="select-wrap">
-                <span>Datum</span>
-                <input id="wealthPositionUpdateDate" type="datetime-local">
-              </label>
-              <label class="select-wrap">
-                <span>Position</span>
-                <select id="wealthPositionUpdateTarget">
-                  <option value="giro">CHECK24</option>
-                  <option value="cash">Trade Republic Cash</option>
-                  <option value="savings">Scalable</option>
-                  <option value="investment">Investment / Portfolio</option>
-                </select>
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Neuer Ist-Wert</span>
-                <input id="wealthPositionUpdateAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap planner-span-two">
-                <span>Notiz</span>
-                <input id="wealthPositionUpdateNotes" type="text" placeholder="z. B. Depot nach Börsenschluss aktualisiert">
-              </label>
+          </section>
+
+          <section id="wealthSnapshotPanel" class="wealth-workspace-panel" hidden>
+            <div class="subcard">
+              <h3 class="subhead">Kompletten Ist-Stand speichern</h3>
+              <p class="section-copy">Nur nötig, wenn du mehrere Positionen gleichzeitig abgleichen oder einen Monatsanfang sauber festsetzen willst.</p>
+              <div class="planner-inputs">
+                <label class="select-wrap">
+                  <span>Datum</span>
+                  <ui5-input id="wealthSnapshotDate" placeholder="2026-06-16T15:31"></ui5-input>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>CHECK24 aktuell</span>
+                  <ui5-input id="wealthSnapshotCashGiroAmount" placeholder="0"></ui5-input>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Trade Republic Cash aktuell</span>
+                  <ui5-input id="wealthSnapshotCashTradeRepublicAmount" placeholder="0"></ui5-input>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Scalable aktuell</span>
+                  <ui5-input id="wealthSnapshotCashScalableAmount" placeholder="0"></ui5-input>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Investment aktuell</span>
+                  <ui5-input id="wealthSnapshotInvestmentAmount" placeholder="0"></ui5-input>
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Cash gesamt</span>
+                  <ui5-input id="wealthSnapshotCashTotal" readonly></ui5-input>
+                </label>
+                <label class="select-wrap planner-span-two">
+                  <span>Notiz</span>
+                  <ui5-textarea id="wealthSnapshotNotes" placeholder="z. B. nach starkem Marktmove aktualisiert" rows="3"></ui5-textarea>
+                </label>
+              </div>
+              <ui5-panel class="wealth-advanced-panel" header-text="Erweiterte Monatslogik" collapsed>
+                <div class="planner-inputs planner-inputs--tight">
+                  <label class="select-wrap planner-span-two">
+                    <span>Monatsanfang</span>
+                    <ui5-checkbox id="wealthSnapshotMonthStartEnabled" text="Als Monatsanfang festsetzen"></ui5-checkbox>
+                  </label>
+                  <label class="select-wrap">
+                    <span>Gilt als Monatsanfang für</span>
+                    <ui5-input id="wealthSnapshotMonthStartMonth" placeholder="2026-06" disabled></ui5-input>
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Monatsausgaben</span>
+                    <ui5-checkbox id="wealthSnapshotFixedExpensesIncluded" text="Fixkosten dieses Monats sind im Ist-Stand schon drin"></ui5-checkbox>
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Gehalt im Snapshot enthalten</span>
+                    <ui5-checkbox id="wealthSnapshotSalaryIncluded" text="Gehalt ist im Ist-Stand schon drin"></ui5-checkbox>
+                  </label>
+                  <label class="select-wrap">
+                    <span>Gehalt gilt für Monat</span>
+                    <ui5-input id="wealthSnapshotSalaryIncludedForMonth" placeholder="2026-06" disabled></ui5-input>
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Musik im Snapshot enthalten</span>
+                    <ui5-checkbox id="wealthSnapshotMusicIncluded" text="Musik-Einnahmen sind im Ist-Stand schon drin"></ui5-checkbox>
+                  </label>
+                  <label class="select-wrap">
+                    <span>Musik gilt für Monat</span>
+                    <ui5-input id="wealthSnapshotMusicIncludedForMonth" placeholder="2026-06" disabled></ui5-input>
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>
+                      <span class="subnote">Optional: Schwellenkonto-Stand vor Musik, wenn dein Snapshot den Monatsendstand schon enthält.</span>
+                      <ui5-input id="wealthSnapshotMusicThresholdBeforeAmount" placeholder="z. B. 8448.28" disabled></ui5-input>
+                    </span>
+                  </label>
+                  <label class="select-wrap">
+                    <span>Basis-Investment dieses Monats</span>
+                    <ui5-select id="wealthSnapshotBasisInvestmentState">
+                      <ui5-option value="open">Noch offen</ui5-option>
+                      <ui5-option value="pending_cash">Liegt noch im Cash</ui5-option>
+                      <ui5-option value="included">Schon im Investment</ui5-option>
+                    </ui5-select>
+                  </label>
+                  <label class="select-wrap planner-span-two">
+                    <span>Zusatz-Ausgaben</span>
+                    <ui5-checkbox id="wealthSnapshotExtraExpensesIncluded" text="Zusatz-Ausgaben dieses Monats sind im Ist-Stand schon drin"></ui5-checkbox>
+                  </label>
+                </div>
+              </ui5-panel>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="wealthSnapshotMeta">Noch kein manueller Vermögensstand gespeichert.</p>
+                <div class="filter-group">
+                  <ui5-button class="pill" id="clearWealthSnapshotsButton" design="Transparent" hidden>Lokale Ist-Stände löschen</ui5-button>
+                  <ui5-button class="pill is-active" id="saveWealthSnapshotButton" design="Emphasized">Ist-Stand speichern</ui5-button>
+                </div>
+              </div>
             </div>
-            <div id="wealthPositionUpdateQuickTargets" class="mapping-list planner-quick-grid"></div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="wealthPositionUpdateMeta">Noch kein Positions-Istwert gespeichert.</p>
-              <button class="pill" id="saveWealthPositionUpdateButton" type="button">Positions-Istwert speichern</button>
+          </section>
+
+          <section id="wealthHistoryPanel" class="wealth-workspace-panel" hidden>
+            <div class="subcard">
+              <h3 class="subhead">Gespeicherte Ist-Stände</h3>
+              <p class="section-copy" id="wealthSnapshotHistorySummary">Noch kein manueller Vermögensstand gespeichert.</p>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="wealthSnapshotHistoryMeta">Die neuesten Einträge stehen oben.</p>
+                <ui5-button class="pill" id="wealthSnapshotHistoryToggleButton" design="Transparent" hidden>Ältere Einträge zeigen</ui5-button>
+              </div>
+              <div class="wealth-history-shell">
+                <div id="wealthSnapshotList" class="mapping-list wealth-history-list"></div>
+                <div id="wealthSnapshotDetail" class="wealth-history-detail"></div>
+              </div>
             </div>
-          </div>
-          <div class="subcard">
-            <h3 class="subhead">Gespeicherte Ist-Stände</h3>
-            <p class="section-copy" id="wealthSnapshotHistorySummary">Noch kein manueller Vermögensstand gespeichert.</p>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="wealthSnapshotHistoryMeta">Die neuesten Einträge stehen oben.</p>
-              <button class="pill" id="wealthSnapshotHistoryToggleButton" type="button" hidden>Ältere Einträge zeigen</button>
-            </div>
-            <div id="wealthSnapshotList" class="mapping-list"></div>
-          </div>
+          </section>
         </div>
       </article>
       <div class="grid two">
@@ -434,37 +473,37 @@
             <div class="planner-inputs">
               <label class="select-wrap">
                 <span>Name</span>
-                <input id="fixedCostLabel" type="text" placeholder="z. B. Fitnessstudio">
+                <ui5-input id="fixedCostLabel" placeholder="z. B. Fitnessstudio"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Typ</span>
-                <select id="fixedCostCategory">
-                  <option value="fixed">Fixkosten</option>
-                  <option value="variable">Variable Basis</option>
-                  <option value="annual_reserve">Jahreskostenblock</option>
-                  <option value="savings">Geplantes Investment</option>
-                </select>
+                <ui5-select id="fixedCostCategory">
+                  <ui5-option value="fixed">Fixkosten</ui5-option>
+                  <ui5-option value="variable">Variable Basis</ui5-option>
+                  <ui5-option value="annual_reserve">Jahreskostenblock</ui5-option>
+                  <ui5-option value="savings">Geplantes Investment</ui5-option>
+                </ui5-select>
               </label>
               <label class="select-wrap currency-wrap">
                 <span id="fixedCostAmountLabel">Betrag pro Monat</span>
-                <input id="fixedCostAmount" type="number" min="0" step="0.01" placeholder="0">
+                <ui5-input id="fixedCostAmount" type="Number" placeholder="0"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Gültig ab</span>
-                <input id="fixedCostEffectiveFrom" type="month">
+                <ui5-input id="fixedCostEffectiveFrom" placeholder="YYYY-MM"></ui5-input>
               </label>
               <label class="select-wrap" id="fixedCostEndDateWrap" hidden>
                 <span>Gekündigt zum</span>
-                <input id="fixedCostEndDate" type="date">
+                <ui5-input id="fixedCostEndDate" placeholder="YYYY-MM-DD"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Notiz</span>
-                <input id="fixedCostNotes" type="text" placeholder="optional">
+                <ui5-input id="fixedCostNotes" placeholder="optional"></ui5-input>
               </label>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="fixedCostMeta" data-dev-only="true">Noch keine zusätzlichen Kosten- oder Sparanpassungen gespeichert.</p>
-              <button class="pill is-active" id="saveFixedCostButton" type="button">Posten speichern</button>
+              <ui5-button class="pill is-active" id="saveFixedCostButton" design="Emphasized">Posten speichern</ui5-button>
             </div>
           </div>
           <div class="subcard" data-dev-only="true">
@@ -486,24 +525,24 @@
             <div class="planner-inputs">
               <label class="select-wrap currency-wrap">
                 <span>Cash-Ziel</span>
-                <input id="forecastSafetyThreshold" type="number" min="0" step="0.01" placeholder="10000">
+                <ui5-input id="forecastSafetyThreshold" type="Number" placeholder="10000"></ui5-input>
               </label>
               <label class="select-wrap currency-wrap">
                 <span>Musik-Schwelle</span>
-                <input id="forecastMusicThreshold" type="number" min="0" step="0.01" placeholder="10000">
+                <ui5-input id="forecastMusicThreshold" type="Number" placeholder="10000"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Musik-Schwellenkonto</span>
-                <select id="forecastMusicThresholdAccount"></select>
+                <ui5-select id="forecastMusicThresholdAccount"></ui5-select>
               </label>
               <label class="select-wrap planner-span-two">
                 <span>Notiz</span>
-                <input id="forecastNotes" type="text" placeholder="optional">
+                <ui5-input id="forecastNotes" placeholder="optional"></ui5-input>
               </label>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="forecastMeta" data-dev-only="true">Noch keine eigene Schwelle gespeichert.</p>
-              <button class="pill is-active" id="saveForecastButton" type="button">Schwellen speichern</button>
+              <ui5-button class="pill is-active" id="saveForecastButton" design="Emphasized">Schwellen speichern</ui5-button>
             </div>
           </div>
           <div class="subcard">
@@ -525,20 +564,20 @@
             <div class="planner-inputs">
               <label class="select-wrap currency-wrap">
                 <span>Nettogehalt pro Monat</span>
-                <input id="salaryAmount" type="number" min="0" step="0.01" placeholder="2706">
+                <ui5-input id="salaryAmount" type="Number" placeholder="2706"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Monat</span>
-                <input id="salaryEffectiveFrom" type="month">
+                <ui5-input id="salaryEffectiveFrom" placeholder="YYYY-MM"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Notiz</span>
-                <input id="salaryNotes" type="text" placeholder="optional">
+                <ui5-input id="salaryNotes" placeholder="optional"></ui5-input>
               </label>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="salaryMeta" data-dev-only="true">Noch keine Gehaltsänderung gespeichert.</p>
-              <button class="pill is-active" id="saveSalaryButton" type="button">Gehaltsstand speichern</button>
+              <ui5-button class="pill is-active" id="saveSalaryButton" design="Emphasized">Gehaltsstand speichern</ui5-button>
             </div>
           </div>
           <div class="subcard" data-dev-only="true">
@@ -703,38 +742,38 @@
               <div class="planner-inputs">
                 <label class="select-wrap">
                   <span>Typ</span>
-                  <select id="monthlyMovementType">
-                    <option value="expense">Ausgabe</option>
-                    <option value="income">Einnahme</option>
-                  </select>
+                  <ui5-select id="monthlyMovementType">
+                    <ui5-option value="expense">Ausgabe</ui5-option>
+                    <ui5-option value="income">Einnahme</ui5-option>
+                  </ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Beschreibung</span>
-                  <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
+                  <ui5-input id="monthlyExpenseDescription" placeholder="z. B. Konzertticket"></ui5-input>
                 </label>
                 <label class="select-wrap currency-wrap">
                   <span>Betrag</span>
-                  <input id="monthlyExpenseAmount" type="number" min="0" step="0.01" placeholder="0">
+                  <ui5-input id="monthlyExpenseAmount" type="Number" placeholder="0"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Datum</span>
-                  <input id="monthlyExpenseDate" type="date">
+                  <ui5-input id="monthlyExpenseDate" placeholder="YYYY-MM-DD"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Kategorie</span>
-                  <select id="monthlyExpenseCategory"></select>
+                  <ui5-select id="monthlyExpenseCategory"></ui5-select>
                 </label>
                 <label class="select-wrap" id="monthlyIncomeStreamWrap" hidden>
                   <span>Einnahme-Kategorie</span>
-                  <select id="monthlyIncomeStream"></select>
+                  <ui5-select id="monthlyIncomeStream"></ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Konto</span>
-                  <select id="monthlyExpenseAccount"></select>
+                  <ui5-select id="monthlyExpenseAccount"></ui5-select>
                 </label>
                 <label class="select-wrap">
                   <span>Notiz</span>
-                  <input id="monthlyExpenseNotes" type="text" placeholder="optional">
+                  <ui5-input id="monthlyExpenseNotes" placeholder="optional"></ui5-input>
                 </label>
               </div>
               <div id="monthlyExpenseWarnings" class="signal-inline"></div>
@@ -786,22 +825,22 @@
             <div class="reconciliation-grid">
               <label class="select-wrap">
                 <span>Status</span>
-                <select id="reconciliationStatus">
-                  <option value="open">Offen</option>
-                  <option value="in_progress">In Arbeit</option>
-                  <option value="resolved">Erledigt</option>
-                </select>
+                <ui5-select id="reconciliationStatus">
+                  <ui5-option value="open">Offen</ui5-option>
+                  <ui5-option value="in_progress">In Arbeit</ui5-option>
+                  <ui5-option value="resolved">Erledigt</ui5-option>
+                </ui5-select>
               </label>
               <label class="select-wrap">
                 <span>Notiz</span>
-                <textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was in diesem Monat auffällig oder noch offen ist."></textarea>
+                <ui5-textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was in diesem Monat auffällig oder noch offen ist."></ui5-textarea>
               </label>
               <h3 class="subhead">Aktionen für diesen Monat</h3>
               <div id="reconciliationActions" class="reconciliation-actions"></div>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
-              <button class="pill is-active" id="saveReconciliationButton" type="button">Reconciliation speichern</button>
+              <ui5-button class="pill is-active" id="saveReconciliationButton" design="Emphasized">Reconciliation speichern</ui5-button>
             </div>
           </article>
         </aside>
@@ -854,20 +893,20 @@
               <div class="planner-inputs">
                 <label class="select-wrap currency-wrap">
                   <span>Musik brutto pro Monat</span>
-                  <input id="musicForecastAmount" type="number" min="0" step="0.01" placeholder="1300">
+                  <ui5-input id="musicForecastAmount" type="Number" placeholder="1300"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Gültig ab</span>
-                  <input id="musicForecastEffectiveFrom" type="month">
+                  <ui5-input id="musicForecastEffectiveFrom" placeholder="YYYY-MM"></ui5-input>
                 </label>
                 <label class="select-wrap planner-span-two">
                   <span>Notiz</span>
-                  <input id="musicForecastNotes" type="text" placeholder="optional">
+                  <ui5-input id="musicForecastNotes" placeholder="optional"></ui5-input>
                 </label>
               </div>
               <div class="reconciliation-footer">
                 <p class="section-copy" id="musicForecastMeta">Noch kein fortlaufender Musik-Forecast gespeichert.</p>
-                <button class="pill is-active" id="saveMusicForecastButton" type="button">Musik-Forecast speichern</button>
+                <ui5-button class="pill is-active" id="saveMusicForecastButton" design="Emphasized">Musik-Forecast speichern</ui5-button>
               </div>
             </div>
             <div class="subcard">
@@ -905,20 +944,20 @@
               <div class="planner-inputs">
                 <label class="select-wrap currency-wrap">
                   <span>Musik netto</span>
-                  <input id="musicIncomeActualAmount" type="number" min="0" step="0.01" placeholder="0">
+                  <ui5-input id="musicIncomeActualAmount" type="Number" placeholder="0"></ui5-input>
                 </label>
                 <label class="select-wrap">
                   <span>Monat</span>
-                  <input id="musicIncomeActualDate" type="datetime-local">
+                  <ui5-input id="musicIncomeActualDate" placeholder="YYYY-MM-DDTHH:mm"></ui5-input>
                 </label>
                 <label class="select-wrap planner-span-two">
                   <span>Notiz</span>
-                  <input id="musicIncomeActualNotes" type="text" placeholder="optional">
+                  <ui5-input id="musicIncomeActualNotes" placeholder="optional"></ui5-input>
                 </label>
               </div>
               <div class="reconciliation-footer">
                 <p class="section-copy" id="musicIncomeActualMeta" data-dev-only="true">Noch kein Musik-Istwert gespeichert.</p>
-                <button class="pill is-active" id="saveMusicIncomeActualButton" type="button">Musik-Istwert speichern</button>
+                <ui5-button class="pill is-active" id="saveMusicIncomeActualButton" design="Emphasized">Musik-Istwert speichern</ui5-button>
               </div>
             </div>
             <div class="subcard" data-dev-only="true">
@@ -943,24 +982,24 @@
           <div class="planner-inputs">
             <label class="select-wrap currency-wrap">
               <span>Betrag pro Quartal</span>
-              <input id="musicTaxQuarterlyAmount" type="number" min="0" step="0.01" placeholder="501">
+              <ui5-input id="musicTaxQuarterlyAmount" type="Number" placeholder="501"></ui5-input>
             </label>
             <label class="select-wrap">
               <span>Gültig ab</span>
-              <input id="musicTaxEffectiveFrom" type="month">
+              <ui5-input id="musicTaxEffectiveFrom" placeholder="YYYY-MM"></ui5-input>
             </label>
             <label class="select-wrap currency-wrap">
               <span>Steuerbasis vor Musik p.a. (optional)</span>
-              <input id="musicTaxBaseIncomeAnnual" type="number" min="0" step="0.01" placeholder="z. B. 52000">
+              <ui5-input id="musicTaxBaseIncomeAnnual" type="Number" placeholder="z. B. 52000"></ui5-input>
             </label>
             <label class="select-wrap">
               <span>Notiz</span>
-              <input id="musicTaxNotes" type="text" placeholder="optional">
+              <ui5-input id="musicTaxNotes" placeholder="optional"></ui5-input>
             </label>
           </div>
           <div class="reconciliation-footer">
             <p class="section-copy" id="musicTaxMeta" data-dev-only="true">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
-            <button class="pill is-active" id="saveMusicTaxButton" type="button">Steuer-Plan speichern</button>
+            <ui5-button class="pill is-active" id="saveMusicTaxButton" design="Emphasized">Steuer-Plan speichern</ui5-button>
           </div>
         </article>
         <article class="card">
@@ -1032,7 +1071,7 @@
         </div>
         <div class="reconciliation-footer">
           <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
-          <button class="pill is-active" id="saveMappingButton" type="button">Mappings speichern</button>
+          <ui5-button class="pill is-active" id="saveMappingButton" design="Emphasized">Mappings speichern</ui5-button>
         </div>
       </article>
     </section>
@@ -1059,27 +1098,27 @@
           <div class="planner-inputs">
             <label class="select-wrap">
               <span>Name</span>
-              <input id="householdItemName" type="text" placeholder="z. B. Bett mit Matratze">
+              <ui5-input id="householdItemName" placeholder="z. B. Bett mit Matratze"></ui5-input>
             </label>
             <label class="select-wrap">
               <span>Bereich</span>
-              <select id="householdItemArea">
-                <option value="general">Allgemeiner Hausrat</option>
-                <option value="music">Musik-Equipment</option>
-              </select>
+              <ui5-select id="householdItemArea">
+                <ui5-option value="general">Allgemeiner Hausrat</ui5-option>
+                <ui5-option value="music">Musik-Equipment</ui5-option>
+              </ui5-select>
             </label>
             <label class="select-wrap currency-wrap">
               <span>Wert</span>
-              <input id="householdItemValue" type="number" min="0" step="0.01" placeholder="0">
+              <ui5-input id="householdItemValue" type="Number" placeholder="0"></ui5-input>
             </label>
             <label class="select-wrap planner-span-two">
               <span>Notiz</span>
-              <input id="householdItemNotes" type="text" placeholder="optional">
+              <ui5-input id="householdItemNotes" placeholder="optional"></ui5-input>
             </label>
           </div>
           <div class="reconciliation-footer">
             <p class="section-copy" id="householdMeta">Noch keine Hausrat-Änderungen gespeichert.</p>
-            <button class="pill is-active" id="saveHouseholdItemButton" type="button">Hausrat-Posten speichern</button>
+            <ui5-button class="pill is-active" id="saveHouseholdItemButton" design="Emphasized">Hausrat-Posten speichern</ui5-button>
           </div>
         </article>
 
@@ -1093,16 +1132,16 @@
           <div class="planner-inputs">
             <label class="select-wrap currency-wrap">
               <span>Versicherungssumme</span>
-              <input id="householdCoverageAmount" type="number" min="0" step="0.01" placeholder="0">
+              <ui5-input id="householdCoverageAmount" type="Number" placeholder="0"></ui5-input>
             </label>
             <label class="select-wrap">
               <span>Stand</span>
-              <input id="householdCoverageLabel" type="text" placeholder="z. B. Stand April 2024">
+              <ui5-input id="householdCoverageLabel" placeholder="z. B. Stand April 2024"></ui5-input>
             </label>
           </div>
           <div class="reconciliation-footer">
             <p class="section-copy" id="householdCoverageMeta">Noch keine Versicherungssumme gespeichert.</p>
-            <button class="pill is-active" id="saveHouseholdCoverageButton" type="button">Versicherungssumme speichern</button>
+            <ui5-button class="pill is-active" id="saveHouseholdCoverageButton" design="Emphasized">Versicherungssumme speichern</ui5-button>
           </div>
         </article>
       </div>
@@ -1131,68 +1170,68 @@
             <div class="planner-inputs">
               <label class="select-wrap">
                 <span>Aktuelles Alter</span>
-                <input id="plannerCurrentAge" type="number" min="18" max="80" step="0.5">
+                <ui5-input id="plannerCurrentAge" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Zielalter Rente</span>
-                <input id="plannerTargetAge" type="number" min="25" max="90" step="0.5">
+                <ui5-input id="plannerTargetAge" type="Number"></ui5-input>
               </label>
               <label class="select-wrap planner-span-two">
                 <span>Bedarf basiert auf</span>
-                <select id="plannerSpendingBasis">
-                  <option value="actual">Ist-Ausgaben (heutige Kaufkraft)</option>
-                  <option value="replacement">% vom Nettogehalt</option>
-                </select>
+                <ui5-select id="plannerSpendingBasis">
+                  <ui5-option value="actual">Ist-Ausgaben (heutige Kaufkraft)</ui5-option>
+                  <ui5-option value="replacement">% vom Nettogehalt</ui5-option>
+                </ui5-select>
               </label>
               <label class="select-wrap" id="plannerReplacementRateWrap">
                 <span>Bedarf in Rente (% vom Netto)</span>
-                <input id="plannerReplacementRate" type="number" min="40" max="120" step="1">
+                <ui5-input id="plannerReplacementRate" type="Number"></ui5-input>
               </label>
               <div class="filter-group planner-span-two" id="plannerReplacementPresetWrap">
-                <button class="pill" type="button" data-replacement-rate-preset="70">70 %</button>
-                <button class="pill is-active" type="button" data-replacement-rate-preset="76">76 %</button>
-                <button class="pill" type="button" data-replacement-rate-preset="90">90 %</button>
+                <ui5-button class="pill" design="Transparent" data-replacement-rate-preset="70">70 %</ui5-button>
+                <ui5-button class="pill is-active" design="Emphasized" data-replacement-rate-preset="76">76 %</ui5-button>
+                <ui5-button class="pill" design="Transparent" data-replacement-rate-preset="90">90 %</ui5-button>
               </div>
               <label class="select-wrap currency-wrap">
                 <span>Monatsbedarf (heutige Kaufkraft)</span>
-                <input id="plannerRetirementSpend" type="number" min="0" step="50" readonly tabindex="-1">
+                <ui5-input id="plannerRetirementSpend" type="Number" readonly tabindex="-1"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Entnahmerate</span>
-                <input id="plannerWithdrawalRate" type="number" min="1" max="10" step="0.1">
+                <ui5-input id="plannerWithdrawalRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Inflation p.a.</span>
-                <input id="plannerInflationRate" type="number" min="0" max="10" step="0.1">
+                <ui5-input id="plannerInflationRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Gehaltserhöhung p.a.</span>
-                <input id="plannerSalaryGrowthRate" type="number" min="0" max="10" step="0.1">
+                <ui5-input id="plannerSalaryGrowthRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Mieterhöhung p.a.</span>
-                <input id="plannerRentGrowthRate" type="number" min="0" max="10" step="0.1">
+                <ui5-input id="plannerRentGrowthRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Vers. & sonstige Kosten p.a.</span>
-                <input id="plannerExpenseGrowthRate" type="number" min="0" max="10" step="0.1">
+                <ui5-input id="plannerExpenseGrowthRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Musikwachstum p.a.</span>
-                <input id="plannerMusicGrowthRate" type="number" min="0" max="15" step="0.1">
+                <ui5-input id="plannerMusicGrowthRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap">
                 <span>Steuersatz Musik</span>
-                <input id="plannerMusicTaxRate" type="number" min="0" max="60" step="0.5">
+                <ui5-input id="plannerMusicTaxRate" type="Number"></ui5-input>
               </label>
               <label class="select-wrap currency-wrap planner-span-two">
                 <span>Musik mindestens pro Monat</span>
-                <input id="plannerMinimumMusicGrossPerMonth" type="number" min="0" step="50" placeholder="z. B. 1300">
+                <ui5-input id="plannerMinimumMusicGrossPerMonth" type="Number" placeholder="z. B. 1300"></ui5-input>
               </label>
             </div>
             <div class="reconciliation-footer">
               <p class="section-copy">Werte erst anpassen und dann bewusst übernehmen. So bleibt der Renten-Reiter stabil.</p>
-              <button class="pill is-active" id="applyRetirementPlannerButton" type="button">Werte übernehmen</button>
+              <ui5-button class="pill is-active" id="applyRetirementPlannerButton" design="Emphasized">Werte übernehmen</ui5-button>
             </div>
             <div id="plannerErrorBox" class="planner-alert" hidden></div>
             <p class="section-copy" id="plannerAssumptions"></p>

@@ -203,7 +203,7 @@ export function renderPriorityMonths(monthlyPlan, deps) {
         </div>
         <h3>${row.monthKey}</h3>
         <p>${warningCountLabel(row.warningCount)} · Monatssaldo ${euro.format(row.netAfterImportedFlows)} · Ausgaben ${euro.format(row.importedExpenseAmount)}</p>
-        <button class="pill" type="button" data-priority-month="${row.monthKey}">Im Review öffnen</button>
+        <ui5-button class="pill" design="Transparent" data-priority-month="${row.monthKey}">Im Review öffnen</ui5-button>
       </article>
     `)
     .join("");
@@ -269,8 +269,58 @@ export function createMonthReviewNavigation(deps) {
     }
   }
 
-  function monthOptionMarkup(monthKey) {
-    return `<ui5-option value="${monthKey}">${monthKey}</ui5-option>`;
+  function syncMonthSelectValue(select, monthKey) {
+    if (!(select instanceof HTMLElement)) {
+      return;
+    }
+
+    if ("value" in select) {
+      select.value = monthKey;
+    }
+    select.setAttribute("value", monthKey);
+  }
+
+  function readMonthSelectValue(select) {
+    if (!(select instanceof HTMLElement)) {
+      return "";
+    }
+
+    const propertyValue = "value" in select ? String(select.value ?? "").trim() : "";
+    const attributeValue = String(select.getAttribute("value") ?? "").trim();
+    return propertyValue || attributeValue;
+  }
+
+  function renderMonthPickerDialog(monthKeys, selectedMonthKey) {
+    const list = document.getElementById("monthPickerDialogList");
+    if (!(list instanceof HTMLElement)) {
+      return;
+    }
+
+    const groups = new Map();
+    for (const monthKey of monthKeys.slice().reverse()) {
+      const year = monthKey.slice(0, 4);
+      if (!groups.has(year)) {
+        groups.set(year, []);
+      }
+      groups.get(year).push(monthKey);
+    }
+
+    list.innerHTML = [...groups.entries()]
+      .map(([year, items]) => `
+        <section class="month-picker-year">
+          <p class="eyebrow">${year}</p>
+          <div class="month-picker-dialog-grid">
+            ${items.map((monthKey) => `
+              <ui5-button
+                class="month-picker-option"
+                design="${monthKey === selectedMonthKey ? "Emphasized" : "Transparent"}"
+                data-dialog-month="${monthKey}"
+              >${formatMonthLabel(monthKey)}</ui5-button>
+            `).join("")}
+          </div>
+        </section>
+      `)
+      .join("");
   }
 
   function openMonthReview(monthlyPlan, monthKey) {
@@ -279,7 +329,7 @@ export function createMonthReviewNavigation(deps) {
       return;
     }
 
-    monthSelect.value = monthKey;
+    syncMonthSelectValue(monthSelect, monthKey);
     saveViewState({ monthKey });
     const importDraft = currentImportDraft();
     if (!importDraft) {
@@ -292,6 +342,7 @@ export function createMonthReviewNavigation(deps) {
     renderMusicTaxPlanner(importDraft);
     renderMonthReview(importDraft, monthlyPlan, monthKey);
     updateMonthNavigator(monthlyPlan, monthKey);
+    renderMonthPickerDialog(monthlyPlan.rows.map((row) => row.monthKey), monthKey);
   }
 
   function bindMonthFilters(monthlyPlan, initialFilter = "focus") {
@@ -310,7 +361,7 @@ export function createMonthReviewNavigation(deps) {
 
       renderRows("monthlyRows", rows, (row) => `
         <tr data-month-open="${row.monthKey}">
-          <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.monthKey}</button></td>
+          <td><ui5-button class="pill" design="Transparent" data-month-open="${row.monthKey}">${row.monthKey}</ui5-button></td>
           <td>${planProfileLabel(row.baselineProfile)}</td>
           <td>${euro.format(row.baselineAvailableAmount)}</td>
           <td>${euro.format(row.musicIncomeAmount)}</td>
@@ -323,7 +374,7 @@ export function createMonthReviewNavigation(deps) {
           }</td>
           <td>${row.projectedWealthEndAmount !== undefined ? euro.format(row.projectedWealthEndAmount) : "-"}</td>
           <td>${makeMoneyCell(row.netAfterImportedFlows)}</td>
-          <td><button class="pill" type="button" data-month-open="${row.monthKey}">${row.consistencySignals.length} öffnen</button></td>
+          <td><ui5-button class="pill" design="Transparent" data-month-open="${row.monthKey}">${row.consistencySignals.length} öffnen</ui5-button></td>
         </tr>
       `);
     }
@@ -378,15 +429,12 @@ export function createMonthReviewNavigation(deps) {
 
   function bindMonthReview(importDraft, monthlyPlan, preferredMonthKey = null) {
     const select = document.getElementById("monthReviewSelect");
+    const pickerButton = document.getElementById("monthPickerButton");
+    const pickerDialog = document.getElementById("monthPickerDialog");
+    const pickerCloseButton = document.getElementById("monthPickerCloseButton");
     if (!(select instanceof HTMLElement)) return;
 
     const monthKeys = monthlyPlan.rows.map((row) => row.monthKey);
-    select.innerHTML = monthKeys
-      .slice()
-      .reverse()
-      .map((monthKey) => monthOptionMarkup(monthKey))
-      .join("");
-
     const currentMonthKey = new Date().toLocaleDateString("sv-SE", {
       year: "numeric",
       month: "2-digit",
@@ -397,8 +445,10 @@ export function createMonthReviewNavigation(deps) {
       monthKeys.find((monthKey) => monthKey === currentMonthKey) ??
       monthKeys.find((monthKey) => monthKey >= reviewFocusMonthKey) ??
       monthKeys.at(-1);
+
     if (initialMonth) {
-      select.value = initialMonth;
+      syncMonthSelectValue(select, initialMonth);
+      renderMonthPickerDialog(monthKeys, initialMonth);
       saveViewState({ monthKey: initialMonth });
       renderBaselineSummaryForMonth(importDraft, initialMonth);
       renderSelectedMonthSharedUi(importDraft, initialMonth);
@@ -410,9 +460,53 @@ export function createMonthReviewNavigation(deps) {
     }
 
     select.onchange = () => {
-      saveViewState({ monthKey: select.value });
-      openMonthReview(monthlyPlan, select.value);
+      const selectedMonthKey = readMonthSelectValue(select);
+      if (!selectedMonthKey) {
+        return;
+      }
+      saveViewState({ monthKey: selectedMonthKey });
+      openMonthReview(monthlyPlan, selectedMonthKey);
     };
+
+    if (pickerButton instanceof HTMLElement && pickerDialog instanceof HTMLElement) {
+      pickerButton.onclick = () => {
+        renderMonthPickerDialog(monthKeys, readMonthSelectValue(select));
+        if ("open" in pickerDialog) {
+          pickerDialog.open = true;
+        }
+      };
+    }
+
+    if (pickerCloseButton instanceof HTMLElement && pickerDialog instanceof HTMLElement) {
+      pickerCloseButton.onclick = () => {
+        if ("open" in pickerDialog) {
+          pickerDialog.open = false;
+        }
+      };
+    }
+
+    const pickerList = document.getElementById("monthPickerDialogList");
+    if (pickerList instanceof HTMLElement) {
+      pickerList.onclick = (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        const trigger = target.closest("[data-dialog-month]");
+        if (!(trigger instanceof HTMLElement)) {
+          return;
+        }
+        const monthKey = trigger.getAttribute("data-dialog-month");
+        if (!monthKey) {
+          return;
+        }
+        syncMonthSelectValue(select, monthKey);
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        if (pickerDialog instanceof HTMLElement && "open" in pickerDialog) {
+          pickerDialog.open = false;
+        }
+      };
+    }
   }
 
   return {

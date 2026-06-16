@@ -350,6 +350,15 @@ h2 {
   min-width: 180px;
   width: 100%;
 }
+.select-wrap ui5-input,
+.select-wrap ui5-textarea {
+  width: 100%;
+}
+.select-wrap ui5-checkbox {
+  width: 100%;
+  text-transform: none;
+  letter-spacing: normal;
+}
 .select-wrap input {
   min-width: 100%;
   border: 1px solid var(--line);
@@ -627,6 +636,7 @@ h2 {
     width: 100%;
   }
   #monthReviewSelect,
+  #monthPickerButton,
   #monthPrevButton,
   #monthNextButton {
     width: 100%;
@@ -966,6 +976,53 @@ th:first-child {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin-top: 14px;
 }
+.planner-inputs--tight {
+  margin-top: 14px;
+}
+.wealth-workspace {
+  display: grid;
+  gap: 18px;
+}
+.wealth-workspace-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.wealth-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.wealth-workspace-panel[hidden] {
+  display: none !important;
+}
+.wealth-workspace-panel.is-active {
+  display: block;
+}
+.wealth-advanced-panel {
+  display: block;
+  margin-top: 14px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.wealth-history-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1.05fr);
+  gap: 14px;
+  align-items: start;
+}
+.wealth-history-row {
+  border-left-color: rgba(17, 17, 19, 0.14);
+}
+.wealth-history-row.is-selected {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), var(--shadow-soft);
+}
+.wealth-history-detail {
+  position: sticky;
+  top: 154px;
+  align-self: start;
+}
 .planner-position-card {
   display: grid;
   gap: 10px;
@@ -1051,6 +1108,10 @@ th:first-child {
   align-items: end;
   pointer-events: auto;
 }
+.month-picker {
+  min-width: 15rem;
+  flex: 1 1 16rem;
+}
 .month-nav-bar .eyebrow,
 .month-nav-bar .select-wrap > span {
   color: rgba(243, 245, 249, 0.74);
@@ -1061,9 +1122,41 @@ th:first-child {
 }
 .month-nav-bar .month-picker,
 .month-nav-bar #monthReviewSelect,
-.month-nav-bar button,
+.month-nav-bar #monthPickerButton,
+.month-nav-bar ui5-button,
 .month-nav-bar label {
   pointer-events: auto;
+}
+.month-picker-dialog-copy {
+  color: var(--muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.month-picker-dialog-list {
+  display: grid;
+  gap: 18px;
+  min-width: min(72vw, 42rem);
+  max-height: min(70vh, 38rem);
+  overflow: auto;
+  padding-right: 4px;
+}
+.month-picker-year {
+  display: grid;
+  gap: 10px;
+}
+.month-picker-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 10px;
+}
+.month-picker-option {
+  width: 100%;
+  justify-self: stretch;
+}
+.month-picker-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
 }
 .month-side {
   position: sticky;
@@ -1366,6 +1459,9 @@ th:first-child {
   grid-column: 1 / -1;
   padding-top: 4px;
 }
+.mapping-check ui5-checkbox {
+  width: 100%;
+}
 .detail-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1398,10 +1494,15 @@ th:first-child {
   box-shadow: var(--shadow-soft);
 }
 .reconciliation-action label {
-  display: flex;
-  gap: 10px;
-  align-items: start;
+  display: block;
   color: var(--ink);
+}
+.filter-group ui5-button,
+.reconciliation-footer ui5-button,
+.settings-option,
+.settings-trigger,
+.hero-quit {
+  max-width: 100%;
 }
 .reconciliation-action p {
   margin: 0;
@@ -1452,7 +1553,9 @@ th:first-child {
   }
   .planner-inputs,
   .mapping-fields,
-  .detail-strip {
+  .detail-strip,
+  .wealth-overview-grid,
+  .wealth-history-shell {
     grid-template-columns: 1fr;
   }
   .priority-list {
@@ -1463,6 +1566,9 @@ th:first-child {
     align-items: stretch;
   }
   .month-side {
+    position: static;
+  }
+  .wealth-history-detail {
     position: static;
   }
   .month-nav-bar {

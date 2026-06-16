@@ -1,3 +1,4 @@
+import "./ui5-loader.js";
 import { createProjectionTools } from "./projection-tools.js";
 import { createAppShellTools } from "./browser/app-shell.js";
 import { createAppBindingTools } from "./browser/app-bindings.js";

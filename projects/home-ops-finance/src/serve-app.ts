@@ -134,10 +134,85 @@ function safeJoin(base: string, candidate: string): string | null {
   return target.startsWith(base) ? target : null;
 }
 
+function resolveStaticPath(path: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+
+  if (existsSync(path)) {
+    return path;
+  }
+
+  if (!extname(path)) {
+    for (const suffix of [".js", ".mjs", ".json", ".css", ".html"]) {
+      const candidate = `${path}${suffix}`;
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function rewriteNodeModuleSpecifier(specifier: string): string {
+  if (specifier === "@ui5/webcomponents-base/jsx-runtime") {
+    return "/app/vendor/@ui5/webcomponents-base/dist/jsx-runtime.js";
+  }
+
+  if (specifier === "@ui5/webcomponents-base/jsx-dev-runtime") {
+    return "/app/vendor/@ui5/webcomponents-base/dist/jsx-dev-runtime.js";
+  }
+
+  const mappings = [
+    ["@ui5/", "/app/vendor/@ui5/"],
+    ["@sap-theming/", "/app/vendor/@sap-theming/"],
+    ["@lit-labs/", "/app/vendor/@lit-labs/"],
+    ["lit-html/", "/app/vendor/lit-html/"],
+  ] as const;
+
+  if (specifier === "lit-html") {
+    return "/app/vendor/lit-html/lit-html.js";
+  }
+
+  if (specifier === "ts-custom-error") {
+    return "/app/vendor/ts-custom-error/dist/custom-error.mjs";
+  }
+
+  for (const [prefix, targetPrefix] of mappings) {
+    if (specifier.startsWith(prefix)) {
+      return targetPrefix + specifier.slice(prefix.length);
+    }
+  }
+
+  return specifier;
+}
+
+function rewriteNodeModuleModuleSource(source: string): string {
+  return source
+    .replaceAll("${packageName}/dist/Assets.js", "/app/vendor/${packageName}/dist/Assets.js")
+    .replaceAll("${n}/dist/Assets.js", "/app/vendor/${n}/dist/Assets.js")
+    .replace(/((?:import|export)\s+[^"'`]*?\sfrom\s*["'])([^"']+)(["'])/g, (_match, before, specifier, after) => {
+      return `${before}${rewriteNodeModuleSpecifier(specifier)}${after}`;
+    })
+    .replace(/((?:import)\s*["'])([^"']+)(["'])/g, (_match, before, specifier, after) => {
+      return `${before}${rewriteNodeModuleSpecifier(specifier)}${after}`;
+    })
+    .replace(/(import\(\s*["'])([^"']+)(["']\s*\))/g, (_match, before, specifier, after) => {
+      return `${before}${rewriteNodeModuleSpecifier(specifier)}${after}`;
+    });
+}
+
 function sendFile(path: string, res: ServerResponse): void {
   const ext = extname(path);
   const type = mimeTypes[ext] ?? "text/plain; charset=utf-8";
   res.writeHead(200, noCacheHeaders(type));
+  if ((ext === ".js" || ext === ".mjs") && path.startsWith(nodeModulesDir)) {
+    const source = readFileSync(path, "utf8");
+    res.end(rewriteNodeModuleModuleSource(source));
+    return;
+  }
+
   res.end(readFileSync(path));
 }
 
@@ -784,30 +859,30 @@ const server = createServer(async (req, res) => {
     return sendFile(join(appDir, "index.html"), res);
   }
 
+  if (url.pathname.startsWith("/app/vendor/")) {
+    const path = resolveStaticPath(safeJoin(nodeModulesDir, url.pathname.replace("/app/vendor/", "")));
+    if (path) {
+      return sendFile(path, res);
+    }
+  }
+
   if (url.pathname.startsWith("/app/")) {
-    const path = safeJoin(appDir, url.pathname.replace("/app/", ""));
-    if (path && existsSync(path)) {
+    const path = resolveStaticPath(safeJoin(appDir, url.pathname.replace("/app/", "")));
+    if (path) {
       return sendFile(path, res);
     }
   }
 
   if (url.pathname.startsWith("/src/")) {
-    const path = safeJoin(srcDir, url.pathname.replace("/src/", ""));
-    if (path && existsSync(path)) {
-      return sendFile(path, res);
-    }
-  }
-
-  if (url.pathname.startsWith("/node_modules/")) {
-    const path = safeJoin(nodeModulesDir, url.pathname.replace("/node_modules/", ""));
-    if (path && existsSync(path)) {
+    const path = resolveStaticPath(safeJoin(srcDir, url.pathname.replace("/src/", "")));
+    if (path) {
       return sendFile(path, res);
     }
   }
 
   if (url.pathname.startsWith("/data/")) {
-    const path = safeJoin(dataDir, url.pathname.replace("/data/", ""));
-    if (path && existsSync(path)) {
+    const path = resolveStaticPath(safeJoin(dataDir, url.pathname.replace("/data/", "")));
+    if (path) {
       return sendFile(path, res);
     }
   }

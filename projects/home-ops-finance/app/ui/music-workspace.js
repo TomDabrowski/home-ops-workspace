@@ -288,7 +288,7 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
       <td>${euro.format(row.expenses)}</td>
       <td>${euro.format(row.estimatedTax)}</td>
       <td>${euro.format(row.afterTaxAmount)}</td>
-      <td><button class="pill" type="button" data-music-month-edit="${row.monthKey}" data-music-month-gross="${row.gross}">Im Editor öffnen</button></td>
+      <td><ui5-button class="pill" design="Transparent" data-music-month-edit="${row.monthKey}" data-music-month-gross="${row.gross}">Im Editor öffnen</ui5-button></td>
     </tr>
   `);
 
@@ -303,7 +303,7 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
       const applyEditorValues = () => {
         const amountField = document.getElementById("musicIncomeActualAmount");
         const dateField = document.getElementById("musicIncomeActualDate");
-        if (!(amountField instanceof HTMLInputElement) || !(dateField instanceof HTMLInputElement)) {
+        if (!amountField || !dateField || !("value" in amountField) || !("value" in dateField)) {
           return;
         }
 
@@ -317,8 +317,16 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
       };
 
       const monthSelect = document.getElementById("monthReviewSelect");
-      if (monthSelect && "value" in monthSelect && monthSelect.value !== targetMonthKey) {
-        monthSelect.value = targetMonthKey;
+      const selectedMonthValue = monthSelect instanceof HTMLElement
+        ? String(("value" in monthSelect ? monthSelect.value : monthSelect.getAttribute("value")) ?? "").trim()
+        : "";
+      if (monthSelect && selectedMonthValue !== targetMonthKey) {
+        if ("value" in monthSelect) {
+          monthSelect.value = targetMonthKey;
+        }
+        if (monthSelect instanceof HTMLElement) {
+          monthSelect.setAttribute("value", targetMonthKey);
+        }
         monthSelect.dispatchEvent(new Event("change", { bubbles: true }));
         window.setTimeout(applyEditorValues, 0);
         return;

@@ -100,7 +100,11 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
   minimumMusicGrossPerMonthInput.value = plannerSettings.minimumMusicGrossPerMonth;
   for (const button of replacementRatePresetButtons) {
     const preset = Number(button.getAttribute("data-replacement-rate-preset"));
-    button.classList.toggle("is-active", Number.isFinite(preset) && preset === Number(plannerSettings.replacementRate));
+    const isActive = Number.isFinite(preset) && preset === Number(plannerSettings.replacementRate);
+    button.classList.toggle("is-active", isActive);
+    if (button.tagName === "UI5-BUTTON") {
+      button.setAttribute("design", isActive ? "Emphasized" : "Transparent");
+    }
   }
 
   function setPlannerError(messages = []) {
@@ -214,7 +218,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       replacementPresetWrap.hidden = !isReplacement;
     }
     if (retirementSpendInput) {
-      retirementSpendInput.readOnly = isReplacement;
+      retirementSpendInput.readonly = isReplacement;
       retirementSpendInput.tabIndex = isReplacement ? -1 : 0;
     }
   }
@@ -885,7 +889,11 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       }
       replacementRateInput.value = String(value);
       for (const presetButton of replacementRatePresetButtons) {
-        presetButton.classList.toggle("is-active", presetButton === button);
+        const isActive = presetButton === button;
+        presetButton.classList.toggle("is-active", isActive);
+        if (presetButton.tagName === "UI5-BUTTON") {
+          presetButton.setAttribute("design", isActive ? "Emphasized" : "Transparent");
+        }
       }
       try {
         update();

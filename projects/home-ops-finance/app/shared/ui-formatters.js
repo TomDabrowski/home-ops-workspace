@@ -35,14 +35,14 @@ export function escapeHtml(value) {
 }
 
 export function focusAndSelectField(field) {
-  if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) {
+  if (!field || typeof field.focus !== "function" || !("value" in field)) {
     return;
   }
 
   window.requestAnimationFrame(() => {
     field.focus();
     if (typeof field.setSelectionRange === "function") {
-      const end = field.value.length;
+      const end = String(field.value ?? "").length;
       field.setSelectionRange(end, end);
     }
   });

@@ -61,8 +61,10 @@ export function createAppShellTools(config) {
   }
 
   function viewStateMonthValue(monthSelect) {
-    if (monthSelect && "value" in monthSelect) {
-      return String(monthSelect.value ?? "") || null;
+    if (monthSelect instanceof HTMLElement) {
+      const propertyValue = "value" in monthSelect ? String(monthSelect.value ?? "").trim() : "";
+      const attributeValue = String(monthSelect.getAttribute("value") ?? "").trim();
+      return propertyValue || attributeValue || null;
     }
     return null;
   }
@@ -115,6 +117,9 @@ export function createAppShellTools(config) {
     if (button) {
       button.textContent = enabled ? "Entwicklermodus an" : "Entwicklermodus aus";
       button.classList.toggle("is-active", enabled);
+      if (button.tagName === "UI5-BUTTON") {
+        button.setAttribute("design", enabled ? "Emphasized" : "Transparent");
+      }
     }
 
     const tooltipButton = document.getElementById("formulaTooltipButton");
@@ -124,6 +129,9 @@ export function createAppShellTools(config) {
       tooltipButton.disabled = false;
       tooltipButton.textContent = tooltipEnabled ? "Rechen-Tooltips an" : "Rechen-Tooltips aus";
       tooltipButton.classList.toggle("is-active", tooltipEnabled);
+      if (tooltipButton.tagName === "UI5-BUTTON") {
+        tooltipButton.setAttribute("design", tooltipEnabled ? "Emphasized" : "Transparent");
+      }
     }
 
     for (const element of document.querySelectorAll("[data-dev-only=\"true\"]")) {
@@ -147,6 +155,9 @@ export function createAppShellTools(config) {
       const darkEnabled = mode === "dark";
       button.textContent = darkEnabled ? "Dark Mode an" : "Dark Mode aus";
       button.classList.toggle("is-active", darkEnabled);
+      if (button.tagName === "UI5-BUTTON") {
+        button.setAttribute("design", darkEnabled ? "Emphasized" : "Transparent");
+      }
     }
   }
 

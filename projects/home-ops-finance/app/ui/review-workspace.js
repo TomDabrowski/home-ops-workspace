@@ -47,8 +47,7 @@ export function renderReconciliation(row, deps) {
         (action, index) => `
           <div class="reconciliation-action">
             <label>
-              <input type="checkbox" data-action-index="${index}" ${action.done ? "checked" : ""}>
-              <span>${action.label}</span>
+              <ui5-checkbox data-action-index="${index}" text="${action.label}" ${action.done ? "checked" : ""}></ui5-checkbox>
             </label>
             <p>${action.suggestion}</p>
           </div>
@@ -69,9 +68,9 @@ export function renderReconciliation(row, deps) {
 
     const nextValue = {
       status: statusSelect.value,
-      note: noteField.value.trim(),
+      note: String(noteField.value ?? "").trim(),
       actions: reconciliation.actions.map((action, index) => {
-        const checkbox = actionsTarget.querySelector(`input[data-action-index="${index}"]`);
+        const checkbox = actionsTarget.querySelector(`[data-action-index="${index}"]`);
         return {
           ...action,
           done: Boolean(checkbox?.checked),
@@ -143,19 +142,18 @@ export function renderEntryMappings(importDraft, review, deps) {
             <div class="mapping-fields">
               <label class="select-wrap">
                 <span>Kategorie</span>
-                <select data-mapping-category="${entry.id}">
+                <ui5-select data-mapping-category="${entry.id}">
                   ${optionMarkup(incomeOptions, mapping.categoryId)}
-                </select>
+                </ui5-select>
               </label>
               <label class="select-wrap">
                 <span>Zielkonto</span>
-                <select data-mapping-account="${entry.id}">
+                <ui5-select data-mapping-account="${entry.id}">
                   ${optionMarkup(accountOptions, mapping.accountId)}
-                </select>
+                </ui5-select>
               </label>
               <label class="mapping-check">
-                <input type="checkbox" data-mapping-reviewed="${entry.id}" ${mapping.reviewed ? "checked" : ""}>
-                <span>Geprüft</span>
+                <ui5-checkbox data-mapping-reviewed="${entry.id}" text="Geprüft" ${mapping.reviewed ? "checked" : ""}></ui5-checkbox>
               </label>
             </div>
           </div>
@@ -182,19 +180,18 @@ export function renderEntryMappings(importDraft, review, deps) {
             <div class="mapping-fields">
               <label class="select-wrap">
                 <span>Kategorie</span>
-                <select data-mapping-category="${entry.id}">
+                <ui5-select data-mapping-category="${entry.id}">
                   ${optionMarkup(expenseOptions, mapping.categoryId)}
-                </select>
+                </ui5-select>
               </label>
               <label class="select-wrap">
                 <span>Zielkonto</span>
-                <select data-mapping-account="${entry.id}">
+                <ui5-select data-mapping-account="${entry.id}">
                   ${optionMarkup(accountOptions, mapping.accountId)}
-                </select>
+                </ui5-select>
               </label>
               <label class="mapping-check">
-                <input type="checkbox" data-mapping-reviewed="${entry.id}" ${mapping.reviewed ? "checked" : ""}>
-                <span>Geprüft</span>
+                <ui5-checkbox data-mapping-reviewed="${entry.id}" text="Geprüft" ${mapping.reviewed ? "checked" : ""}></ui5-checkbox>
               </label>
             </div>
           </div>

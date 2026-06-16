@@ -133,7 +133,7 @@ export function renderForecastPlanner(importDraft, deps) {
     const nextSafetyThreshold = Number(safetyField.value);
     const nextMusicThreshold = Number(musicField.value);
     const nextMusicThresholdAccountId = musicAccountField.value || "savings";
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!Number.isFinite(nextSafetyThreshold) || nextSafetyThreshold < 0 || !Number.isFinite(nextMusicThreshold) || nextMusicThreshold < 0) {
       metaTarget.textContent = "Bitte gültige Schwellen eintragen.";
@@ -235,10 +235,10 @@ export function renderSalaryPlanner(importDraft, deps) {
               <p>${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
             </div>
             <div class="filter-group">
-              <button class="pill" type="button" data-salary-edit="${entry.id}">Bearbeiten</button>
-              <button class="pill" type="button" data-salary-toggle="${entry.id}">
+              <ui5-button class="pill" design="Transparent" data-salary-edit="${entry.id}">Bearbeiten</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-salary-toggle="${entry.id}">
                 ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
-              </button>
+              </ui5-button>
             </div>
           </div>
           <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
@@ -302,7 +302,7 @@ export function renderSalaryPlanner(importDraft, deps) {
     const editingId = saveButton.dataset.editingId ?? "";
     const netSalaryAmount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value;
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!Number.isFinite(netSalaryAmount) || netSalaryAmount <= 0 || !effectiveFrom) {
       metaTarget.textContent = "Bitte Nettogehalt und Monat eintragen.";
@@ -459,7 +459,7 @@ export function renderMusicTaxPlanner(importDraft, deps) {
     const quarterlyPrepaymentAmount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value;
     const annualBaseTaxableIncome = Number(baseIncomeField.value);
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!Number.isFinite(quarterlyPrepaymentAmount) || quarterlyPrepaymentAmount < 0 || !effectiveFrom) {
       metaTarget.textContent = "Bitte gültigen Quartalsbetrag und gültig-ab-Monat eintragen.";
@@ -558,10 +558,10 @@ export function renderMusicForecastPlanner(importDraft, deps) {
                 <p>Gültig ab ${entry.effectiveFrom} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
               </div>
               <div class="filter-group">
-                <button class="pill" type="button" data-music-forecast-edit="${entry.id}">Bearbeiten</button>
-                <button class="pill" type="button" data-music-forecast-toggle="${entry.id}">
+                <ui5-button class="pill" design="Transparent" data-music-forecast-edit="${entry.id}">Bearbeiten</ui5-button>
+                <ui5-button class="pill" design="Transparent" data-music-forecast-toggle="${entry.id}">
                   ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
-                </button>
+                </ui5-button>
               </div>
             </div>
             <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
@@ -610,7 +610,7 @@ export function renderMusicForecastPlanner(importDraft, deps) {
     const editingId = saveButton.dataset.editingId ?? "";
     const grossAmount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value || suggestedMonth;
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!Number.isFinite(grossAmount) || grossAmount < 0 || !effectiveFrom) {
       metaTarget.textContent = "Bitte Bruttobetrag und gültig-ab-Monat eintragen.";

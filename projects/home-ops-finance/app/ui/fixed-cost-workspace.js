@@ -110,7 +110,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
   const fixedCostNote = bindAutoNote(
     notesField,
     () => {
-      const label = labelField.value.trim() || "Grundplan-Posten";
+      const label = String(labelField.value ?? "").trim() || "Grundplan-Posten";
       const category = baselineCategoryLabel(categoryField.value || "fixed");
       const stopMode = saveButton.dataset.stopMode === "true";
       if (stopMode) {
@@ -133,7 +133,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     amountField.value = "";
     effectiveFromField.value = suggestedMonth;
     endDateField.value = todayIsoDate();
-    labelField.readOnly = false;
+    labelField.readonly = false;
     saveButton.dataset.editingId = "";
     saveButton.dataset.sourceLineItemId = "";
     saveButton.dataset.stopMode = "";
@@ -157,10 +157,10 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
               <p>${baselineCategoryLabel(entry.category ?? "fixed")} · ab ${entry.effectiveFrom} · ${isStopEntry ? `${entry.endDate ? `gekündigt zum ${formatDisplayDate(entry.endDate)}` : "endet ab diesem Monat"}` : `${euro.format(entry.amount)} pro Monat`} · ${entry.isActive === false ? "deaktiviert" : "aktiv"}</p>
             </div>
             <div class="filter-group">
-              <button class="pill" type="button" data-fixed-cost-edit="${entry.id}">Bearbeiten</button>
-              <button class="pill" type="button" data-fixed-cost-toggle="${entry.id}">
+              <ui5-button class="pill" design="Transparent" data-fixed-cost-edit="${entry.id}">Bearbeiten</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-fixed-cost-toggle="${entry.id}">
                 ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
-              </button>
+              </ui5-button>
             </div>
           </div>
           <p class="section-copy">${entry.notes || "Keine Notiz."}</p>
@@ -196,7 +196,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       effectiveFromField.value = entry.effectiveFrom ?? suggestedMonth;
       endDateField.value = entry.endDate ?? todayIsoDate();
       fixedCostNote.setManualValue(entry.notes ?? "");
-      labelField.readOnly = Boolean(entry.sourceLineItemId);
+      labelField.readonly = Boolean(entry.sourceLineItemId);
       saveButton.textContent = "Fixkosten aktualisieren";
       metaTarget.textContent = `Bearbeite gerade: ${entry.label}`;
       updateStopModeUi();
@@ -244,7 +244,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       categoryField.value = source.category ?? "fixed";
       amountField.value = String(editorValueFromStoredAmount(categoryField.value, source.amount));
       effectiveFromField.value = suggestedMonth;
-      labelField.readOnly = true;
+      labelField.readonly = true;
       categoryField.disabled = true;
       saveButton.textContent = "Grundplan-Override speichern";
       metaTarget.textContent = `Bearbeitungsmodus aktiv für bestehenden Posten: ${source.label}`;
@@ -268,7 +268,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
       categoryField.value = source.category ?? "fixed";
       amountField.value = "";
       endDateField.value = todayIsoDate();
-      labelField.readOnly = true;
+      labelField.readonly = true;
       categoryField.disabled = true;
       saveButton.textContent = "Kündigung speichern";
       metaTarget.textContent = `Kündigungsmodus aktiv für ${source.label}. Wähle jetzt das Kündigungsdatum aus und speichere dann.`;
@@ -284,12 +284,12 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     const nextEditingId = saveButton.dataset.editingId ?? "";
     const nextSourceLineItemId = saveButton.dataset.sourceLineItemId ?? "";
     const stopMode = saveButton.dataset.stopMode === "true";
-    const label = labelField.value.trim();
+    const label = String(labelField.value ?? "").trim();
     const category = categoryField.value || "fixed";
     const rawAmount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value || suggestedMonth;
     const endDate = endDateField.value || todayIsoDate();
-    const notes = notesField.value.trim();
+    const notes = String(notesField.value ?? "").trim();
 
     if (!label) {
       metaTarget.textContent = "Bitte einen Namen für den Grundplan-Posten eintragen.";

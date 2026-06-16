@@ -19,7 +19,7 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
   const monthCompareTarget = document.getElementById("statsMonthCompare");
   const recurringTarget = document.getElementById("statsRecurringList");
   const yearSelect = document.getElementById("statsYearSelect");
-  if (!kpiTarget || !monthCompareTarget || !recurringTarget || !(yearSelect instanceof HTMLSelectElement)) {
+  if (!kpiTarget || !monthCompareTarget || !recurringTarget || !yearSelect || !("value" in yearSelect)) {
     return;
   }
 
@@ -224,10 +224,10 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
 
   if (availableYears.length > 0) {
     const selectedYear = Number(yearSelect.value);
-    yearSelect.innerHTML = availableYears.map((year) => `<option value="${year}">${year}</option>`).join("");
+    yearSelect.innerHTML = availableYears.map((year) => `<ui5-option value="${year}">${year}</ui5-option>`).join("");
     yearSelect.value = availableYears.includes(selectedYear) ? String(selectedYear) : String(availableYears[0]);
   } else {
-    yearSelect.innerHTML = `<option value="">-</option>`;
+    yearSelect.innerHTML = `<ui5-option value="">-</ui5-option>`;
   }
 
   const selectedYear = Number(yearSelect.value);
@@ -363,4 +363,3 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
 
   yearSelect.onchange = () => renderStatisticsWorkspace(importDraft, monthlyPlan, deps);
 }
-
