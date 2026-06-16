@@ -20,7 +20,6 @@
     "serve:app:server": "HOME_OPS_FINANCE_SERVER_MODE=1 HOME_OPS_FINANCE_HOST=0.0.0.0 node --experimental-strip-types src/serve-app.ts"
   },
   "dependencies": {
-    "@home-ops/framework": "file:../../../home-ops-framework",
     "@ui5/webcomponents": "^2.23.1",
     "@ui5/webcomponents-fiori": "^2.23.1"
   },

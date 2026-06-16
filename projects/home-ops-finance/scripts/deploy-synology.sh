@@ -21,7 +21,6 @@ DEPLOY_CONTAINER_NAME="${DEPLOY_CONTAINER_NAME:-home-ops-finance}"
 DEPLOY_IMAGE_TAG="${DEPLOY_IMAGE_TAG:-home-ops-finance:synology}"
 DEPLOY_SSH_IDENTITY="${DEPLOY_SSH_IDENTITY:-}"
 DEPLOY_REMOTE_SUDO_PASSWORD="${DEPLOY_REMOTE_SUDO_PASSWORD:-}"
-FRAMEWORK_ROOT="$(cd "${PROJECT_ROOT}/../../../home-ops-framework" && pwd)"
 BUILD_NUMBER="$(git -C "${PROJECT_ROOT}" rev-list --count HEAD 2>/dev/null || echo 0)"
 GIT_REVISION="$(git -C "${PROJECT_ROOT}" rev-parse --short HEAD 2>/dev/null || echo "")"
 
@@ -65,17 +64,6 @@ COPYFILE_DISABLE=1 tar \
   --exclude='.DS_Store' \
   -C "${PROJECT_ROOT}" \
   -cf - . | ssh "${SSH_ARGS[@]}" "${SSH_TARGET}" "tar -xf - -C '${DEPLOY_APP_DIR}'"
-
-ssh "${SSH_ARGS[@]}" "${SSH_TARGET}" "mkdir -p '${DEPLOY_APP_DIR}/.deploy-deps/home-ops-framework'"
-
-COPYFILE_DISABLE=1 tar \
-  --format=ustar \
-  --no-mac-metadata \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='.DS_Store' \
-  -C "${FRAMEWORK_ROOT}" \
-  -cf - . | ssh "${SSH_ARGS[@]}" "${SSH_TARGET}" "tar -xf - -C '${DEPLOY_APP_DIR}/.deploy-deps/home-ops-framework'"
 
 echo "Building image and restarting container on ${SSH_TARGET} ..."
 REMOTE_BUILD_CMD="set -euo pipefail; \

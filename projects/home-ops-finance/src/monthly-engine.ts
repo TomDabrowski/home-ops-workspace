@@ -11,7 +11,6 @@ import type {
   MonthlyBaseline,
   WealthBucket,
 } from "./types.js";
-import { remainingMonthFraction } from "@home-ops/framework/months";
 import { ensureFinanceDataDir, financeDataPath } from "./local-config.ts";
 import { assertImportDraft } from "./persistence-validation.ts";
 import {
@@ -25,6 +24,7 @@ import {
   monthFromDate,
   incomeMonthKey,
   roundCurrency,
+  remainingMonthFraction,
   selectBaselineForMonth,
   selectBaselineLineItemsForMonth,
   selectExpenseEntriesForMonth,

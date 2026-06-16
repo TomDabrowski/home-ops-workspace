@@ -1,6 +1,5 @@
 import type { ForecastWealthAnchor } from "./types.js";
-import { remainingMonthFraction } from "@home-ops/framework/months";
-import { monthFromDate, roundCurrency } from "./monthly-planning-helpers.ts";
+import { monthFromDate, remainingMonthFraction, roundCurrency } from "./monthly-planning-helpers.ts";
 
 export interface MonthlyForecastRoutingInput {
   monthKey: string;
