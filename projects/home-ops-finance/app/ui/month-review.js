@@ -15,29 +15,25 @@ export function renderMonthTagesgeldWithdrawalHint(review, deps) {
   const checkingLabel = escapeHtml(review.row.requiredTagesgeldWithdrawalDestinationLabel ?? giroAccountLabel ?? "Girokonto");
 
   if (shortfall > 0.009) {
-    target.className = "mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-warn";
+    target.className = "month-tagesgeld-withdrawal-hint is-warn";
     target.innerHTML = `
-      <div class="mapping-card-head">
-        <strong>Tagesgeld-Entnahme für den Monatsplan</strong>
-      </div>
-      <p class="section-copy">
+      <ui5-message-strip design="Warning" hide-close-button class="month-message-strip">
+        <strong>Tagesgeld-Entnahme für den Monatsplan</strong><br>
         Für <strong>${escapeHtml(monthKey)}</strong> übersteigen die Monatsausgaben das, was aus Hauptgehalt-Rest und geplanten Zuflüssen übrig bleibt —
         der Saldo „Übrig nach allem“ liegt bei <strong>${euro.format(net)}</strong>.
         Plane voraussichtlich <strong>${euro.format(shortfall)}</strong> vom <strong>Tagesgeld</strong> auf <strong>${checkingLabel}</strong>.
-      </p>
-      <p class="mapping-source">Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.</p>
+        <br><span class="mapping-source">Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.</span>
+      </ui5-message-strip>
     `;
     return;
   }
 
-  target.className = "mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-ok";
+  target.className = "month-tagesgeld-withdrawal-hint is-ok";
   target.innerHTML = `
-    <div class="mapping-card-head">
-      <strong>Tagesgeld und Monatsplan</strong>
-    </div>
-    <p class="section-copy">
+    <ui5-message-strip design="Positive" hide-close-button class="month-message-strip">
+      <strong>Tagesgeld und Monatsplan</strong><br>
       Für <strong>${escapeHtml(monthKey)}</strong> ist keine zusätzliche Entnahme aus dem Tagesgeld nötig (Übrig nach allem: ${euro.format(net)}).
-    </p>
+    </ui5-message-strip>
   `;
 }
 

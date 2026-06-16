@@ -374,38 +374,46 @@ export function renderMusicTaxPlanner(importDraft, deps) {
 
   const amountField = document.getElementById("musicTaxQuarterlyAmount");
   const effectiveFromField = document.getElementById("musicTaxEffectiveFrom");
+  const baseIncomeField = document.getElementById("musicTaxBaseIncomeAnnual");
   const notesField = document.getElementById("musicTaxNotes");
   const metaTarget = document.getElementById("musicTaxMeta");
   const summaryTarget = document.getElementById("musicTaxSummary");
   const saveButton = document.getElementById("saveMusicTaxButton");
 
-  if (!amountField || !effectiveFromField || !notesField || !metaTarget || !summaryTarget || !saveButton) {
+  if (!amountField || !effectiveFromField || !baseIncomeField || !notesField || !metaTarget || !summaryTarget || !saveButton) {
     return;
   }
 
   const stored = readMusicTaxSettings();
   const workbookDefault = assumptionNumber(importDraft, "music_tax_prepayment_quarterly_amount", 501);
+  const workbookBaseIncome = assumptionNumber(importDraft, "music_tax_base_income_annual", NaN);
   const currentAmount = Number(stored?.quarterlyPrepaymentAmount ?? workbookDefault);
   const currentEffectiveFrom =
     currentSelectedMonthKey() ??
     stored?.effectiveFrom ??
     importDraft.monthlyBaselines.find((entry) => entry.monthKey >= "2026-01")?.monthKey ??
     "2026-03";
+  const currentBaseIncome = Number(stored?.annualBaseTaxableIncome ?? workbookBaseIncome);
 
   amountField.value = Number.isFinite(currentAmount) ? String(currentAmount) : String(workbookDefault);
   effectiveFromField.value = currentEffectiveFrom;
+  baseIncomeField.value = Number.isFinite(currentBaseIncome) ? String(currentBaseIncome) : "";
   notesField.value = stored?.notes ?? "";
   const musicTaxNote = bindAutoNote(
     notesField,
     () => {
       const amount = Number(amountField.value);
       const effectiveFrom = effectiveFromField.value || currentEffectiveFrom;
+      const baseIncome = Number(baseIncomeField.value);
       if (Number.isFinite(amount) && amount >= 0) {
-        return `Quartals-Steuer-Vorauszahlung ab ${effectiveFrom}: ${euro.format(amount)} pro Quartal.`;
+        const basePart = Number.isFinite(baseIncome) && baseIncome >= 0
+          ? ` Steuerbasis vor Musik p.a.: ${euro.format(baseIncome)}.`
+          : "";
+        return `Quartals-Steuer-Vorauszahlung ab ${effectiveFrom}: ${euro.format(amount)} pro Quartal.${basePart}`;
       }
       return `Quartals-Steuer-Vorauszahlung ab ${effectiveFrom}.`;
     },
-    [amountField, effectiveFromField],
+    [amountField, effectiveFromField, baseIncomeField],
   );
   if (stored?.notes) {
     musicTaxNote.setManualValue(stored.notes);
@@ -418,24 +426,39 @@ export function renderMusicTaxPlanner(importDraft, deps) {
     ? `Zuletzt gespeichert: ${formatHistoryTimestamp(stored.updatedAt)} · Speicherort: ${persistenceLabel}`
     : `Noch keine eigene Steuer-Vorauszahlung gespeichert · Speicherort: ${persistenceLabel}`;
 
-  const quarterMonths = currentMonthlyPlan()?.rows
-    .map((row) => row.monthKey)
-    .filter((monthKey, index, all) =>
-      monthKey >= currentEffectiveFrom &&
-      ["03", "06", "09", "12"].includes(monthKey.slice(5, 7)) &&
-      all.indexOf(monthKey) === index,
-    )
-    .slice(0, 4) ?? [];
+  function updateSummary() {
+    const selectedAmount = Number(amountField.value);
+    const selectedEffectiveFrom = effectiveFromField.value || currentEffectiveFrom;
+    const selectedBaseIncome = Number(baseIncomeField.value);
+    const quarterMonths = currentMonthlyPlan()?.rows
+      .map((row) => row.monthKey)
+      .filter((monthKey, index, all) =>
+        monthKey >= selectedEffectiveFrom &&
+        ["03", "06", "09", "12"].includes(monthKey.slice(5, 7)) &&
+        all.indexOf(monthKey) === index,
+      )
+      .slice(0, 4) ?? [];
+    const baseIncomeSummary = Number.isFinite(selectedBaseIncome) && selectedBaseIncome >= 0
+      ? `${euro.format(selectedBaseIncome)} p.a. als manuelle Steuerbasis vor Musik.`
+      : "Kein manueller Override gespeichert. Dann rechnet die App automatisch erst mit bekanntem Hauptgehalt brutto und sonstigen Nicht-Musik-Einnahmen, sonst als Fallback grob aus Gehalt netto plus sonstigen Einnahmen.";
 
-  summaryTarget.innerHTML = [
-    `<div class="mapping-card"><strong>Aktuell geplant</strong><p>${euro.format(currentAmount)} pro Quartal ab ${currentEffectiveFrom}.</p></div>`,
-    `<div class="mapping-card"><strong>Betroffene Quartale zuerst</strong><p>${quarterMonths.length > 0 ? quarterMonths.map(quarterLabel).join(" · ") : "Noch keine künftigen Quartalsmonate im Plan."}</p></div>`,
-    `<div class="mapping-card"><strong>Wichtig</strong><p>Zusätzliche echte Nachzahlungen oder Erstattungen kannst du weiterhin als normale Monatsausgabe bzw. Einnahme pflegen.</p></div>`,
-  ].join("");
+    summaryTarget.innerHTML = [
+      `<div class="mapping-card"><strong>Aktuell geplant</strong><p>${euro.format(Number.isFinite(selectedAmount) ? selectedAmount : currentAmount)} pro Quartal ab ${selectedEffectiveFrom}.</p></div>`,
+      `<div class="mapping-card"><strong>Steuerbasis vor Musik</strong><p>${baseIncomeSummary}</p></div>`,
+      `<div class="mapping-card"><strong>Betroffene Quartale zuerst</strong><p>${quarterMonths.length > 0 ? quarterMonths.map(quarterLabel).join(" · ") : "Noch keine künftigen Quartalsmonate im Plan."}</p></div>`,
+      `<div class="mapping-card"><strong>Wichtig</strong><p>Ohne manuellen Override rechnet der Musik-Reiter automatisch. Wenn du hier trotzdem einen Wert einträgst, überschreibt er die Auto-Basis bewusst. Zusätzliche echte Nachzahlungen oder Erstattungen kannst du weiterhin als normale Monatsausgabe bzw. Einnahme pflegen.</p></div>`,
+    ].join("");
+  }
+
+  updateSummary();
+  amountField.oninput = updateSummary;
+  effectiveFromField.oninput = updateSummary;
+  baseIncomeField.oninput = updateSummary;
 
   saveButton.onclick = async () => {
     const quarterlyPrepaymentAmount = Number(amountField.value);
     const effectiveFrom = effectiveFromField.value;
+    const annualBaseTaxableIncome = Number(baseIncomeField.value);
     const notes = notesField.value.trim();
 
     if (!Number.isFinite(quarterlyPrepaymentAmount) || quarterlyPrepaymentAmount < 0 || !effectiveFrom) {
@@ -450,6 +473,9 @@ export function renderMusicTaxPlanner(importDraft, deps) {
     const result = await saveMusicTaxSettings({
       quarterlyPrepaymentAmount,
       effectiveFrom,
+      annualBaseTaxableIncome: Number.isFinite(annualBaseTaxableIncome) && annualBaseTaxableIncome >= 0
+        ? annualBaseTaxableIncome
+        : undefined,
       notes,
       isActive: true,
       updatedAt: new Date().toISOString(),

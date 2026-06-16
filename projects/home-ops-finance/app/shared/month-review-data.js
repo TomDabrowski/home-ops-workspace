@@ -12,6 +12,7 @@ export function createMonthReviewDataTools(deps) {
     roundCurrency,
     readMonthlyExpenseOverrides,
     readMonthlyMusicIncomeOverrides,
+    readMusicTaxSettings = () => null,
     buildMusicYearData,
     monthFromDate,
     euro,
@@ -81,6 +82,7 @@ export function createMonthReviewDataTools(deps) {
           incomeMonthKey,
           monthFromDate,
           roundCurrency,
+          readMusicTaxSettings,
         })
       : null;
     const reserveRate = Number(yearTaxData?.effectiveRate ?? fallbackReserveRatio);

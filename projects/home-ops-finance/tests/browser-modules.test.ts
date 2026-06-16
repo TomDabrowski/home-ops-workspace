@@ -7,7 +7,7 @@ import { createPlannerSettingsStore } from "../app/browser/planner-settings.js";
 // @ts-ignore
 import { createReviewStateTools } from "../app/browser/review-state.js";
 // @ts-ignore
-import { renderMonthlyExpenseEditor } from "../app/ui/workflow-planners.js";
+import { renderMonthlyExpenseEditor, renderWealthSnapshotPlanner } from "../app/ui/workflow-planners.js";
 // @ts-ignore
 import { renderValidationSignals } from "../app/ui/overview-dashboard.js";
 // @ts-ignore
@@ -320,6 +320,239 @@ test("movement editor keeps multiple manual incomes separate", async () => {
   } finally {
     Date.now = originalDateNow;
     Math.random = originalMathRandom;
+    globalThis.document = originalDocument;
+  }
+});
+
+test("wealth position update stores a new snapshot with inherited balances for untouched positions", async () => {
+  const originalDocument = globalThis.document;
+  const field = (value: unknown, extra: Record<string, unknown> = {}) => ({
+    value,
+    dataset: {},
+    addEventListener() {},
+    ...extra,
+  });
+
+  const listLike = () => ({
+    innerHTML: "",
+    querySelectorAll() {
+      return [];
+    },
+  });
+
+  const elements = new Map<string, Record<string, unknown>>([
+    ["wealthSnapshotDate", field("")],
+    ["wealthSnapshotCashGiroAmount", field("0", { oninput: null })],
+    ["wealthSnapshotCashTradeRepublicAmount", field("0", { oninput: null })],
+    ["wealthSnapshotCashScalableAmount", field("0", { oninput: null })],
+    ["wealthSnapshotInvestmentAmount", field("0")],
+    ["wealthSnapshotCashTotal", field("")],
+    ["wealthSnapshotNotes", field("")],
+    ["wealthSnapshotMonthStartEnabled", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotMonthStartMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotFixedExpensesIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotSalaryIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotSalaryIncludedForMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotMusicIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotMusicIncludedForMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotMusicThresholdBeforeAmount", field("", { disabled: true, onchange: null })],
+    ["wealthSnapshotBasisInvestmentState", field("open")],
+    ["wealthSnapshotExtraExpensesIncluded", { checked: false, addEventListener() {} }],
+    ["wealthPositionUpdateDate", field("2026-06-15T18:00", { onchange: null })],
+    ["wealthPositionUpdateTarget", field("investment", { onchange: null })],
+    ["wealthPositionUpdateAmount", field("20500")],
+    ["wealthPositionUpdateNotes", field("")],
+    ["wealthPositionUpdateQuickTargets", listLike()],
+    ["wealthPositionUpdateMeta", { textContent: "" }],
+    ["saveWealthPositionUpdateButton", { onclick: null }],
+    ["wealthSnapshotMeta", { textContent: "" }],
+    ["wealthSnapshotList", listLike()],
+    ["wealthSnapshotHistorySummary", { textContent: "" }],
+    ["saveWealthSnapshotButton", { dataset: {}, textContent: "Ist-Stand speichern", onclick: null }],
+    ["clearWealthSnapshotsButton", { hidden: true, onclick: null }],
+  ]);
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return elements.get(id) ?? null;
+    },
+  } as typeof globalThis.document;
+
+  let savedSnapshots: Record<string, unknown>[] = [
+    {
+      id: "snapshot-1",
+      snapshotDate: "2026-06-14T12:00",
+      cashAccounts: { giro: 158, cash: 35, savings: 9745.32 },
+      cashAmount: 9938.32,
+      investmentAmount: 17899.88,
+      monthlyStatus: { basisInvestmentState: "included" },
+      isActive: true,
+      updatedAt: "2026-06-14T12:00:00.000Z",
+    },
+  ];
+  let refreshStatus: any = null;
+
+  try {
+    renderWealthSnapshotPlanner({}, {
+      readWealthSnapshots: () => savedSnapshots,
+      clearWealthSnapshotsLocal: () => ({ mode: "browser" }),
+      localDateTimeInputValue: () => "2026-06-15T18:00",
+      monthFromDate: (value: string) => String(value).slice(0, 7),
+      currentSelectedMonthKey: () => "2026-06",
+      monthReviewRowForMonth: () => ({ safetyBucketEndAmount: 10000, investmentBucketEndAmount: 21000 }),
+      wealthSnapshotCashAccounts: (entry: any) => entry?.cashAccounts ?? { giro: 0, cash: 0, savings: 0 },
+      wealthSnapshotCashTotal: (entry: any) => Number(entry?.cashAmount ?? 0),
+      roundCurrency: (value: number) => Math.round(value * 100) / 100,
+      euro: new Intl.NumberFormat("de-DE", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 2,
+      }),
+      wealthSnapshotsPersistence: "project",
+      formatHistoryTimestamp: (value: string) => value,
+      formatDisplayDate: (value: string) => value,
+      async saveWealthSnapshots(nextState: Record<string, unknown>[]) {
+        savedSnapshots = nextState;
+        return { mode: "project" };
+      },
+      async refreshFinanceView(status: any) {
+        refreshStatus = status;
+      },
+      statusDetailForMode: () => "Projektdatei",
+      confirmAction: () => true,
+    });
+
+    const saveButton = elements.get("saveWealthPositionUpdateButton") as { onclick?: () => Promise<void> };
+    await saveButton.onclick?.();
+
+    assert.equal(savedSnapshots.length, 2);
+    const latest = savedSnapshots.find((entry) => String(entry.snapshotDate) === "2026-06-15T18:00") as any;
+    assert.deepEqual(latest.cashAccounts, { giro: 158, cash: 35, savings: 9745.32 });
+    assert.equal(latest.investmentAmount, 20500);
+    assert.deepEqual(latest.monthlyStatus, { basisInvestmentState: "included" });
+    assert.equal(refreshStatus?.title, "Positions-Istwert gespeichert");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("wealth snapshot history allows deleting a saved snapshot", async () => {
+  const originalDocument = globalThis.document;
+  const field = (value: unknown, extra: Record<string, unknown> = {}) => ({
+    value,
+    dataset: {},
+    addEventListener() {},
+    ...extra,
+  });
+
+  let deleteHandler: null | (() => Promise<void>) = null;
+  const deleteButton = {
+    getAttribute(name: string) {
+      return name === "data-wealth-snapshot-delete" ? "snapshot-delete" : null;
+    },
+    addEventListener(event: string, handler: () => Promise<void>) {
+      if (event === "click") {
+        deleteHandler = handler;
+      }
+    },
+  };
+
+  const listTarget = {
+    innerHTML: "",
+    querySelectorAll(selector: string) {
+      if (selector === "[data-wealth-snapshot-delete]") {
+        return [deleteButton];
+      }
+      return [];
+    },
+  };
+
+  const elements = new Map<string, Record<string, unknown>>([
+    ["wealthSnapshotDate", field("2026-06-15T18:00")],
+    ["wealthSnapshotCashGiroAmount", field("158", { oninput: null })],
+    ["wealthSnapshotCashTradeRepublicAmount", field("35", { oninput: null })],
+    ["wealthSnapshotCashScalableAmount", field("9745.32", { oninput: null })],
+    ["wealthSnapshotInvestmentAmount", field("17899.88")],
+    ["wealthSnapshotCashTotal", field("")],
+    ["wealthSnapshotNotes", field("")],
+    ["wealthSnapshotMonthStartEnabled", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotMonthStartMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotFixedExpensesIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotSalaryIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotSalaryIncludedForMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotMusicIncluded", { checked: false, onchange: null, addEventListener() {} }],
+    ["wealthSnapshotMusicIncludedForMonth", field("2026-06", { disabled: true, onchange: null })],
+    ["wealthSnapshotMusicThresholdBeforeAmount", field("", { disabled: true, onchange: null })],
+    ["wealthSnapshotBasisInvestmentState", field("open")],
+    ["wealthSnapshotExtraExpensesIncluded", { checked: false, addEventListener() {} }],
+    ["wealthPositionUpdateDate", field("2026-06-15T18:00", { onchange: null })],
+    ["wealthPositionUpdateTarget", field("investment", { onchange: null })],
+    ["wealthPositionUpdateAmount", field("20500")],
+    ["wealthPositionUpdateNotes", field("")],
+    ["wealthPositionUpdateQuickTargets", { innerHTML: "", querySelectorAll() { return []; } }],
+    ["wealthPositionUpdateMeta", { textContent: "" }],
+    ["saveWealthPositionUpdateButton", { onclick: null }],
+    ["wealthSnapshotMeta", { textContent: "" }],
+    ["wealthSnapshotList", listTarget],
+    ["wealthSnapshotHistorySummary", { textContent: "" }],
+    ["saveWealthSnapshotButton", { dataset: {}, textContent: "Ist-Stand speichern", onclick: null }],
+    ["clearWealthSnapshotsButton", { hidden: true, onclick: null }],
+  ]);
+
+  globalThis.document = {
+    getElementById(id: string) {
+      return elements.get(id) ?? null;
+    },
+  } as typeof globalThis.document;
+
+  let savedSnapshots: Record<string, unknown>[] = [
+    {
+      id: "snapshot-delete",
+      snapshotDate: "2026-06-15T18:00",
+      cashAccounts: { giro: 158, cash: 35, savings: 9745.32 },
+      cashAmount: 9938.32,
+      investmentAmount: 17899.88,
+      isActive: true,
+      updatedAt: "2026-06-15T18:00:00.000Z",
+    },
+  ];
+  let refreshStatus: any = null;
+
+  try {
+    renderWealthSnapshotPlanner({}, {
+      readWealthSnapshots: () => savedSnapshots,
+      clearWealthSnapshotsLocal: () => ({ mode: "browser" }),
+      localDateTimeInputValue: () => "2026-06-15T18:00",
+      monthFromDate: (value: string) => String(value).slice(0, 7),
+      currentSelectedMonthKey: () => "2026-06",
+      monthReviewRowForMonth: () => ({ safetyBucketEndAmount: 10000, investmentBucketEndAmount: 21000 }),
+      wealthSnapshotCashAccounts: (entry: any) => entry?.cashAccounts ?? { giro: 0, cash: 0, savings: 0 },
+      wealthSnapshotCashTotal: (entry: any) => Number(entry?.cashAmount ?? 0),
+      roundCurrency: (value: number) => Math.round(value * 100) / 100,
+      euro: new Intl.NumberFormat("de-DE", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 2,
+      }),
+      wealthSnapshotsPersistence: "project",
+      formatHistoryTimestamp: (value: string) => value,
+      formatDisplayDate: (value: string) => value,
+      async saveWealthSnapshots(nextState: Record<string, unknown>[]) {
+        savedSnapshots = nextState;
+        return { mode: "project" };
+      },
+      async refreshFinanceView(status: any) {
+        refreshStatus = status;
+      },
+      statusDetailForMode: () => "Projektdatei",
+      confirmAction: () => true,
+    });
+
+    await deleteHandler?.();
+
+    assert.equal(savedSnapshots.length, 0);
+    assert.equal(refreshStatus?.title, "Ist-Stand gelöscht");
+  } finally {
     globalThis.document = originalDocument;
   }
 });

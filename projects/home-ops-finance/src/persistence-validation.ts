@@ -88,6 +88,7 @@ export interface MusicForecastSettingState {
 export interface MusicTaxSettingState {
   quarterlyPrepaymentAmount: number;
   effectiveFrom: string;
+  annualBaseTaxableIncome?: number;
   notes?: string;
   updatedAt?: string;
   isActive?: boolean;
@@ -401,6 +402,7 @@ export function parseMusicTaxSetting(value: unknown): MusicTaxSetting {
   return {
     quarterlyPrepaymentAmount: asNumber(item.quarterlyPrepaymentAmount, "musicTaxSetting.quarterlyPrepaymentAmount"),
     effectiveFrom: asString(item.effectiveFrom, "musicTaxSetting.effectiveFrom"),
+    annualBaseTaxableIncome: asOptionalNumber(item.annualBaseTaxableIncome, "musicTaxSetting.annualBaseTaxableIncome"),
     notes: asOptionalString(item.notes, "musicTaxSetting.notes"),
     updatedAt: asOptionalString(item.updatedAt, "musicTaxSetting.updatedAt"),
     isActive: asOptionalBoolean(item.isActive, "musicTaxSetting.isActive"),

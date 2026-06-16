@@ -391,6 +391,12 @@ function buildAssumptions(): ForecastAssumption[] {
   return [
     { key: "net_salary_monthly", value: 2920, valueType: "number", notes: "Bilanz!E37" },
     {
+      key: "main_salary_gross_annual_last_year",
+      value: 52920,
+      valueType: "number",
+      notes: "Manual default for the latest known main salary gross from last year. Keep editable in project data if this changes.",
+    },
+    {
       key: "safety_threshold",
       value: 10000,
       valueType: "number",

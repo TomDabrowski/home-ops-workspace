@@ -248,7 +248,7 @@ export function createMonthReviewNavigation(deps) {
       currentLabel.textContent = formatMonthLabel(monthKey);
     }
 
-    if (prevButton instanceof HTMLButtonElement) {
+    if (prevButton instanceof HTMLElement) {
       const prevMonth = currentIndex > 0 ? monthKeys[currentIndex - 1] : null;
       prevButton.disabled = !prevMonth;
       prevButton.onclick = () => {
@@ -258,7 +258,7 @@ export function createMonthReviewNavigation(deps) {
       };
     }
 
-    if (nextButton instanceof HTMLButtonElement) {
+    if (nextButton instanceof HTMLElement) {
       const nextMonth = currentIndex >= 0 && currentIndex < monthKeys.length - 1 ? monthKeys[currentIndex + 1] : null;
       nextButton.disabled = !nextMonth;
       nextButton.onclick = () => {
@@ -269,9 +269,13 @@ export function createMonthReviewNavigation(deps) {
     }
   }
 
+  function monthOptionMarkup(monthKey) {
+    return `<ui5-option value="${monthKey}">${monthKey}</ui5-option>`;
+  }
+
   function openMonthReview(monthlyPlan, monthKey) {
     const monthSelect = document.getElementById("monthReviewSelect");
-    if (!(monthSelect instanceof HTMLSelectElement)) {
+    if (!(monthSelect instanceof HTMLElement) || !("value" in monthSelect)) {
       return;
     }
 
@@ -327,14 +331,26 @@ export function createMonthReviewNavigation(deps) {
     for (const button of buttons) {
       button.onclick = () => {
         const filter = button.dataset.filter ?? "all";
-        buttons.forEach((item) => item.classList.toggle("is-active", item === button));
+        buttons.forEach((item) => {
+          const isActive = item === button;
+          item.classList.toggle("is-active", isActive);
+          if (item.tagName === "UI5-BUTTON") {
+            item.setAttribute("design", isActive ? "Emphasized" : "Transparent");
+          }
+        });
         saveViewState({ monthFilter: filter });
         render(filter);
       };
     }
 
     const selectedFilter = buttons.some((button) => button.dataset.filter === initialFilter) ? initialFilter : "focus";
-    buttons.forEach((item) => item.classList.toggle("is-active", item.dataset.filter === selectedFilter));
+    buttons.forEach((item) => {
+      const isActive = item.dataset.filter === selectedFilter;
+      item.classList.toggle("is-active", isActive);
+      if (item.tagName === "UI5-BUTTON") {
+        item.setAttribute("design", isActive ? "Emphasized" : "Transparent");
+      }
+    });
     render(selectedFilter);
 
     if (tableTarget) {
@@ -362,13 +378,13 @@ export function createMonthReviewNavigation(deps) {
 
   function bindMonthReview(importDraft, monthlyPlan, preferredMonthKey = null) {
     const select = document.getElementById("monthReviewSelect");
-    if (!select) return;
+    if (!(select instanceof HTMLElement)) return;
 
     const monthKeys = monthlyPlan.rows.map((row) => row.monthKey);
     select.innerHTML = monthKeys
       .slice()
       .reverse()
-      .map((monthKey) => `<option value="${monthKey}">${monthKey}</option>`)
+      .map((monthKey) => monthOptionMarkup(monthKey))
       .join("");
 
     const currentMonthKey = new Date().toLocaleDateString("sv-SE", {

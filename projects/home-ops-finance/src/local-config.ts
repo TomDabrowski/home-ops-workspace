@@ -1,12 +1,14 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 interface LocalConfig {
   dataDir?: string;
   workbookPath?: string;
 }
 
-const projectRoot = resolve(".");
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(moduleDir, "..");
 const defaultDataDir = join(projectRoot, "data");
 const localConfigPath = join(projectRoot, "config.local.json");
 const envDataDir = process.env.HOME_OPS_FINANCE_DATA_DIR?.trim();

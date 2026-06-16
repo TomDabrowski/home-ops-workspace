@@ -7,8 +7,7 @@ WORKDIR /app
 
 COPY .deploy-deps/home-ops-framework /home-ops-framework
 COPY package.json package-lock.json ./
-RUN mkdir -p node_modules/@home-ops \
-  && ln -s /home-ops-framework node_modules/@home-ops/framework
+RUN npm ci --omit=dev
 
 COPY app ./app
 COPY deploy ./deploy

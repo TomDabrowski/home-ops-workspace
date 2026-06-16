@@ -404,7 +404,7 @@ export function applyReviewState(
     });
   const incomeOverrideKeys = new Set(activeMonthlyMusicIncomeOverrides.map((entry) => `${entry.monthKey}/${entry.incomeStreamId}`));
   const forecastSettingApplied = applyForecastSettings(draft, forecastSettings);
-  const nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
+  let nextForecastAssumptions = forecastSettingApplied.forecastAssumptions.map((entry) =>
     entry.key === "music_tax_prepayment_quarterly_amount" && musicTaxSetting?.isActive !== false
       ? {
           ...entry,
@@ -415,6 +415,33 @@ export function applyReviewState(
         }
       : entry,
   );
+  const musicTaxBaseIncomeKey = "music_tax_base_income_annual";
+  const hasExplicitMusicTaxBaseIncome =
+    musicTaxSetting?.isActive !== false &&
+    typeof musicTaxSetting?.annualBaseTaxableIncome === "number" &&
+    Number.isFinite(musicTaxSetting.annualBaseTaxableIncome);
+  if (musicTaxSetting?.isActive !== false && !hasExplicitMusicTaxBaseIncome) {
+    nextForecastAssumptions = nextForecastAssumptions.filter((entry) => entry.key !== musicTaxBaseIncomeKey);
+  }
+  if (hasExplicitMusicTaxBaseIncome) {
+    const existing = nextForecastAssumptions.find((entry) => entry.key === musicTaxBaseIncomeKey);
+    if (existing) {
+      existing.value = musicTaxSetting.annualBaseTaxableIncome;
+      existing.valueType = "number";
+      existing.notes = mergeNotes(existing.notes, [
+        musicTaxSetting.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",
+      ]);
+    } else {
+      nextForecastAssumptions.push({
+        key: musicTaxBaseIncomeKey,
+        value: musicTaxSetting.annualBaseTaxableIncome,
+        valueType: "number",
+        notes: mergeNotes(musicTaxSetting.notes, [
+          musicTaxSetting.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",
+        ]),
+      });
+    }
+  }
   if (
     musicTaxSetting?.isActive !== false &&
     !nextForecastAssumptions.some((entry) => entry.key === "music_tax_prepayment_quarterly_amount")

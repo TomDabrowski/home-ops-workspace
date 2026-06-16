@@ -61,7 +61,10 @@ export function createAppShellTools(config) {
   }
 
   function viewStateMonthValue(monthSelect) {
-    return monthSelect instanceof HTMLSelectElement ? monthSelect.value : null;
+    if (monthSelect && "value" in monthSelect) {
+      return String(monthSelect.value ?? "") || null;
+    }
+    return null;
   }
 
   function saveViewState(viewState = {}) {
@@ -136,6 +139,9 @@ export function createAppShellTools(config) {
 
   function applyThemeUi(mode = readThemeMode()) {
     document.documentElement.dataset.theme = mode;
+    if (typeof document.documentElement?.setAttribute === "function") {
+      document.documentElement.setAttribute("data-ui5-theme", mode === "dark" ? "sap_horizon_dark" : "sap_horizon");
+    }
     const button = document.getElementById("themeModeButton");
     if (button) {
       const darkEnabled = mode === "dark";

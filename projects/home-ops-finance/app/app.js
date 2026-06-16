@@ -297,13 +297,15 @@ function renderMonthDataStatus(monthlyPlan, monthKey) {
   });
 
   summaryTarget.innerHTML = renderDetailEntries(status.summaryEntries);
+  const statusDesign = status.status === "Prüfen"
+    ? "Warning"
+    : status.status === "Info"
+      ? "Information"
+      : "Positive";
   alertTarget.innerHTML = `
-    <div class="mapping-card month-data-status-card ${status.status === "Prüfen" ? "is-warn" : status.status === "Info" ? "is-info" : "is-ok"}">
-      <div class="mapping-card-head">
-        <strong>${status.status}</strong>
-      </div>
-      <p class="section-copy">${status.detail}</p>
-    </div>
+    <ui5-message-strip design="${statusDesign}" hide-close-button class="month-message-strip">
+      <strong>${status.status}</strong> ${escapeHtml(status.detail)}
+    </ui5-message-strip>
   `;
 }
 
@@ -901,6 +903,7 @@ const {
   roundCurrency,
   readMonthlyExpenseOverrides,
   readMonthlyMusicIncomeOverrides,
+  readMusicTaxSettings,
   buildMusicYearData,
   monthFromDate,
   euro,
@@ -1132,6 +1135,7 @@ function renderMusicWorkspace(importDraft, monthlyPlan, monthKey) {
     incomeMonthKey,
     monthFromDate,
     roundCurrency,
+    readMusicTaxSettings,
   });
 }
 
@@ -1167,6 +1171,10 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
   const monthIndex = monthlyPlan.rows.findIndex((row) => row.monthKey === monthKey);
   const previousRow = monthIndex > 0 ? monthlyPlan.rows[monthIndex - 1] : null;
 
+  const topLine = document.getElementById("monthReviewTopline");
+  const fixedSummary = document.getElementById("monthReviewFixedSummary");
+  const variableSummary = document.getElementById("monthReviewVariableSummary");
+  const wealthSummary = document.getElementById("monthReviewWealthSummary");
   const startSummary = document.getElementById("monthReviewStartSummary");
   const flowSummary = document.getElementById("monthReviewFlowSummary");
   const endSummary = document.getElementById("monthReviewEndSummary");
@@ -1332,6 +1340,19 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     review.row.thresholdAccountEndAmount ?? endSafetyAmount,
     latestSnapshotAccountBalances,
   );
+  const thresholdTargetLabel = thresholdAccountLabel(accountOptions, resolvedThresholdAccountId);
+  const thresholdStartAmount = Number(startAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountStartAmount ?? 0);
+  const thresholdEndAmount = Number(endAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountEndAmount ?? 0);
+  const thresholdDeltaAmount =
+    review.row.thresholdAccountEndAmount !== undefined
+      ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
+      : 0;
+  const plannedSavingsAmount = Number(review.row.plannedSavingsAmount ?? 0);
+  const musicIncomeAmount = roundCurrency(Number(review.row.musicIncomeAmount ?? 0));
+  const variableIncomeAmount = roundCurrency(Number(review.row.importedIncomeAvailableAmount ?? 0));
+  const fixedIncomeTotalAmount = roundCurrency(Number(review.row.netSalaryAmount ?? 0) + musicIncomeAmount);
+  const variableNetAmount = roundCurrency(variableIncomeAmount - importedExpenseAmount - manualExpenseAmount);
+  const tagesgeldWithdrawalAmount = Number(review.row.requiredTagesgeldWithdrawalAmount ?? 0);
   const remainingImportedExpenseAmount = hasActiveInMonthSnapshot
     ? roundCurrency(
       review.expenseEntries
@@ -1351,6 +1372,145 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     )
     : manualExpenseAmount;
   renderMonthDataStatus(monthlyPlan, monthKey);
+
+  if (topLine) {
+    const topLineCards = [
+      {
+        label: "Vermögen Start",
+        value: euro.format(startWealthAmount),
+        note: `${euro.format(displayStartSafetyAmount)} Cash + ${euro.format(displayStartInvestmentAmount)} Investment`,
+        tone: "is-primary",
+      },
+      {
+        label: "Vermögen Ende",
+        value: euro.format(endWealthAmount),
+        note: `${euro.format(endSafetyAmount)} Cash + ${euro.format(endInvestmentAmount)} Investment`,
+        tone: "is-success",
+      },
+      {
+        label: "Variable Netto-Bewegung",
+        value: signedMoneyLabel(variableNetAmount),
+        note: `${euro.format(variableIncomeAmount)} variabel rein, ${euro.format(roundCurrency(importedExpenseAmount + manualExpenseAmount))} variabel raus`,
+        tone: "is-accent",
+        valueClass: variableNetAmount >= 0 ? "positive" : "negative",
+      },
+      {
+        label: `${thresholdTargetLabel} Ende`,
+        value: euro.format(thresholdEndAmount),
+        note: thresholdDeltaAmount === 0
+          ? "Im Monat keine Netto-Bewegung nötig."
+          : `${thresholdDeltaAmount > 0 ? "Auffüllen" : "Entnahme"} im Monat: ${euro.format(Math.abs(thresholdDeltaAmount))}`,
+        tone: "is-neutral",
+      },
+    ];
+    topLine.innerHTML = topLineCards
+      .map((card) => `
+        <ui5-card class="month-topline-card-ui5 ${card.tone}">
+          <ui5-card-header slot="header" title-text="${escapeHtml(card.label)}" subtitle-text="${escapeHtml(card.note)}"></ui5-card-header>
+          <div class="month-kpi-card-body">
+            <strong class="${card.valueClass ?? ""}">${card.value}</strong>
+          </div>
+        </ui5-card>
+      `)
+      .join("");
+  }
+
+  if (fixedSummary) {
+    fixedSummary.innerHTML = renderDetailEntries([
+      {
+        label: "Hauptgehalt netto",
+        value: euro.format(review.row.netSalaryAmount),
+        formula: `Fixe monatliche Einnahme aus dem Hauptgehalt: ${euro.format(review.row.netSalaryAmount)}.`,
+      },
+      {
+        label: "Musik im Monat",
+        value: euro.format(musicIncomeAmount),
+        formula: "Musik wird hier bewusst als feste Monatseinnahme behandelt und nicht den variablen Bewegungen zugerechnet.",
+      },
+      {
+        label: "Fixe Einnahmen gesamt",
+        value: euro.format(fixedIncomeTotalAmount),
+        formula: `${euro.format(review.row.netSalaryAmount)} Gehalt + ${euro.format(musicIncomeAmount)} Musik = ${euro.format(fixedIncomeTotalAmount)}.`,
+        itemClass: "is-month-total",
+      },
+      {
+        label: "Basis-Investment",
+        value: euro.format(plannedSavingsAmount),
+        formula: `Geplanter fixer Spar-/Investmentblock im Monat: ${euro.format(plannedSavingsAmount)}.`,
+      },
+    ]);
+  }
+
+  if (variableSummary) {
+    variableSummary.innerHTML = renderDetailEntries([
+      {
+        label: "Sonstige variable Einnahmen",
+        value: euro.format(variableIncomeAmount),
+        formula: `Zusätzliche Einnahmen außerhalb von Hauptgehalt und Musik: ${euro.format(variableIncomeAmount)}.`,
+      },
+      {
+        label: "Importierte Zusatz-Ausgaben",
+        value: euro.format(importedExpenseAmount),
+        formula: `Automatisch importierte variable Ausgaben im Monat: ${euro.format(importedExpenseAmount)}.`,
+      },
+      {
+        label: "Manuelle Zusatz-Ausgaben",
+        value: euro.format(manualExpenseAmount),
+        formula: `Manuell ergänzte variable Ausgaben im Monat: ${euro.format(manualExpenseAmount)}.`,
+      },
+      {
+        label: "Variable Netto-Bewegung",
+        value: signedMoneyLabel(variableNetAmount),
+        valueClass: variableNetAmount >= 0 ? "positive" : "negative",
+        formula: `${euro.format(variableIncomeAmount)} variable Einnahmen - ${euro.format(importedExpenseAmount)} importierte Zusatz-Ausgaben - ${euro.format(manualExpenseAmount)} manuelle Zusatz-Ausgaben = ${signedMoneyLabel(variableNetAmount)}.`,
+        itemClass: "is-month-total",
+      },
+      {
+        label: "Tagesgeld-Entnahme",
+        value: tagesgeldWithdrawalAmount > 0 ? `${euro.format(tagesgeldWithdrawalAmount)} -> ${review.row.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto"}` : "Nicht nötig",
+        formula: tagesgeldWithdrawalAmount > 0
+          ? `Weil der Monatsplan sonst negativ würde, werden ${euro.format(tagesgeldWithdrawalAmount)} vom Tagesgeld Richtung ${review.row.requiredTagesgeldWithdrawalDestinationLabel ?? "Girokonto"} bewegt.`
+          : "Für diesen Monat braucht der Plan keine zusätzliche Entnahme aus dem Tagesgeld.",
+      },
+    ]);
+  }
+
+  if (wealthSummary) {
+    wealthSummary.innerHTML = renderDetailEntries([
+      {
+        label: "Cash Start",
+        value: euro.format(displayStartSafetyAmount),
+        formula: `Cash zu Beginn des geöffneten Monats: ${euro.format(displayStartSafetyAmount)}.`,
+      },
+      {
+        label: "Cash Ende",
+        value: euro.format(endSafetyAmount),
+        formula: `Cash am Monatsende nach allen Monatsbewegungen: ${euro.format(endSafetyAmount)}.`,
+      },
+      {
+        label: "Investment Start",
+        value: euro.format(displayStartInvestmentAmount),
+        formula: `Investment zu Beginn des geöffneten Monats: ${euro.format(displayStartInvestmentAmount)}.`,
+      },
+      {
+        label: "Investment Ende",
+        value: euro.format(endInvestmentAmount),
+        formula: `Investment am Monatsende inklusive Monatsbewegungen und Rendite: ${euro.format(endInvestmentAmount)}.`,
+      },
+      {
+        label: `${thresholdTargetLabel} am Ende`,
+        value: euro.format(thresholdEndAmount),
+        formula: `${thresholdTargetLabel}: Start ${euro.format(thresholdStartAmount)} · Ende ${euro.format(thresholdEndAmount)} · Netto-Bewegung ${signedMoneyLabel(thresholdDeltaAmount)}.`,
+      },
+      {
+        label: "Letzter Ist-Stand",
+        value: latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner",
+        formula: latestSnapshot
+          ? `${formatDisplayDate(latestSnapshot.snapshotDate)} ist der zuletzt bekannte Ist-Stand fuer diesen oder einen frueheren Monat.`
+          : "Es gibt noch keinen gespeicherten Ist-Stand als Anker.",
+      },
+    ]);
+  }
 
   if (startSummary) {
     const accountStartLabelSuffix = hasActiveInMonthSnapshot
@@ -1728,16 +1888,6 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
     }
     const importedExpenseConsumedAmount = roundCurrency(Math.max(0, importedExpenseAmount - remainingImportedExpenseAmount));
     const manualExpenseConsumedAmount = roundCurrency(Math.max(0, manualExpenseAmount - remainingManualExpenseAmount));
-    const thresholdTargetLabel = thresholdAccountLabel(
-      accountOptions,
-      review.row.thresholdAccountId ?? assumptionString(importDraft, "music_threshold_account_id", "savings"),
-    );
-    const thresholdStartAmount = Number(startAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountStartAmount ?? 0);
-    const thresholdEndAmount = Number(endAccountBalances.get(resolvedThresholdAccountId) ?? review.row.thresholdAccountEndAmount ?? 0);
-    const thresholdDeltaAmount =
-      review.row.thresholdAccountEndAmount !== undefined
-        ? roundCurrency(thresholdEndAmount - thresholdStartAmount)
-        : 0;
     const restMonthInvestmentReturnAmount = hasActiveInMonthSnapshot
       ? roundCurrency(
         endInvestmentAmount -

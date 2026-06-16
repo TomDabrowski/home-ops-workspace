@@ -8,6 +8,14 @@
   <link rel="apple-touch-icon" href="/app/assets/home-ops-finance-icon-512.png">
   <meta name="theme-color" content="#0b1320">
   <link rel="stylesheet" href="/app/styles.css">
+  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Option.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Select.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Button.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents/dist/MessageStrip.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents/dist/Panel.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/Bar.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/Card.js"></script>
+  <script type="module" src="/node_modules/@ui5/webcomponents-fiori/dist/CardHeader.js"></script>
 </head>
 <body>
   <div id="appStatusBar" class="app-status" hidden></div>
@@ -61,44 +69,50 @@
     </section>
 
     <nav class="tabs" aria-label="Finanzbereiche">
-      <div class="tab-group">
-        <span class="tab-group-label">Heute</span>
-        <button class="tab is-active" data-tab="overview">Cockpit</button>
-        <button class="tab" data-tab="months">Monat</button>
-      </div>
-      <div class="tab-group">
-        <span class="tab-group-label">Plan</span>
-        <button class="tab" data-tab="baseline">Kosten & Ist-Stand</button>
-        <button class="tab" data-tab="retirement">Ziele & Rente</button>
-      </div>
-      <div class="tab-group">
-        <span class="tab-group-label">Analyse</span>
-        <button class="tab" data-tab="stats">Statistiken</button>
-        <button class="tab" data-tab="music">Musik & Steuern</button>
-      </div>
-      <div class="tab-group" data-dev-only="true">
-        <span class="tab-group-label">Daten</span>
-        <button class="tab" data-tab="imports" data-dev-only="true">Importe</button>
-      </div>
+      <ui5-bar class="app-tab-bar">
+        <div slot="startContent" class="app-tab-groups">
+          <div class="tab-group">
+            <span class="tab-group-label">Heute</span>
+            <ui5-button class="tab is-active" design="Emphasized" data-tab="overview">Cockpit</ui5-button>
+            <ui5-button class="tab" design="Transparent" data-tab="months">Monat</ui5-button>
+          </div>
+          <div class="tab-group">
+            <span class="tab-group-label">Plan</span>
+            <ui5-button class="tab" design="Transparent" data-tab="baseline">Kosten & Ist-Stand</ui5-button>
+            <ui5-button class="tab" design="Transparent" data-tab="retirement">Ziele & Rente</ui5-button>
+          </div>
+          <div class="tab-group">
+            <span class="tab-group-label">Analyse</span>
+            <ui5-button class="tab" design="Transparent" data-tab="stats">Statistiken</ui5-button>
+            <ui5-button class="tab" design="Transparent" data-tab="music">Musik & Steuern</ui5-button>
+          </div>
+          <div class="tab-group" data-dev-only="true">
+            <span class="tab-group-label">Daten</span>
+            <ui5-button class="tab" design="Transparent" data-tab="imports" data-dev-only="true">Importe</ui5-button>
+          </div>
+        </div>
+      </ui5-bar>
     </nav>
 
-    <article class="card month-nav-bar">
-      <div class="month-nav-head">
-        <div>
-          <p class="eyebrow">Aktueller Monat</p>
-          <h2 id="monthReviewCurrentLabel">-</h2>
-          <p class="section-copy" id="monthBuildInfo">Build: wird geladen...</p>
-        </div>
-        <div class="month-nav-actions">
-          <button class="pill" id="monthPrevButton" type="button">Vorheriger</button>
-          <label class="select-wrap month-picker">
-            <span>Direkt wählen</span>
-            <select id="monthReviewSelect"></select>
-          </label>
-          <button class="pill" id="monthNextButton" type="button">Nächster</button>
+    <ui5-card class="month-ui5-card month-nav-bar">
+      <div class="month-ui5-card-body">
+        <div class="month-nav-head">
+          <div>
+            <p class="eyebrow">Aktueller Monat</p>
+            <h2 id="monthReviewCurrentLabel">-</h2>
+            <p class="section-copy" id="monthBuildInfo">Build: wird geladen...</p>
+          </div>
+          <div class="month-nav-actions">
+            <ui5-button id="monthPrevButton" design="Transparent">Vorheriger</ui5-button>
+            <label class="select-wrap month-picker">
+              <span>Direkt wählen</span>
+              <ui5-select id="monthReviewSelect"></ui5-select>
+            </label>
+            <ui5-button id="monthNextButton" design="Transparent">Nächster</ui5-button>
+          </div>
         </div>
       </div>
-    </article>
+    </ui5-card>
 
     <section id="overview" class="tab-panel is-active">
       <div class="grid two overview-grid">
@@ -333,16 +347,51 @@
               </label>
             </div>
             <div class="reconciliation-footer">
-              <p class="section-copy" id="wealthSnapshotMeta" data-dev-only="true">Noch kein manueller Vermögensstand gespeichert.</p>
+              <p class="section-copy" id="wealthSnapshotMeta">Noch kein manueller Vermögensstand gespeichert.</p>
               <div class="filter-group">
                 <button class="pill" id="clearWealthSnapshotsButton" type="button" hidden>Lokale Ist-Stände löschen</button>
                 <button class="pill is-active" id="saveWealthSnapshotButton" type="button">Ist-Stand speichern</button>
               </div>
             </div>
+            <div class="planner-divider"></div>
+            <h3 class="subhead">Einzelne Position aktualisieren</h3>
+            <p class="section-copy">Wenn sich nur eine Position ändert, speicherst du hier nur diesen einen Ist-Wert. Alle anderen Positionen werden automatisch aus dem letzten Ist-Stand übernommen.</p>
+            <div class="planner-inputs">
+              <label class="select-wrap">
+                <span>Datum</span>
+                <input id="wealthPositionUpdateDate" type="datetime-local">
+              </label>
+              <label class="select-wrap">
+                <span>Position</span>
+                <select id="wealthPositionUpdateTarget">
+                  <option value="giro">CHECK24</option>
+                  <option value="cash">Trade Republic Cash</option>
+                  <option value="savings">Scalable</option>
+                  <option value="investment">Investment / Portfolio</option>
+                </select>
+              </label>
+              <label class="select-wrap currency-wrap">
+                <span>Neuer Ist-Wert</span>
+                <input id="wealthPositionUpdateAmount" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label class="select-wrap planner-span-two">
+                <span>Notiz</span>
+                <input id="wealthPositionUpdateNotes" type="text" placeholder="z. B. Depot nach Börsenschluss aktualisiert">
+              </label>
+            </div>
+            <div id="wealthPositionUpdateQuickTargets" class="mapping-list planner-quick-grid"></div>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="wealthPositionUpdateMeta">Noch kein Positions-Istwert gespeichert.</p>
+              <button class="pill" id="saveWealthPositionUpdateButton" type="button">Positions-Istwert speichern</button>
+            </div>
           </div>
-          <div class="subcard" data-dev-only="true">
+          <div class="subcard">
             <h3 class="subhead">Gespeicherte Ist-Stände</h3>
             <p class="section-copy" id="wealthSnapshotHistorySummary">Noch kein manueller Vermögensstand gespeichert.</p>
+            <div class="reconciliation-footer">
+              <p class="section-copy" id="wealthSnapshotHistoryMeta">Die neuesten Einträge stehen oben.</p>
+              <button class="pill" id="wealthSnapshotHistoryToggleButton" type="button" hidden>Ältere Einträge zeigen</button>
+            </div>
             <div id="wealthSnapshotList" class="mapping-list"></div>
           </div>
         </div>
@@ -511,175 +560,222 @@
     </section>
 
     <section id="months" class="tab-panel">
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Monats-Arbeitsfläche</h2>
-            <p class="section-copy">Hier arbeitest du am aktuell geöffneten Monat. Cash, Investment und Gesamtvermögen meinen immer den Stand zum Monatsende, nachdem die Berechnung für diesen Monat bereits durchgelaufen ist.</p>
-          </div>
-        </div>
-      </article>
+      <ui5-card class="month-ui5-card month-intro-card">
+        <ui5-card-header
+          slot="header"
+          title-text="Monats-Arbeitsfläche"
+          subtitle-text="Hier arbeitest du am aktuell geöffneten Monat. Cash, Investment und Gesamtvermögen meinen immer den Stand zum Monatsende, nachdem die Berechnung für diesen Monat bereits durchgelaufen ist."
+        ></ui5-card-header>
+      </ui5-card>
       <div class="month-workbench">
         <div class="month-main">
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Monat auf einen Blick</h2>
-            <p class="section-copy">Hier siehst du klar getrennt den Stand zu Beginn des geöffneten Monats, die Bewegungen innerhalb genau dieses Monats und den Stand am Ende genau dieses Monats. Monatsende heißt hier: nach dem Gehalt und nach allen Monatsbewegungen des geöffneten Monats, nicht nach dem Folgemonat.</p>
+          <ui5-card class="month-ui5-card">
+            <ui5-card-header
+              slot="header"
+              title-text="Monat klar getrennt"
+              subtitle-text="Erst die grobe Orientierung, dann die Aufteilung in fixe Einnahmen, variable Bewegungen und Vermögen. Musik zählt hier bewusst als feste monatliche Einnahme und nicht als variable Bewegung."
+            ></ui5-card-header>
+            <div class="month-ui5-card-body month-ui5-card-body--with-header">
+              <div class="month-data-status">
+                <dl class="detail-list compact-details" id="monthDataStatusSummary"></dl>
+                <div id="monthDataStatusAlert"></div>
+              </div>
+              <div id="monthTagesgeldWithdrawalHint" class="mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-ok" role="status" aria-live="polite"></div>
+              <div class="month-topline" id="monthReviewTopline"></div>
+              <div class="grid three month-clarity-grid">
+                <div class="subcard">
+                  <h3 class="subhead">Fixe Einnahmen & Sparen</h3>
+                  <p class="section-copy">Alles, was im Monat planbar reinkommt oder direkt als feste Sparbewegung gedacht ist.</p>
+                  <dl class="detail-list compact-details month-clarity-details" id="monthReviewFixedSummary"></dl>
+                </div>
+                <div class="subcard">
+                  <h3 class="subhead">Variable Bewegungen</h3>
+                  <p class="section-copy">Zusätzliche Einnahmen, Zusatz-Ausgaben und falls nötig die Bewegung aus dem Tagesgeld.</p>
+                  <dl class="detail-list compact-details month-clarity-details" id="monthReviewVariableSummary"></dl>
+                </div>
+                <div class="subcard">
+                  <h3 class="subhead">Vermögen & Konten</h3>
+                  <p class="section-copy">Wie sich Cash, Investment und das Schwellenkonto von Monatsanfang bis Monatsende entwickeln.</p>
+                  <dl class="detail-list compact-details month-clarity-details" id="monthReviewWealthSummary"></dl>
+                </div>
               </div>
             </div>
-            <div class="month-data-status">
-              <dl class="detail-list compact-details" id="monthDataStatusSummary"></dl>
-              <div id="monthDataStatusAlert"></div>
-            </div>
-            <div id="monthTagesgeldWithdrawalHint" class="mapping-card month-data-status-card month-tagesgeld-withdrawal-hint is-ok" role="status" aria-live="polite"></div>
-            <div class="grid three">
-              <div class="subcard">
-                <h3 class="subhead">Beginn des geöffneten Monats</h3>
-                <dl class="detail-list compact-details" id="monthReviewStartSummary"></dl>
-              </div>
-              <div class="subcard">
-                <h3 class="subhead">Bewegungen im geöffneten Monat</h3>
-                <dl class="detail-list compact-details" id="monthReviewFlowSummary"></dl>
-              </div>
-              <div class="subcard">
-                <h3 class="subhead">Ende des geöffneten Monats</h3>
-                <dl class="detail-list compact-details" id="monthReviewEndSummary"></dl>
-              </div>
-            </div>
-          </article>
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Sofort zurücklegen</h2>
-                <p class="section-copy">Hier siehst du auf einen Blick, was aus Hauptgehalt und Musik in diesem Monat direkt reserviert oder investiert werden sollte.</p>
+          </ui5-card>
+          <ui5-panel class="month-detail-panel" header-text="Rechenweg im Detail" collapsed>
+            <div class="month-ui5-card-body month-detail-panel-body">
+              <p class="month-detail-drawer-copy">Die bisherige Start-, Bewegungs- und Endansicht bleibt erhalten, ist aber bewusst erst der zweite Blick.</p>
+              <div class="grid three month-detail-grid">
+                <div class="subcard">
+                  <h3 class="subhead">Beginn des geöffneten Monats</h3>
+                  <dl class="detail-list compact-details" id="monthReviewStartSummary"></dl>
+                </div>
+                <div class="subcard">
+                  <h3 class="subhead">Bewegungen im geöffneten Monat</h3>
+                  <dl class="detail-list compact-details" id="monthReviewFlowSummary"></dl>
+                </div>
+                <div class="subcard">
+                  <h3 class="subhead">Ende des geöffneten Monats</h3>
+                  <dl class="detail-list compact-details" id="monthReviewEndSummary"></dl>
+                </div>
               </div>
             </div>
-            <div class="grid two" id="monthAllocationGuidance"></div>
-          </article>
+          </ui5-panel>
+          <ui5-card class="month-ui5-card">
+            <div class="month-ui5-card-body">
+              <div class="section-head">
+                <div>
+                  <h2>Sofort zurücklegen</h2>
+                  <p class="section-copy">Hier siehst du auf einen Blick, was aus Hauptgehalt und Musik in diesem Monat direkt reserviert oder investiert werden sollte.</p>
+                </div>
+              </div>
+              <div class="grid two" id="monthAllocationGuidance"></div>
+            </div>
+          </ui5-card>
           <div class="grid two month-summary-grid">
-            <article class="card">
-              <div class="section-head">
-                <div>
-                  <h2>Einnahmen</h2>
-                  <p class="section-copy">Alle Einnahmen des Monats an einer Stelle. Musik-Istwerte lassen sich hier direkt inline bearbeiten.</p>
+            <ui5-card class="month-ui5-card">
+              <div class="month-ui5-card-body">
+                <div class="section-head">
+                  <div>
+                    <h2>Einnahmen</h2>
+                    <p class="section-copy">Alle Einnahmen des Monats an einer Stelle. Musik-Istwerte lassen sich hier direkt inline bearbeiten.</p>
+                  </div>
                 </div>
+                <div id="monthUnifiedIncomeList" class="mapping-list"></div>
               </div>
-              <div id="monthUnifiedIncomeList" class="mapping-list"></div>
-            </article>
-            <article class="card">
-              <div class="section-head">
-                <div>
-                  <h2>Ausgaben</h2>
-                  <p class="section-copy">Importierte und manuelle Ausgaben stehen gemeinsam hier. Manuelle Einträge kannst du direkt in der Karte aufklappen und ändern.</p>
+            </ui5-card>
+            <ui5-card class="month-ui5-card">
+              <div class="month-ui5-card-body">
+                <div class="section-head">
+                  <div>
+                    <h2>Ausgaben</h2>
+                    <p class="section-copy">Importierte und manuelle Ausgaben stehen gemeinsam hier. Manuelle Einträge kannst du direkt in der Karte aufklappen und ändern.</p>
+                  </div>
                 </div>
+                <div id="monthUnifiedExpenseList" class="mapping-list"></div>
               </div>
-              <div id="monthUnifiedExpenseList" class="mapping-list"></div>
-            </article>
+            </ui5-card>
           </div>
-          <article class="card" id="monthCurrentClearingCard">
-            <div class="section-head">
-              <div>
-                <h2>Monats-Clearing (nur aktueller Monat)</h2>
-                <p class="section-copy">Markiere hier, welche Buchungen schon in deinem Ist-Stand enthalten sind.</p>
+          <ui5-card class="month-ui5-card" id="monthCurrentClearingCard">
+            <div class="month-ui5-card-body">
+              <div class="section-head">
+                <div>
+                  <h2>Monats-Clearing (nur aktueller Monat)</h2>
+                  <p class="section-copy">Markiere hier, welche Buchungen schon in deinem Ist-Stand enthalten sind.</p>
+                </div>
+              </div>
+              <dl class="detail-list compact-details" id="monthCurrentClearingSummary"></dl>
+              <div class="grid two">
+                <article class="subcard">
+                  <h3 class="subhead">Einnahmen aktueller Monat</h3>
+                  <div class="table-wrap table-wrap--clearing">
+                    <table>
+                      <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
+                      <tbody id="monthCurrentClearingIncomeRows"></tbody>
+                    </table>
+                  </div>
+                </article>
+                <article class="subcard">
+                  <h3 class="subhead">Ausgaben aktueller Monat</h3>
+                  <div class="table-wrap table-wrap--clearing">
+                    <table>
+                      <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+                      <tbody id="monthCurrentClearingExpenseRows"></tbody>
+                    </table>
+                  </div>
+                </article>
               </div>
             </div>
-            <dl class="detail-list compact-details" id="monthCurrentClearingSummary"></dl>
-            <div class="grid two">
-              <article class="subcard">
-                <h3 class="subhead">Einnahmen aktueller Monat</h3>
-                <div class="table-wrap table-wrap--clearing">
-                  <table>
-                    <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Betrag</th></tr></thead>
-                    <tbody id="monthCurrentClearingIncomeRows"></tbody>
-                  </table>
-                </div>
-              </article>
-              <article class="subcard">
-                <h3 class="subhead">Ausgaben aktueller Monat</h3>
-                <div class="table-wrap table-wrap--clearing">
-                  <table>
-                    <thead><tr><th>Drin</th><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
-                    <tbody id="monthCurrentClearingExpenseRows"></tbody>
-                  </table>
-                </div>
-              </article>
+          </ui5-card>
+          <ui5-card class="month-ui5-card" data-dev-only="true">
+            <div class="month-ui5-card-body">
+              <h2>Monatshinweise</h2>
+              <ul class="signal-list" id="monthReviewSignals"></ul>
             </div>
-          </article>
-          <article class="card" data-dev-only="true">
-            <h2>Monatshinweise</h2>
-            <ul class="signal-list" id="monthReviewSignals"></ul>
-          </article>
-          <article class="card">
-            <div class="section-head">
-              <div>
-                <h2>Neue Bewegung erfassen</h2>
-                <p class="section-copy">Du kannst hier Einnahmen oder Ausgaben direkt für das gewählte Datum erfassen. Gespeichert wird immer im Monat des Datums.</p>
+          </ui5-card>
+          <ui5-card class="month-ui5-card">
+            <div class="month-ui5-card-body">
+              <div class="section-head">
+                <div>
+                  <h2>Neue Bewegung erfassen</h2>
+                  <p class="section-copy">Du kannst hier Einnahmen oder Ausgaben direkt für das gewählte Datum erfassen. Gespeichert wird immer im Monat des Datums.</p>
+                </div>
+              </div>
+              <div class="planner-inputs">
+                <label class="select-wrap">
+                  <span>Typ</span>
+                  <select id="monthlyMovementType">
+                    <option value="expense">Ausgabe</option>
+                    <option value="income">Einnahme</option>
+                  </select>
+                </label>
+                <label class="select-wrap">
+                  <span>Beschreibung</span>
+                  <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
+                </label>
+                <label class="select-wrap currency-wrap">
+                  <span>Betrag</span>
+                  <input id="monthlyExpenseAmount" type="number" min="0" step="0.01" placeholder="0">
+                </label>
+                <label class="select-wrap">
+                  <span>Datum</span>
+                  <input id="monthlyExpenseDate" type="date">
+                </label>
+                <label class="select-wrap">
+                  <span>Kategorie</span>
+                  <select id="monthlyExpenseCategory"></select>
+                </label>
+                <label class="select-wrap" id="monthlyIncomeStreamWrap" hidden>
+                  <span>Einnahme-Kategorie</span>
+                  <select id="monthlyIncomeStream"></select>
+                </label>
+                <label class="select-wrap">
+                  <span>Konto</span>
+                  <select id="monthlyExpenseAccount"></select>
+                </label>
+                <label class="select-wrap">
+                  <span>Notiz</span>
+                  <input id="monthlyExpenseNotes" type="text" placeholder="optional">
+                </label>
+              </div>
+              <div id="monthlyExpenseWarnings" class="signal-inline"></div>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Bewegung gespeichert.</p>
+                <ui5-button id="saveMonthlyExpenseButton" design="Emphasized">Bewegung speichern</ui5-button>
               </div>
             </div>
-            <div class="planner-inputs">
-              <label class="select-wrap">
-                <span>Typ</span>
-                <select id="monthlyMovementType">
-                  <option value="expense">Ausgabe</option>
-                  <option value="income">Einnahme</option>
-                </select>
-              </label>
-              <label class="select-wrap">
-                <span>Beschreibung</span>
-                <input id="monthlyExpenseDescription" type="text" placeholder="z. B. Konzertticket">
-              </label>
-              <label class="select-wrap currency-wrap">
-                <span>Betrag</span>
-                <input id="monthlyExpenseAmount" type="number" min="0" step="0.01" placeholder="0">
-              </label>
-              <label class="select-wrap">
-                <span>Datum</span>
-                <input id="monthlyExpenseDate" type="date">
-              </label>
-              <label class="select-wrap">
-                <span>Kategorie</span>
-                <select id="monthlyExpenseCategory"></select>
-              </label>
-              <label class="select-wrap" id="monthlyIncomeStreamWrap" hidden>
-                <span>Einnahme-Kategorie</span>
-                <select id="monthlyIncomeStream"></select>
-              </label>
-              <label class="select-wrap">
-                <span>Konto</span>
-                <select id="monthlyExpenseAccount"></select>
-              </label>
-              <label class="select-wrap">
-                <span>Notiz</span>
-                <input id="monthlyExpenseNotes" type="text" placeholder="optional">
-              </label>
-            </div>
-            <div id="monthlyExpenseWarnings" class="signal-inline"></div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="monthlyExpenseMeta">Noch keine manuelle Bewegung gespeichert.</p>
-              <button class="pill is-active" id="saveMonthlyExpenseButton" type="button">Bewegung speichern</button>
-            </div>
-          </article>
+          </ui5-card>
         </div>
         <aside class="month-side">
-          <article class="card">
-            <h2>Aktive Kostenblöcke</h2>
-            <div class="table-wrap table-wrap--side">
-              <table>
-                <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
-                <tbody id="monthReviewBaselineItems"></tbody>
-              </table>
+          <ui5-card class="month-ui5-card">
+            <ui5-card-header
+              slot="header"
+              title-text="Aktive Kostenblöcke"
+              subtitle-text="Welche laufenden Kosten und Blöcke im ausgewählten Monat aktiv sind."
+            ></ui5-card-header>
+            <div class="month-ui5-card-body month-ui5-card-body--with-header">
+              <div class="table-wrap table-wrap--side">
+                <table>
+                  <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th></tr></thead>
+                  <tbody id="monthReviewBaselineItems"></tbody>
+                </table>
+              </div>
             </div>
-          </article>
-          <article class="card">
-            <h2>Monatsüberblick</h2>
-            <div class="table-wrap table-wrap--side">
-              <table>
-                <thead><tr><th>Wert</th><th>Stand</th></tr></thead>
-                <tbody id="monthReviewSourceStats"></tbody>
-              </table>
+          </ui5-card>
+          <ui5-card class="month-ui5-card">
+            <ui5-card-header
+              slot="header"
+              title-text="Monatsüberblick"
+              subtitle-text="Verdichtete Monatswerte für Einkommen, Ausgaben und Liquidität."
+            ></ui5-card-header>
+            <div class="month-ui5-card-body month-ui5-card-body--with-header">
+              <div class="table-wrap table-wrap--side">
+                <table>
+                  <thead><tr><th>Wert</th><th>Stand</th></tr></thead>
+                  <tbody id="monthReviewSourceStats"></tbody>
+                </table>
+              </div>
             </div>
-          </article>
+          </ui5-card>
           <article class="card" data-dev-only="true">
             <div class="section-head">
               <div>
@@ -717,11 +813,11 @@
             <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick öffnet den Monat direkt oben in der Arbeitsfläche.</p>
           </div>
           <div class="filter-group" id="monthFilters">
-            <button class="pill is-active" data-filter="focus">Ab 2026</button>
-            <button class="pill" data-filter="all">Alle</button>
-            <button class="pill" data-filter="warning">Warnungen</button>
-            <button class="pill" data-filter="negative">Nur Defizite</button>
-            <button class="pill" data-filter="future">Nur Zukunft</button>
+            <ui5-button class="pill is-active" design="Emphasized" data-filter="focus">Ab 2026</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-filter="all">Alle</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-filter="warning">Warnungen</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-filter="negative">Nur Defizite</ui5-button>
+            <ui5-button class="pill" design="Transparent" data-filter="future">Nur Zukunft</ui5-button>
           </div>
         </div>
         <div class="table-wrap table-wrap--months">
@@ -852,6 +948,10 @@
             <label class="select-wrap">
               <span>Gültig ab</span>
               <input id="musicTaxEffectiveFrom" type="month">
+            </label>
+            <label class="select-wrap currency-wrap">
+              <span>Steuerbasis vor Musik p.a. (optional)</span>
+              <input id="musicTaxBaseIncomeAnnual" type="number" min="0" step="0.01" placeholder="z. B. 52000">
             </label>
             <label class="select-wrap">
               <span>Notiz</span>

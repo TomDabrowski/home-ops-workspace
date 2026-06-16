@@ -273,6 +273,9 @@ export function validateMusicTaxSettingsPayload(payload: unknown): Record<string
   return {
     quarterlyPrepaymentAmount: assertNumber(payload.quarterlyPrepaymentAmount, "music tax settings.quarterlyPrepaymentAmount", { min: 0 }),
     effectiveFrom: assertMonthKey(payload.effectiveFrom, "music tax settings.effectiveFrom"),
+    annualBaseTaxableIncome: payload.annualBaseTaxableIncome === undefined
+      ? undefined
+      : assertNumber(payload.annualBaseTaxableIncome, "music tax settings.annualBaseTaxableIncome", { min: 0 }),
     notes: normalizeOptionalNotes(payload.notes, "music tax settings.notes"),
     isActive: assertOptionalBoolean(payload.isActive, "music tax settings.isActive"),
     updatedAt: normalizeOptionalTimestamp(payload.updatedAt, "music tax settings.updatedAt"),

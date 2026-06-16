@@ -25,6 +25,7 @@ import { removeImportedDraftEntryById } from "./import-draft-entry-removal.ts";
 const root = resolve(".");
 const appDir = join(root, "app");
 const srcDir = join(root, "src");
+const nodeModulesDir = join(root, "node_modules");
 ensureFinanceDataDir();
 const dataDir = financeDataDir();
 const distDir = join(root, "dist");
@@ -111,7 +112,12 @@ const mimeTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".properties": "text/plain; charset=utf-8",
 };
 
 function noCacheHeaders(type: string): Record<string, string> {
@@ -787,6 +793,13 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname.startsWith("/src/")) {
     const path = safeJoin(srcDir, url.pathname.replace("/src/", ""));
+    if (path && existsSync(path)) {
+      return sendFile(path, res);
+    }
+  }
+
+  if (url.pathname.startsWith("/node_modules/")) {
+    const path = safeJoin(nodeModulesDir, url.pathname.replace("/node_modules/", ""));
     if (path && existsSync(path)) {
       return sendFile(path, res);
     }

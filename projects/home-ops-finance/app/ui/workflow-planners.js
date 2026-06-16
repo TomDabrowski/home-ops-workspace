@@ -503,9 +503,18 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   const musicThresholdBeforeAmountField = document.getElementById("wealthSnapshotMusicThresholdBeforeAmount");
   const basisInvestmentStateField = document.getElementById("wealthSnapshotBasisInvestmentState");
   const extraExpensesIncludedField = document.getElementById("wealthSnapshotExtraExpensesIncluded");
+  const positionUpdateDateField = document.getElementById("wealthPositionUpdateDate");
+  const positionUpdateTargetField = document.getElementById("wealthPositionUpdateTarget");
+  const positionUpdateAmountField = document.getElementById("wealthPositionUpdateAmount");
+  const positionUpdateNotesField = document.getElementById("wealthPositionUpdateNotes");
+  const positionQuickTargets = document.getElementById("wealthPositionUpdateQuickTargets");
+  const positionUpdateMetaTarget = document.getElementById("wealthPositionUpdateMeta");
+  const savePositionUpdateButton = document.getElementById("saveWealthPositionUpdateButton");
   const metaTarget = document.getElementById("wealthSnapshotMeta");
   const listTarget = document.getElementById("wealthSnapshotList");
   const historySummaryTarget = document.getElementById("wealthSnapshotHistorySummary");
+  const historyMetaTarget = document.getElementById("wealthSnapshotHistoryMeta");
+  const historyToggleButton = document.getElementById("wealthSnapshotHistoryToggleButton");
   const saveButton = document.getElementById("saveWealthSnapshotButton");
   const clearButton = document.getElementById("clearWealthSnapshotsButton");
 
@@ -513,6 +522,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     !dateField || !giroField || !tradeRepublicField || !scalableField || !investmentField ||
     !cashTotalField || !notesField || !monthStartEnabledField || !monthStartMonthField ||
     !fixedExpensesIncludedField || !salaryIncludedField || !salaryIncludedForMonthField || !musicIncludedField || !musicIncludedForMonthField || !musicThresholdBeforeAmountField || !basisInvestmentStateField || !extraExpensesIncludedField ||
+    !positionUpdateDateField || !positionUpdateTargetField || !positionUpdateAmountField || !positionUpdateNotesField || !positionUpdateMetaTarget || !savePositionUpdateButton ||
     !metaTarget || !listTarget || !saveButton || !clearButton
   ) {
     return;
@@ -521,14 +531,35 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   const snapshots = [...readWealthSnapshots()].sort((left, right) =>
     String(left.snapshotDate ?? "").localeCompare(String(right.snapshotDate ?? "")),
   );
+  let showAllHistory = false;
   const fallbackDate = localDateTimeInputValue();
+  const wealthPositionLabels = {
+    giro: "CHECK24",
+    cash: "Trade Republic Cash",
+    savings: "Scalable",
+    investment: "Investment / Portfolio",
+  };
+
+  function exactSnapshotForDate(snapshotDate) {
+    return [...readWealthSnapshots()]
+      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") === String(snapshotDate ?? ""))
+      .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
+  }
+
+  function latestSnapshotForDate(snapshotDate) {
+    return [...readWealthSnapshots()]
+      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") <= String(snapshotDate ?? ""))
+      .sort((left, right) => String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")))[0];
+  }
+
+  function baseSnapshotForDate(snapshotDate) {
+    return exactSnapshotForDate(snapshotDate) ?? latestSnapshotForDate(snapshotDate);
+  }
 
   function suggestedSnapshotValues(snapshotDate) {
     const monthKey = monthFromDate(snapshotDate ?? "") || currentSelectedMonthKey();
     const row = monthReviewRowForMonth(monthKey);
-    const exactSnapshot = [...readWealthSnapshots()]
-      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") === String(snapshotDate ?? ""))
-      .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")))[0];
+    const exactSnapshot = exactSnapshotForDate(snapshotDate);
     if (exactSnapshot) {
       return {
         cashAccounts: wealthSnapshotCashAccounts(exactSnapshot),
@@ -536,9 +567,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       };
     }
 
-    const latestSnapshot = [...readWealthSnapshots()]
-      .filter((entry) => entry.isActive !== false && String(entry.snapshotDate ?? "") <= String(snapshotDate ?? ""))
-      .sort((left, right) => String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")))[0];
+    const latestSnapshot = latestSnapshotForDate(snapshotDate);
     const latestAccounts = wealthSnapshotCashAccounts(latestSnapshot);
     if (latestSnapshot) {
       return {
@@ -627,6 +656,9 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   if (!dateField.value) {
     dateField.value = fallbackDate;
   }
+  if (!positionUpdateDateField.value) {
+    positionUpdateDateField.value = fallbackDate;
+  }
 
   if (!saveButton.dataset.editingId) {
     applySuggestedSnapshotValues(dateField.value || fallbackDate);
@@ -691,10 +723,89 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     snapshotNote.refresh(true);
   }
 
-  if (snapshots.length === 0) {
-    listTarget.innerHTML = `<p class="empty-state">Noch kein manueller Vermögensstand gespeichert.</p>`;
-  } else {
-    listTarget.innerHTML = snapshots
+  const positionUpdateNote = bindAutoNote(
+    positionUpdateNotesField,
+    () => {
+      const snapshotDate = positionUpdateDateField.value || fallbackDate;
+      const target = positionUpdateTargetField.value || "investment";
+      const amount = Number(positionUpdateAmountField.value);
+      const amountLabel = Number.isFinite(amount) && amount >= 0 ? euro.format(amount) : "offener Betrag";
+      return `${wealthPositionLabels[target] ?? target} am ${formatDisplayDate(snapshotDate)} auf ${amountLabel} aktualisiert. Rest aus letztem Ist-Stand übernommen.`;
+    },
+    [positionUpdateDateField, positionUpdateTargetField, positionUpdateAmountField],
+  );
+  positionUpdateNote.refresh(true);
+
+  function resetPositionUpdateForm() {
+    positionUpdateDateField.value = fallbackDate;
+    positionUpdateTargetField.value = "investment";
+    positionUpdateAmountField.value = "";
+    positionUpdateNote.refresh(true);
+  }
+
+  function renderPositionQuickTargets() {
+    if (!positionQuickTargets) {
+      return;
+    }
+
+    const snapshotDate = positionUpdateDateField.value || fallbackDate;
+    const baseSnapshot = baseSnapshotForDate(snapshotDate);
+    const suggested = suggestedSnapshotValues(snapshotDate);
+    const cashAccounts = suggested.cashAccounts ?? { giro: 0, cash: 0, savings: 0 };
+    const positionValues = {
+      giro: Number(cashAccounts.giro ?? 0),
+      cash: Number(cashAccounts.cash ?? 0),
+      savings: Number(cashAccounts.savings ?? 0),
+      investment: Number(suggested.investmentAmount ?? 0),
+    };
+    const sourceLabel = baseSnapshot
+      ? `Zuletzt aus Ist-Stand vom ${formatDisplayDate(baseSnapshot.snapshotDate)} übernommen.`
+      : `Noch kein Ist-Stand vorhanden. Vorschlag aus Monatsprojektion für ${monthFromDate(snapshotDate) || currentSelectedMonthKey()}.`;
+
+    positionQuickTargets.innerHTML = Object.entries(wealthPositionLabels)
+      .map(([target, label]) => `
+        <div class="mapping-card planner-position-card">
+          <div>
+            <strong>${label}</strong>
+            <p class="planner-position-value">${euro.format(positionValues[target] ?? 0)}</p>
+            <p>${sourceLabel}</p>
+          </div>
+          <button class="pill" type="button" data-wealth-position-preset="${target}">${label} aktualisieren</button>
+        </div>
+      `)
+      .join("");
+
+    for (const button of positionQuickTargets.querySelectorAll("[data-wealth-position-preset]")) {
+      button.addEventListener("click", () => {
+        const target = button.getAttribute("data-wealth-position-preset");
+        if (!target) {
+          return;
+        }
+        positionUpdateTargetField.value = target;
+        positionUpdateAmountField.value = String(positionValues[target] ?? 0);
+        positionUpdateNote.refresh(true);
+      });
+    }
+  }
+
+  function renderSnapshotHistory() {
+    const sortedSnapshots = [...readWealthSnapshots()].sort((left, right) =>
+      String(right.snapshotDate ?? "").localeCompare(String(left.snapshotDate ?? "")),
+    );
+    const visibleSnapshots = showAllHistory ? sortedSnapshots : sortedSnapshots.slice(0, 6);
+
+    if (sortedSnapshots.length === 0) {
+      listTarget.innerHTML = `<p class="empty-state">Noch kein manueller Vermögensstand gespeichert.</p>`;
+      if (historyMetaTarget) {
+        historyMetaTarget.textContent = "Sobald du Ist-Stände speicherst, erscheinen sie hier in absteigender Reihenfolge.";
+      }
+      if (historyToggleButton) {
+        historyToggleButton.hidden = true;
+      }
+      return;
+    }
+
+    listTarget.innerHTML = visibleSnapshots
       .map((entry) => `
         <div class="mapping-card">
           <div class="mapping-card-head">
@@ -722,6 +833,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
               <button class="pill" type="button" data-wealth-snapshot-toggle="${entry.id}">
                 ${entry.isActive === false ? "Aktivieren" : "Deaktivieren"}
               </button>
+              <button class="pill pill-danger" type="button" data-wealth-snapshot-delete="${entry.id}">Löschen</button>
             </div>
           </div>
           <p class="section-copy">Zuletzt geändert: ${formatHistoryTimestamp(entry.updatedAt)}</p>
@@ -729,15 +841,31 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
         </div>
       `)
       .join("");
+
+    if (historyMetaTarget) {
+      historyMetaTarget.textContent = showAllHistory
+        ? `${sortedSnapshots.length} Einträge eingeblendet.`
+        : `${visibleSnapshots.length} von ${sortedSnapshots.length} Einträgen sichtbar.`;
+    }
+    if (historyToggleButton) {
+      historyToggleButton.hidden = sortedSnapshots.length <= 6;
+      historyToggleButton.textContent = showAllHistory ? "Weniger anzeigen" : "Ältere Einträge zeigen";
+    }
   }
+
+  renderSnapshotHistory();
 
   const persistenceLabel = wealthSnapshotsPersistence === "project" ? "Projektdatei" : "Browser-Fallback";
   metaTarget.textContent = snapshots.length > 0
     ? `${snapshots.length} Ist-Stand(e) gespeichert · Speicherort: ${persistenceLabel}`
     : `Noch kein manueller Vermögensstand gespeichert · Speicherort: ${persistenceLabel}`;
+  positionUpdateMetaTarget.textContent = snapshots.length > 0
+    ? `Neue Positions-Updates übernehmen alle übrigen Werte automatisch aus dem letzten Ist-Stand · Speicherort: ${persistenceLabel}`
+    : `Noch kein Ist-Stand vorhanden. Der erste Positions-Update braucht trotzdem einen vollständigen plausiblen Wert für die gewählte Position.`;
   clearButton.hidden = !(wealthSnapshotsPersistence === "browser" && snapshots.length > 0);
   if (wealthSnapshotsPersistence === "browser" && snapshots.length > 0) {
     metaTarget.textContent += " · Achtung: lokale Browser-Daten können Projektwerte überlagern.";
+    positionUpdateMetaTarget.textContent += " Achtung: lokale Browser-Daten können Projektwerte überlagern.";
   }
   if (historySummaryTarget) {
     const latestEntry = [...snapshots]
@@ -746,45 +874,93 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       ? `Zuletzt geändert: ${formatHistoryTimestamp(latestEntry.updatedAt)} · ${latestEntry.anchorMonthKey ? `Monatsanfang ${latestEntry.anchorMonthKey}` : "Normaler Ist-Stand"} · Snapshot ${formatDisplayDate(latestEntry.snapshotDate)}`
       : "Noch kein manueller Vermögensstand gespeichert.";
   }
+  renderPositionQuickTargets();
 
-  for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-edit]")) {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-wealth-snapshot-edit");
-      const entry = readWealthSnapshots().find((item) => item.id === id);
-      if (!entry) return;
-      const cashAccounts = wealthSnapshotCashAccounts(entry);
-      dateField.value = entry.snapshotDate || fallbackDate;
-      giroField.value = String(cashAccounts.giro);
-      tradeRepublicField.value = String(cashAccounts.cash);
-      scalableField.value = String(cashAccounts.savings);
-      investmentField.value = String(entry.investmentAmount ?? 0);
-      snapshotNote.setManualValue(entry.notes || "");
-      monthStartEnabledField.checked = Boolean(entry.anchorMonthKey);
-      monthStartMonthField.value = entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate) ?? currentSelectedMonthKey();
-      monthStartMonthField.disabled = !monthStartEnabledField.checked;
-      fixedExpensesIncludedField.checked = entry.monthlyStatus?.fixedExpensesIncluded === true;
-      salaryIncludedField.checked = entry.monthlyStatus?.salaryIncluded === true;
-      salaryIncludedForMonthField.value =
-        entry.monthlyStatus?.salaryIncludedForMonthKey ??
-        (entry.monthlyStatus?.salaryIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
-        "";
-      musicIncludedField.checked = entry.monthlyStatus?.musicIncluded === true;
-      musicIncludedForMonthField.value =
-        entry.monthlyStatus?.musicIncludedForMonthKey ??
-        (entry.monthlyStatus?.musicIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
-        "";
-      musicThresholdBeforeAmountField.value =
-        typeof entry.monthlyStatus?.musicThresholdBeforeAmount === "number"
-          ? String(entry.monthlyStatus.musicThresholdBeforeAmount)
-          : "";
-      basisInvestmentStateField.value = entry.monthlyStatus?.basisInvestmentState ?? "open";
-      extraExpensesIncludedField.checked = entry.monthlyStatus?.extraExpensesIncluded === true;
-      saveButton.dataset.editingId = entry.id;
-      saveButton.textContent = "Ist-Stand aktualisieren";
-      updateCashTotalField();
-      syncIncludedMonthFields();
-    });
+  if (historyToggleButton) {
+    historyToggleButton.onclick = () => {
+      showAllHistory = !showAllHistory;
+      renderSnapshotHistory();
+      bindSnapshotHistoryActions();
+    };
   }
+
+  function bindSnapshotHistoryActions() {
+    for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-edit]")) {
+      button.addEventListener("click", () => {
+        const id = button.getAttribute("data-wealth-snapshot-edit");
+        const entry = readWealthSnapshots().find((item) => item.id === id);
+        if (!entry) return;
+        const cashAccounts = wealthSnapshotCashAccounts(entry);
+        dateField.value = entry.snapshotDate || fallbackDate;
+        giroField.value = String(cashAccounts.giro);
+        tradeRepublicField.value = String(cashAccounts.cash);
+        scalableField.value = String(cashAccounts.savings);
+        investmentField.value = String(entry.investmentAmount ?? 0);
+        snapshotNote.setManualValue(entry.notes || "");
+        monthStartEnabledField.checked = Boolean(entry.anchorMonthKey);
+        monthStartMonthField.value = entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate) ?? currentSelectedMonthKey();
+        monthStartMonthField.disabled = !monthStartEnabledField.checked;
+        fixedExpensesIncludedField.checked = entry.monthlyStatus?.fixedExpensesIncluded === true;
+        salaryIncludedField.checked = entry.monthlyStatus?.salaryIncluded === true;
+        salaryIncludedForMonthField.value =
+          entry.monthlyStatus?.salaryIncludedForMonthKey ??
+          (entry.monthlyStatus?.salaryIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
+          "";
+        musicIncludedField.checked = entry.monthlyStatus?.musicIncluded === true;
+        musicIncludedForMonthField.value =
+          entry.monthlyStatus?.musicIncludedForMonthKey ??
+          (entry.monthlyStatus?.musicIncluded ? (entry.anchorMonthKey ?? monthFromDate(entry.snapshotDate)) : "") ??
+          "";
+        musicThresholdBeforeAmountField.value =
+          typeof entry.monthlyStatus?.musicThresholdBeforeAmount === "number"
+            ? String(entry.monthlyStatus.musicThresholdBeforeAmount)
+            : "";
+        basisInvestmentStateField.value = entry.monthlyStatus?.basisInvestmentState ?? "open";
+        extraExpensesIncludedField.checked = entry.monthlyStatus?.extraExpensesIncluded === true;
+        saveButton.dataset.editingId = entry.id;
+        saveButton.textContent = "Ist-Stand aktualisieren";
+        updateCashTotalField();
+        syncIncludedMonthFields();
+      });
+    }
+
+    for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-toggle]")) {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-wealth-snapshot-toggle");
+        if (!id) return;
+        const nextState = readWealthSnapshots().map((entry) =>
+          entry.id === id ? { ...entry, isActive: entry.isActive === false, updatedAt: new Date().toISOString() } : entry,
+        );
+        const result = await saveWealthSnapshots(nextState);
+        await refreshFinanceView({
+          title: "Ist-Stand aktualisiert",
+          detail: statusDetailForMode(result.mode),
+          tone: result.mode === "project" ? "success" : "warn",
+        });
+      });
+    }
+
+    for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-delete]")) {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-wealth-snapshot-delete");
+        const entry = readWealthSnapshots().find((item) => item.id === id);
+        if (!id || !entry) return;
+        if (!confirmAction(`Ist-Stand vom ${formatDisplayDate(entry.snapshotDate)} wirklich löschen?`)) {
+          return;
+        }
+
+        const nextState = readWealthSnapshots().filter((item) => item.id !== id);
+        const result = await saveWealthSnapshots(nextState);
+        await refreshFinanceView({
+          title: "Ist-Stand gelöscht",
+          detail: statusDetailForMode(result.mode),
+          tone: result.mode === "project" ? "success" : "warn",
+        });
+      });
+    }
+  }
+
+  bindSnapshotHistoryActions();
 
   dateField.onchange = () => {
     if (saveButton.dataset.editingId) {
@@ -793,6 +969,11 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
 
     applySuggestedSnapshotValues(dateField.value || fallbackDate);
   };
+  positionUpdateDateField.onchange = () => {
+    positionUpdateNote.refresh(true);
+    renderPositionQuickTargets();
+  };
+  positionUpdateTargetField.onchange = () => positionUpdateNote.refresh(true);
 
   monthStartEnabledField.onchange = () => {
     monthStartMonthField.disabled = !monthStartEnabledField.checked;
@@ -831,22 +1012,6 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
   musicThresholdBeforeAmountField.onchange = () => snapshotNote.refresh(true);
 
   syncIncludedMonthFields();
-
-  for (const button of listTarget.querySelectorAll("[data-wealth-snapshot-toggle]")) {
-    button.addEventListener("click", async () => {
-      const id = button.getAttribute("data-wealth-snapshot-toggle");
-      if (!id) return;
-      const nextState = readWealthSnapshots().map((entry) =>
-        entry.id === id ? { ...entry, isActive: entry.isActive === false, updatedAt: new Date().toISOString() } : entry,
-      );
-      const result = await saveWealthSnapshots(nextState);
-      await refreshFinanceView({
-        title: "Ist-Stand aktualisiert",
-        detail: statusDetailForMode(result.mode),
-        tone: result.mode === "project" ? "success" : "warn",
-      });
-    });
-  }
 
   saveButton.onclick = async () => {
     const editingId = saveButton.dataset.editingId ?? "";
@@ -925,6 +1090,65 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
     await refreshFinanceView({
       title: isEditing ? "Ist-Stand aktualisiert" : "Ist-Stand gespeichert",
       detail: `${statusDetailForMode(result.mode)} ${anchorMonthKey ? `Gilt als Monatsanfang für ${anchorMonthKey}.` : `Gilt für ${snapshotDate.slice(0, 7)} als gespeicherter Ist-Stand.`}`,
+      tone: result.mode === "project" ? "success" : "warn",
+    });
+  };
+
+  savePositionUpdateButton.onclick = async () => {
+    const snapshotDate = positionUpdateDateField.value || fallbackDate;
+    const target = positionUpdateTargetField.value || "investment";
+    const amount = Number(positionUpdateAmountField.value);
+    const notes = positionUpdateNotesField.value.trim();
+
+    if (!snapshotDate || !Number.isFinite(amount) || amount < 0) {
+      positionUpdateMetaTarget.textContent = "Bitte Datum, Position und einen gültigen Ist-Wert eintragen.";
+      return;
+    }
+
+    const exactSnapshot = exactSnapshotForDate(snapshotDate);
+    const baseSnapshot = exactSnapshot ?? latestSnapshotForDate(snapshotDate);
+    const suggested = suggestedSnapshotValues(snapshotDate);
+    const cashAccounts = {
+      giro: Number(suggested.cashAccounts.giro ?? 0),
+      cash: Number(suggested.cashAccounts.cash ?? 0),
+      savings: Number(suggested.cashAccounts.savings ?? 0),
+    };
+    let investmentAmount = Number(suggested.investmentAmount ?? 0);
+
+    if (target === "investment") {
+      investmentAmount = amount;
+    } else if (target === "giro" || target === "cash" || target === "savings") {
+      cashAccounts[target] = amount;
+    }
+
+    const cashAmount = roundCurrency(cashAccounts.giro + cashAccounts.cash + cashAccounts.savings);
+    const nextEntry = {
+      id: exactSnapshot?.id ?? `wealth-snapshot-${Date.now()}`,
+      snapshotDate,
+      cashAccounts,
+      cashAmount,
+      investmentAmount,
+      anchorMonthKey: exactSnapshot?.anchorMonthKey,
+      monthlyStatus: exactSnapshot?.monthlyStatus ?? baseSnapshot?.monthlyStatus,
+      notes: notes || `${wealthPositionLabels[target] ?? target} aktualisiert. Rest aus letztem Ist-Stand übernommen.`,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (!confirmAction(
+      `${wealthPositionLabels[target] ?? target} für ${formatDisplayDate(snapshotDate)} wirklich auf ${euro.format(amount)} aktualisieren? Alle anderen Positionen bleiben aus dem letzten Ist-Stand übernommen.`,
+    )) {
+      return;
+    }
+
+    const nextState = exactSnapshot
+      ? readWealthSnapshots().map((entry) => (entry.id === exactSnapshot.id ? nextEntry : entry))
+      : [...readWealthSnapshots(), nextEntry];
+    const result = await saveWealthSnapshots(nextState);
+    resetPositionUpdateForm();
+    await refreshFinanceView({
+      title: "Positions-Istwert gespeichert",
+      detail: `${statusDetailForMode(result.mode)} ${wealthPositionLabels[target] ?? target} für ${snapshotDate.slice(0, 7)} aktualisiert.`,
       tone: result.mode === "project" ? "success" : "warn",
     });
   };

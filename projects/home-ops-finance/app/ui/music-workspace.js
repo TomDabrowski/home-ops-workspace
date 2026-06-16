@@ -52,8 +52,49 @@ function incomeTaxByYear(year, zve) {
   return year <= 2025 ? incomeTaxTariff2025(zve) : incomeTaxTariff2026(zve);
 }
 
+function assumptionNumber(importDraft, key, fallback) {
+  const assumption = importDraft?.forecastAssumptions?.find((entry) => entry.key === key);
+  return typeof assumption?.value === "number" && Number.isFinite(assumption.value) ? assumption.value : fallback;
+}
+
+function firstAvailableAssumptionNumber(importDraft, keys, fallback = Number.NaN) {
+  for (const key of keys) {
+    const value = assumptionNumber(importDraft, key, Number.NaN);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  return fallback;
+}
+
+function employeeAllowanceForYear(_year) {
+  return 1230;
+}
+
+function specialExpenseAllowanceForYear(_year) {
+  return 36;
+}
+
+function activeMusicTaxSettingForMonth(readMusicTaxSettings, monthKey) {
+  if (typeof readMusicTaxSettings !== "function") {
+    return null;
+  }
+
+  const setting = readMusicTaxSettings();
+  if (!setting || setting.isActive === false) {
+    return null;
+  }
+
+  if (typeof setting.effectiveFrom === "string" && setting.effectiveFrom && setting.effectiveFrom > monthKey) {
+    return null;
+  }
+
+  return setting;
+}
+
 export function buildMusicYearData(importDraft, monthlyPlan, selectedMonthKey, deps) {
-  const { uniqueMonthKeys, compareMonthKeys, incomeMonthKey, monthFromDate, roundCurrency } = deps;
+  const { uniqueMonthKeys, compareMonthKeys, incomeMonthKey, monthFromDate, roundCurrency, readMusicTaxSettings } = deps;
 
   const selectedYear = Number(selectedMonthKey.slice(0, 4));
   const monthKeys = uniqueMonthKeys(importDraft.incomeEntries, importDraft.expenseEntries)
@@ -74,11 +115,41 @@ export function buildMusicYearData(importDraft, monthlyPlan, selectedMonthKey, d
     .filter((entry) => Number(monthFromDate(entry.entryDate).slice(0, 4)) === selectedYear && entry.incomeStreamId !== "music-income")
     .reduce((sum, entry) => sum + Number(entry.availableAmount ?? entry.amount ?? 0), 0);
   const yearlyBaseIncome = yearlySalaryBase + yearlyOtherIncomeAvailable;
+  const configuredTaxSetting = activeMusicTaxSettingForMonth(readMusicTaxSettings, selectedMonthKey);
+  const mainSalaryGrossAnnual = Number(
+    firstAvailableAssumptionNumber(importDraft, [
+      "main_salary_gross_annual_last_year",
+      "salary_gross_annual_last_year",
+      "main_salary_gross_annual",
+      "salary_gross_annual",
+    ]),
+  );
+  const configuredAnnualBaseTaxableIncome = configuredTaxSetting
+    ? Number(configuredTaxSetting.annualBaseTaxableIncome)
+    : Number(assumptionNumber(importDraft, "music_tax_base_income_annual", Number.NaN));
+  const hasConfiguredAnnualBaseTaxableIncome = Number.isFinite(configuredAnnualBaseTaxableIncome) && configuredAnnualBaseTaxableIncome >= 0;
+  const hasKnownMainSalaryGrossAnnual = Number.isFinite(mainSalaryGrossAnnual) && mainSalaryGrossAnnual >= 0;
+  const annualBaseTaxableIncomeFromKnownGross = roundCurrency(
+    Math.max(
+      0,
+      mainSalaryGrossAnnual +
+        yearlyOtherIncomeAvailable -
+        employeeAllowanceForYear(selectedYear) -
+        specialExpenseAllowanceForYear(selectedYear),
+    ),
+  );
+  const annualBaseTaxableIncome = roundCurrency(
+    hasConfiguredAnnualBaseTaxableIncome
+      ? configuredAnnualBaseTaxableIncome
+      : hasKnownMainSalaryGrossAnnual
+        ? annualBaseTaxableIncomeFromKnownGross
+      : Math.max(0, yearlyBaseIncome),
+  );
   const yearlyMusicGross = musicIncomeEntries.reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
   const yearlyMusicExpenses = operationalExpenses.reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0);
   const yearlyProfit = Math.max(0, yearlyMusicGross - yearlyMusicExpenses);
   const estimatedTaxAnnual = roundCurrency(
-    incomeTaxByYear(selectedYear, yearlyBaseIncome + yearlyProfit) - incomeTaxByYear(selectedYear, yearlyBaseIncome),
+    incomeTaxByYear(selectedYear, annualBaseTaxableIncome + yearlyProfit) - incomeTaxByYear(selectedYear, annualBaseTaxableIncome),
   );
   const yearlyPrepaid = roundCurrency(taxPrepayments.reduce((sum, entry) => sum + Number(entry.amount ?? 0), 0));
   const effectiveRate = yearlyMusicGross > 0 ? estimatedTaxAnnual / yearlyMusicGross : 0;
@@ -118,7 +189,17 @@ export function buildMusicYearData(importDraft, monthlyPlan, selectedMonthKey, d
     selectedMonth,
     yearlyMusicGross: roundCurrency(yearlyMusicGross),
     yearlyMusicExpenses: roundCurrency(yearlyMusicExpenses),
+    yearlyBaseIncomeEstimate: roundCurrency(yearlyBaseIncome),
+    mainSalaryGrossAnnual: hasKnownMainSalaryGrossAnnual ? mainSalaryGrossAnnual : null,
+    annualBaseTaxableIncome,
+    annualBaseTaxableIncomeSource: hasConfiguredAnnualBaseTaxableIncome
+      ? "configured"
+      : hasKnownMainSalaryGrossAnnual
+        ? "estimated_from_main_salary_gross"
+        : "estimated_from_net",
     estimatedTaxAnnual,
+    yearlyPrepaid,
+    estimatedTaxOpenAmount: roundCurrency(estimatedTaxAnnual - yearlyPrepaid),
     effectiveRate,
     monthIncomeEntries: musicIncomeEntries.filter((entry) => incomeMonthKey(entry) === selectedMonthKey),
     monthExpenseEntries: musicExpenseEntries.filter((entry) => monthFromDate(entry.entryDate) === selectedMonthKey),
@@ -142,6 +223,7 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
     incomeMonthKey,
     monthFromDate,
     roundCurrency,
+    readMusicTaxSettings,
   } = deps;
 
   const resolvedPlan = monthlyPlanFromImportDraft(importDraft, monthlyPlan);
@@ -158,6 +240,7 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
     incomeMonthKey,
     monthFromDate,
     roundCurrency,
+    readMusicTaxSettings,
   });
   if (summary) {
     const entries = [
@@ -179,14 +262,21 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
   }
 
   if (yearSummary) {
+    const baseIncomeReason = data.annualBaseTaxableIncomeSource === "configured"
+      ? `Als steuerliche Basis vor Musik nutzt die App aktuell ${euro.format(data.annualBaseTaxableIncome)} pro Jahr aus deinem gespeicherten Steuer-Plan.`
+      : data.annualBaseTaxableIncomeSource === "estimated_from_main_salary_gross"
+        ? `Automatisch aus bekanntem Hauptgehalt brutto von ${euro.format(data.mainSalaryGrossAnnual ?? 0)} pro Jahr plus sonstigen Nicht-Musik-Einnahmen berechnet. Dabei zieht die App vereinfacht ${euro.format(employeeAllowanceForYear(data.selectedYear))} Arbeitnehmer-Pauschbetrag und ${euro.format(specialExpenseAllowanceForYear(data.selectedYear))} Sonderausgaben-Pauschbetrag ab.`
+        : `Noch kein bekanntes Hauptgehalt brutto und kein eigener steuerlicher Basiswert gespeichert. Deshalb nutzt die App aktuell nur eine grobe Basis-Schätzung von ${euro.format(data.yearlyBaseIncomeEstimate)} aus Gehalt netto plus sonstigen Einnahmen.`;
     const taxReason =
       data.yearlyMusicGross > 0
-        ? `Herleitung: Zusatzsteuer auf den Musik-Gewinn im Jahr ${data.selectedYear}. Die App vergleicht die Einkommensteuer auf Basis-Einkommen plus Musik-Gewinn mit der Steuer auf dein Basis-Einkommen allein. Daraus ergibt sich aktuell ein effektiver Satz von ${formatPercent(data.effectiveRate)} auf den Musik-Umsatz.`
+        ? `Herleitung: Zusatzsteuer auf den Musik-Gewinn im Jahr ${data.selectedYear}. Die App vergleicht die Einkommensteuer auf die Basis vor Musik von ${euro.format(data.annualBaseTaxableIncome)} plus Musik-Gewinn mit der Steuer auf die Basis allein. Daraus ergibt sich aktuell ein effektiver Satz von ${formatPercent(data.effectiveRate)} auf den Musik-Umsatz.`
         : `Sobald im Jahr ${data.selectedYear} Musik-Umsatz vorliegt, berechnet die App hier den effektiven Zusatz-Steuersatz aus der Differenz zwischen Steuer mit und ohne Musik-Gewinn.`;
     yearSummary.innerHTML = [
+      `<div class="mapping-card"><strong>Steuerbasis vor Musik</strong><p>${baseIncomeReason}</p></div>`,
       `<div class="mapping-card"><strong>Musik-Einnahmen im Jahr</strong><p>${euro.format(data.yearlyMusicGross)}</p></div>`,
       `<div class="mapping-card"><strong>Musik-Ausgaben im Jahr</strong><p>${euro.format(data.yearlyMusicExpenses)}</p></div>`,
       `<div class="mapping-card"><strong>Steuer im Jahr</strong><p>${euro.format(data.estimatedTaxAnnual)} geschätzt bei ${formatPercent(data.effectiveRate)}.</p></div>`,
+      `<div class="mapping-card"><strong>Nach Vorauszahlungen offen</strong><p>${euro.format(data.estimatedTaxOpenAmount)} bei bisher ${euro.format(data.yearlyPrepaid)} vorausgezahlt.</p></div>`,
       `<div class="mapping-card"><strong>Einordnung</strong><p>${taxReason}</p></div>`,
     ].join("");
   }
@@ -227,7 +317,7 @@ export function renderMusicWorkspace(importDraft, monthlyPlan, monthKey, deps) {
       };
 
       const monthSelect = document.getElementById("monthReviewSelect");
-      if (monthSelect instanceof HTMLSelectElement && monthSelect.value !== targetMonthKey) {
+      if (monthSelect && "value" in monthSelect && monthSelect.value !== targetMonthKey) {
         monthSelect.value = targetMonthKey;
         monthSelect.dispatchEvent(new Event("change", { bubbles: true }));
         window.setTimeout(applyEditorValues, 0);

@@ -28,7 +28,7 @@ export function createAppBindingTools(deps) {
 
   async function shutdownApp() {
     const button = document.getElementById("shutdownAppButton");
-    if (!(button instanceof HTMLButtonElement)) {
+    if (!(button instanceof HTMLElement)) {
       return;
     }
 
@@ -65,7 +65,7 @@ export function createAppBindingTools(deps) {
 
   function bindAppControls() {
     const shutdownButton = document.getElementById("shutdownAppButton");
-    if (shutdownButton instanceof HTMLButtonElement) {
+    if (shutdownButton instanceof HTMLElement) {
       shutdownButton.onclick = () => {
         shutdownApp().catch((error) => {
           console.error(error);
@@ -83,10 +83,20 @@ export function createAppBindingTools(deps) {
     const tabs = [...document.querySelectorAll(".tab")];
     const panels = [...document.querySelectorAll(".tab-panel")];
 
+    function applyTabVisualState(activeTab) {
+      tabs.forEach((item) => {
+        const isActive = item === activeTab;
+        item.classList.toggle("is-active", isActive);
+        if (item.tagName === "UI5-BUTTON") {
+          item.setAttribute("design", isActive ? "Emphasized" : "Transparent");
+        }
+      });
+    }
+
     for (const tab of tabs) {
       tab.onclick = () => {
         const target = tab.dataset.tab;
-        tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
+        applyTabVisualState(tab);
         panels.forEach((panel) => panel.classList.toggle("is-active", panel.id === target));
         updateMonthNavVisibility(target ?? "overview");
         saveViewState({ tabId: target ?? "overview" });
@@ -128,7 +138,7 @@ export function createAppBindingTools(deps) {
     const panel = document.getElementById("settingsPanel");
     const themeButton = document.getElementById("themeModeButton");
 
-    if (!(toggleButton instanceof HTMLButtonElement) || !(panel instanceof HTMLElement)) {
+    if (!(toggleButton instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
       return;
     }
 
@@ -146,7 +156,7 @@ export function createAppBindingTools(deps) {
       setOpen(panel.hidden);
     };
 
-    if (themeButton instanceof HTMLButtonElement) {
+    if (themeButton instanceof HTMLElement) {
       themeButton.onclick = () => {
         const nextMode = readThemeMode() === "dark" ? "light" : "dark";
         writeThemeMode(nextMode);

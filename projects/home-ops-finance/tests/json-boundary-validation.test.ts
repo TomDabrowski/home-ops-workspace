@@ -138,6 +138,7 @@ test("accepts forecast, music tax, and salary workflow payloads", () => {
   const musicTax = validateMusicTaxSettingsPayload({
     quarterlyPrepaymentAmount: 501,
     effectiveFrom: "2026-04",
+    annualBaseTaxableIncome: 52000,
     notes: "",
     isActive: true,
     updatedAt: "2026-03-25T20:12:00.000Z",
@@ -155,6 +156,7 @@ test("accepts forecast, music tax, and salary workflow payloads", () => {
 
   assert.equal(forecast.musicThresholdAccountId, "savings");
   assert.equal(musicTax.effectiveFrom, "2026-04");
+  assert.equal(musicTax.annualBaseTaxableIncome, 52000);
   assert.equal(Array.isArray(salary), true);
   assert.equal(salary.length, 1);
 });
