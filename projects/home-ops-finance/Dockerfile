@@ -7,7 +7,7 @@ WORKDIR /app
 
 COPY .deploy-deps/home-ops-framework /home-ops-framework
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --no-audit --no-fund
 
 COPY app ./app
 COPY deploy ./deploy
