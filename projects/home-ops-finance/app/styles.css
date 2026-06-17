@@ -1532,6 +1532,520 @@ th:first-child {
 }
 .positive { color: var(--accent); }
 .negative { color: var(--danger); }
+
+/* UI5 cohesion pass: keep the app surface aligned with Horizon tokens. */
+:root {
+  color-scheme: light;
+  --bg: var(--sapBackgroundColor, #f7f7f7);
+  --bg-soft: var(--sapGroup_ContentBackground, #f7f7f7);
+  --bg-contrast: var(--sapShell_Background, #ffffff);
+  --card: var(--sapTile_Background, #ffffff);
+  --card-strong: var(--sapTile_Background, #ffffff);
+  --card-elevated: var(--sapList_Background, #ffffff);
+  --ink: var(--sapTextColor, #1d2d3e);
+  --muted: var(--sapContent_LabelColor, #556b82);
+  --line: var(--sapContent_ForegroundBorderColor, #d5dadd);
+  --accent: var(--sapHighlightColor, #0070f2);
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --teal: var(--sapPositiveColor, #30914c);
+  --teal-soft: color-mix(in srgb, var(--teal) 12%, transparent);
+  --amber: var(--sapCriticalColor, #e76500);
+  --amber-soft: color-mix(in srgb, var(--amber) 12%, transparent);
+  --rose: var(--sapIndicationColor_6, #c0399f);
+  --rose-soft: color-mix(in srgb, var(--rose) 10%, transparent);
+  --success: var(--sapPositiveColor, #30914c);
+  --danger: var(--sapNegativeColor, #bb0000);
+  --shadow: var(--sapContent_Shadow0, 0 0 0 1px rgba(85, 107, 130, 0.08));
+  --shadow-soft: none;
+  --radius: 8px;
+  --surface-padding: 1rem;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --sapBackgroundColor: #12171f;
+  --sapBaseColor: #18212b;
+  --sapShell_Background: #0e141b;
+  --sapShellColor: #e8edf2;
+  --sapTile_Background: #18212b;
+  --sapObjectHeader_Background: #18212b;
+  --sapList_Background: #18212b;
+  --sapList_HeaderBackground: #202b37;
+  --sapGroup_ContentBackground: #12171f;
+  --sapTextColor: #eef3f7;
+  --sapContent_LabelColor: #a9b8c6;
+  --sapContent_ForegroundBorderColor: rgba(169, 184, 198, 0.2);
+  --sapHighlightColor: #7ab7ff;
+  --sapLinkColor: #7ab7ff;
+  --sapButton_TextColor: #d8e8ff;
+  --sapButton_BorderColor: rgba(122, 183, 255, 0.45);
+  --sapButton_Background: #202b37;
+  --sapButton_Hover_Background: #263442;
+  --sapButton_Emphasized_Background: #0a6ed1;
+  --sapButton_Emphasized_TextColor: #ffffff;
+  --sapField_Background: #0f151c;
+  --sapField_TextColor: #eef3f7;
+  --sapField_BorderColor: rgba(169, 184, 198, 0.34);
+  --sapField_ReadOnly_Background: #151d26;
+  --sapField_ReadOnly_BorderColor: rgba(169, 184, 198, 0.24);
+  --sapField_PlaceholderTextColor: #8fa0ae;
+  --sapPositiveColor: #57c27d;
+  --sapCriticalColor: #ffb469;
+  --sapNegativeColor: #ff8a84;
+  --bg: var(--sapBackgroundColor);
+  --bg-soft: var(--sapGroup_ContentBackground);
+  --bg-contrast: var(--sapShell_Background);
+  --card: var(--sapTile_Background);
+  --card-strong: var(--sapTile_Background);
+  --card-elevated: var(--sapList_HeaderBackground);
+  --ink: var(--sapTextColor);
+  --muted: var(--sapContent_LabelColor);
+  --line: var(--sapContent_ForegroundBorderColor);
+  --accent: var(--sapHighlightColor);
+  --teal: var(--sapPositiveColor);
+  --amber: var(--sapCriticalColor);
+  --danger: var(--sapNegativeColor);
+  --shadow: 0 0 0 1px rgba(169, 184, 198, 0.08);
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  letter-spacing: 0;
+}
+
+.shell {
+  max-width: 1440px;
+  padding: 5rem 1.5rem 3rem;
+}
+
+h1,
+h2,
+.eyebrow,
+.tab-group-label,
+th,
+.select-wrap,
+.detail-strip span {
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(2.75rem, 5vw, 4.5rem);
+  line-height: 1;
+}
+
+.card,
+.metric,
+.stat,
+.subcard,
+.table-wrap,
+.detail-list div,
+.mapping-card,
+.priority-card,
+.reconciliation-action,
+.milestone-item,
+.retirement-summary .signal-list li,
+.detail-strip div,
+.planner-alert,
+.app-status,
+.settings-panel,
+.app-tab-bar,
+.tab-group,
+.month-nav-bar,
+.month-ui5-card,
+.month-detail-panel,
+.month-topline-card-ui5 {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.card,
+.metric,
+.stat,
+.subcard,
+.table-wrap,
+.detail-list div,
+.mapping-card,
+.priority-card,
+.reconciliation-action,
+.milestone-item,
+.retirement-summary .signal-list li,
+.detail-strip div {
+  background: var(--card);
+  border-color: var(--line);
+}
+
+.card {
+  padding: 1.25rem;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.card::before {
+  display: none;
+}
+
+.hero {
+  grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.6fr);
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--sapObjectHeader_Background, var(--card));
+  border: 1px solid var(--line);
+}
+
+.hero .lede {
+  max-width: 54rem;
+}
+
+.hero-meta {
+  justify-items: start;
+}
+
+.metric,
+.stat {
+  width: 100%;
+  background: var(--sapList_Background, var(--card));
+  border-color: var(--line);
+}
+
+.stat:nth-child(1),
+.stat:nth-child(2),
+.stat:nth-child(3) {
+  background: var(--sapList_Background, var(--card));
+  border-color: var(--line);
+}
+
+.tabs {
+  top: 0;
+  margin: 1rem 0 1.25rem;
+  padding: 0.75rem 0;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app-tab-bar {
+  padding: 0.5rem;
+  background: var(--sapObjectHeader_Background, var(--card));
+  border-color: var(--line);
+  display: block;
+  min-height: 0;
+  overflow: visible;
+}
+
+.app-tab-groups {
+  gap: 0.5rem;
+}
+
+.tab-group {
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--sapList_Background, var(--card));
+  border-color: var(--line);
+}
+
+.tab-group-label {
+  padding: 0 0.5rem;
+}
+
+.floating-controls .pill,
+.pill {
+  background: var(--sapButton_Background, var(--card));
+  border-color: var(--sapButton_BorderColor, var(--line));
+  color: var(--sapButton_TextColor, var(--ink));
+  border-radius: var(--radius);
+  transform: none;
+}
+
+.pill:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.pill.is-active {
+  background: var(--sapButton_Emphasized_Background, var(--accent));
+  border-color: var(--sapButton_Emphasized_BorderColor, var(--accent));
+  color: var(--sapButton_Emphasized_TextColor, #fff);
+}
+
+.pill-danger {
+  background: var(--sapButton_Negative_Background, var(--danger));
+  border-color: var(--sapButton_Negative_BorderColor, var(--danger));
+}
+
+.month-nav-bar {
+  top: 4.25rem;
+  padding: 0;
+  background: var(--sapObjectHeader_Background, var(--card));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.month-nav-bar::after {
+  display: none;
+}
+
+.month-nav-bar .month-ui5-card-body {
+  background: transparent;
+}
+
+.month-nav-bar .eyebrow,
+.month-nav-bar .select-wrap > span {
+  color: var(--muted);
+}
+
+.month-nav-head h2 {
+  color: var(--ink);
+}
+
+.month-workbench {
+  gap: 1.25rem;
+}
+
+.month-ui5-card,
+.month-detail-panel,
+.month-topline-card-ui5 {
+  background: var(--sapTile_Background, var(--card));
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+ui5-card.month-ui5-card,
+ui5-card.month-topline-card-ui5,
+ui5-panel.month-detail-panel {
+  --sapTile_Background: var(--card);
+  --sapObjectHeader_Background: var(--card);
+  --sapList_Background: var(--card);
+  --sapGroup_ContentBackground: var(--bg-soft);
+}
+
+ui5-card-header {
+  background: var(--sapObjectHeader_Background, var(--card));
+  border-bottom: 1px solid var(--line);
+}
+
+.month-ui5-card-body,
+.month-detail-panel-body {
+  padding: 1rem;
+  background: var(--sapTile_Background, var(--card));
+}
+
+.month-ui5-card-body--with-header {
+  padding-top: 1rem;
+}
+
+.month-intro-card {
+  margin-bottom: 0;
+}
+
+.month-topline {
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.month-kpi-card-body {
+  padding: 1rem;
+}
+
+.month-kpi-card-body strong {
+  font-size: 1.35rem;
+}
+
+.month-topline-card-ui5.is-primary,
+.month-topline-card-ui5.is-success,
+.month-topline-card-ui5.is-accent,
+.month-topline-card-ui5.is-neutral {
+  border-top: 0;
+  border-left: 0.25rem solid var(--line);
+}
+
+.month-topline-card-ui5.is-primary {
+  border-left-color: var(--accent);
+}
+
+.month-topline-card-ui5.is-success {
+  border-left-color: var(--teal);
+}
+
+.month-topline-card-ui5.is-accent {
+  border-left-color: var(--amber);
+}
+
+.subcard {
+  padding: 1rem;
+}
+
+.month-main .grid.three > .subcard:nth-child(1),
+.month-main .grid.three > .subcard:nth-child(2),
+.month-main .grid.three > .subcard:nth-child(3),
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(1),
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(2),
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(3) {
+  background: var(--sapList_Background, var(--card));
+  border-color: var(--line);
+}
+
+.month-main .grid.three > .subcard:nth-child(1) .subhead,
+.month-main .grid.three > .subcard:nth-child(2) .subhead,
+.month-main .grid.three > .subcard:nth-child(3) .subhead,
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(1) .subhead,
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(2) .subhead,
+:root[data-theme="dark"] .month-main .grid.three > .subcard:nth-child(3) .subhead {
+  color: var(--ink);
+}
+
+.section-copy,
+.lede,
+.metric span,
+.stat span,
+.detail-list dt,
+.mapping-card-head p,
+.mapping-source,
+.detail-formula,
+.empty-state,
+.priority-card p,
+.milestone-item p,
+.retirement-summary p,
+.reconciliation-action p,
+.detail-strip span {
+  color: var(--muted);
+}
+
+.table-wrap {
+  background: var(--sapList_Background, var(--card));
+  border-radius: var(--radius);
+  box-shadow: none;
+  padding: 0;
+}
+
+th,
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  background: var(--sapList_HeaderBackground, color-mix(in srgb, var(--card) 92%, var(--ink) 8%));
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+td:first-child,
+th:first-child {
+  padding-left: 1rem;
+}
+
+table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.detail-list {
+  gap: 0.75rem;
+}
+
+.detail-list div,
+.detail-strip div {
+  background: var(--sapList_Background, var(--card));
+  box-shadow: none;
+  padding: 0.875rem;
+}
+
+.month-clarity-details,
+.compact-details {
+  gap: 0;
+}
+
+.month-clarity-details div,
+.compact-details div {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.75rem 0;
+}
+
+.month-clarity-details div:last-child,
+.compact-details div:last-child {
+  border-bottom: 0;
+}
+
+.month-data-status .compact-details div {
+  border-width: 1px;
+  border-radius: var(--radius);
+  background: var(--sapList_Background, var(--card));
+  padding: 0.875rem;
+}
+
+.month-clarity-grid .subcard {
+  background: var(--sapGroup_ContentBackground, var(--card));
+}
+
+.mapping-card,
+.month-data-status-card.is-ok,
+.month-data-status-card.is-warn,
+.month-data-status-card.is-info {
+  border-left-width: 0.25rem;
+}
+
+.mapping-card {
+  background: var(--sapList_Background, var(--card));
+}
+
+.month-data-status-card.is-ok {
+  border-left-color: var(--teal);
+}
+
+.month-data-status-card.is-warn {
+  border-left-color: var(--danger);
+}
+
+.month-data-status-card.is-info {
+  border-left-color: var(--accent);
+}
+
+.planner-alert {
+  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, var(--card));
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .app-status,
+:root[data-theme="dark"] .floating-controls .pill,
+:root[data-theme="dark"] .select-wrap select,
+:root[data-theme="dark"] .select-wrap input,
+:root[data-theme="dark"] .select-wrap textarea,
+:root[data-theme="dark"] .tab-group,
+:root[data-theme="dark"] .table-wrap,
+:root[data-theme="dark"] .metric,
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] .milestone-item,
+:root[data-theme="dark"] .retirement-summary .signal-list li,
+:root[data-theme="dark"] .mapping-card,
+:root[data-theme="dark"] .detail-list div,
+:root[data-theme="dark"] .signal-list li,
+:root[data-theme="dark"] .priority-card,
+:root[data-theme="dark"] .detail-strip div,
+:root[data-theme="dark"] .reconciliation-action,
+:root[data-theme="dark"] .hero,
+:root[data-theme="dark"] .month-ui5-card-body,
+:root[data-theme="dark"] .month-detail-panel-body {
+  background: var(--card);
+}
+
+:root[data-theme="dark"] .app-tab-bar,
+:root[data-theme="dark"] .month-nav-bar,
+:root[data-theme="dark"] .metric,
+:root[data-theme="dark"] .stat:nth-child(1),
+:root[data-theme="dark"] .stat:nth-child(2),
+:root[data-theme="dark"] .stat:nth-child(3) {
+  background: var(--card);
+  border-color: var(--line);
+}
+
 @media (max-width: 960px) {
   .hero, .grid.two, .grid.three, .grid.four, .detail-list, .compact-details, .month-workbench { grid-template-columns: 1fr; }
   .month-topline {

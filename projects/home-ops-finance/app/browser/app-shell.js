@@ -147,8 +147,14 @@ export function createAppShellTools(config) {
 
   function applyThemeUi(mode = readThemeMode()) {
     document.documentElement.dataset.theme = mode;
+    const ui5ThemeName = mode === "dark" ? "sap_horizon_dark" : "sap_horizon";
     if (typeof document.documentElement?.setAttribute === "function") {
-      document.documentElement.setAttribute("data-ui5-theme", mode === "dark" ? "sap_horizon_dark" : "sap_horizon");
+      document.documentElement.setAttribute("data-ui5-theme", ui5ThemeName);
+    }
+    if (typeof window.__homeOpsSetUi5Theme === "function") {
+      window.__homeOpsSetUi5Theme(ui5ThemeName).catch((error) => {
+        console.warn("UI5 theme switch failed", error);
+      });
     }
     const button = document.getElementById("themeModeButton");
     if (button) {

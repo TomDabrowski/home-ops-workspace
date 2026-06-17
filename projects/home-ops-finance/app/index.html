@@ -70,8 +70,8 @@
     </section>
 
     <nav class="tabs" aria-label="Finanzbereiche">
-      <ui5-bar class="app-tab-bar">
-        <div slot="startContent" class="app-tab-groups">
+      <div class="app-tab-bar" role="toolbar" aria-label="Finanzbereiche">
+        <div class="app-tab-groups">
           <div class="tab-group">
             <span class="tab-group-label">Heute</span>
             <ui5-button class="tab is-active" design="Emphasized" data-tab="overview">Cockpit</ui5-button>
@@ -92,7 +92,7 @@
             <ui5-button class="tab" design="Transparent" data-tab="imports" data-dev-only="true">Importe</ui5-button>
           </div>
         </div>
-      </ui5-bar>
+      </div>
     </nav>
 
     <ui5-card class="month-ui5-card month-nav-bar">
