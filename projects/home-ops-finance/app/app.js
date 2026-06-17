@@ -111,7 +111,7 @@ const euro = new Intl.NumberFormat("de-DE", {
   currency: "EUR",
   maximumFractionDigits: 2,
 });
-const reviewFocusMonthKey = "2026-01";
+const reviewFocusMonthKey = currentMonthKey();
 const retirementPlannerStorageKey = "home-ops-finance-retirement-planner-v1";
 
 const reconciliationStorageKey = "home-ops-finance-reconciliation-v1";
@@ -714,7 +714,13 @@ function renderCurrentMonthClearing(importDraft, review, monthKey) {
 
   renderRows("monthCurrentClearingIncomeRows", monthIncomeEntries, (entry) => `
     <tr>
-      <td><input type="checkbox" data-clearing-income="${entry.id}" ${includedIncomeIds.has(entry.id) ? "checked" : ""}></td>
+      <td class="clearing-toggle-cell">
+        <ui5-checkbox
+          data-clearing-income="${entry.id}"
+          accessible-name="${escapeHtml(entry.description || incomeStreamLabel(importDraft, entry.incomeStreamId) || "Einnahme")} als enthalten markieren"
+          ${includedIncomeIds.has(entry.id) ? "checked" : ""}
+        ></ui5-checkbox>
+      </td>
       <td>${entry.entryDate}</td>
       <td>${entry.description || incomeStreamLabel(importDraft, entry.incomeStreamId)}</td>
       <td>${euro.format(Number(entry.amount ?? 0))}</td>
@@ -726,7 +732,13 @@ function renderCurrentMonthClearing(importDraft, review, monthKey) {
 
   renderRows("monthCurrentClearingExpenseRows", monthExpenseEntries, (entry) => `
     <tr>
-      <td><input type="checkbox" data-clearing-expense="${entry.id}" ${includedExpenseIds.has(entry.id) ? "checked" : ""}></td>
+      <td class="clearing-toggle-cell">
+        <ui5-checkbox
+          data-clearing-expense="${entry.id}"
+          accessible-name="${escapeHtml(entry.description || expenseCategoryLabel(importDraft, entry.expenseCategoryId) || "Ausgabe")} als enthalten markieren"
+          ${includedExpenseIds.has(entry.id) ? "checked" : ""}
+        ></ui5-checkbox>
+      </td>
       <td>${entry.entryDate}</td>
       <td>${entry.description || "-"}</td>
       <td>${expenseCategoryLabel(importDraft, entry.expenseCategoryId)}</td>
@@ -2268,6 +2280,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
     renderMonthReview,
     formatMonthLabel,
     reviewFocusMonthKey,
+    currentMonthKey,
     renderRows,
     planProfileLabel,
     euro,

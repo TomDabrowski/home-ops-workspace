@@ -225,14 +225,17 @@ h1 {
 .metric {
   border-color: rgba(0, 113, 227, 0.12);
 }
+.grid.four > .stat-shell:nth-child(1) .stat,
 .stat:nth-child(1) {
   border-color: rgba(0, 113, 227, 0.15);
   background: linear-gradient(180deg, rgba(240, 247, 255, 0.92), rgba(255, 255, 255, 0.95));
 }
+.grid.four > .stat-shell:nth-child(2) .stat,
 .stat:nth-child(2) {
   border-color: rgba(15, 118, 110, 0.15);
   background: linear-gradient(180deg, rgba(239, 250, 248, 0.92), rgba(255, 255, 255, 0.95));
 }
+.grid.four > .stat-shell:nth-child(3) .stat,
 .stat:nth-child(3) {
   border-color: rgba(180, 83, 9, 0.15);
   background: linear-gradient(180deg, rgba(255, 248, 239, 0.92), rgba(255, 255, 255, 0.95));
@@ -1061,71 +1064,68 @@ th:first-child {
   min-width: 100%;
 }
 .month-picker {
-  min-width: 220px;
+  min-width: 0;
 }
 .month-nav-bar {
   position: sticky;
   top: 126px;
   z-index: 12;
-  padding: 18px 22px;
+  padding: 0;
   overflow: visible;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(23, 27, 36, 0.86), rgba(18, 22, 30, 0.76));
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 22px 40px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(26px) saturate(1.15);
-  -webkit-backdrop-filter: blur(26px) saturate(1.15);
+  background: var(--sapObjectHeader_Background, var(--card));
 }
 .month-nav-bar::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: -24px;
-  height: 42px;
-  border-radius: 0 0 28px 28px;
-  background: linear-gradient(180deg, rgba(16, 18, 23, 0.28), rgba(16, 18, 23, 0));
-  pointer-events: none;
+  display: none;
 }
 .month-nav-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  pointer-events: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 34rem);
+  gap: 18px 24px;
+  align-items: center;
 }
 .month-nav-head h2 {
   margin: 2px 0 0;
   font-size: 1.8rem;
   color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.month-nav-summary {
+  min-width: 0;
 }
 .month-nav-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
   align-items: end;
-  pointer-events: auto;
+  min-width: 0;
+}
+.month-nav-stepper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 .month-picker {
-  min-width: 15rem;
-  flex: 1 1 16rem;
+  width: 100%;
+}
+.month-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
 }
 .month-nav-bar .eyebrow,
 .month-nav-bar .select-wrap > span {
-  color: rgba(243, 245, 249, 0.74);
+  color: var(--muted);
 }
-.month-nav-bar .pill {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-.month-nav-bar .month-picker,
 .month-nav-bar #monthReviewSelect,
 .month-nav-bar #monthPickerButton,
-.month-nav-bar ui5-button,
-.month-nav-bar label {
-  pointer-events: auto;
+.month-nav-bar #monthPrevButton,
+.month-nav-bar #monthNextButton {
+  width: 100%;
+  min-width: 0;
 }
 .month-picker-dialog-copy {
   color: var(--muted);
@@ -1462,6 +1462,14 @@ th:first-child {
 .mapping-check ui5-checkbox {
   width: 100%;
 }
+.clearing-toggle-cell {
+  width: 3.5rem;
+  min-width: 3.5rem;
+}
+.clearing-toggle-cell ui5-checkbox {
+  display: flex;
+  justify-content: center;
+}
 .detail-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1638,6 +1646,7 @@ h1 {
 }
 
 .card,
+.content-ui5-card,
 .metric,
 .stat,
 .subcard,
@@ -1808,6 +1817,7 @@ h1 {
 }
 
 .month-ui5-card,
+.content-ui5-card,
 .month-detail-panel,
 .month-topline-card-ui5 {
   background: var(--sapTile_Background, var(--card));
@@ -1816,6 +1826,7 @@ h1 {
 }
 
 ui5-card.month-ui5-card,
+ui5-card.content-ui5-card,
 ui5-card.month-topline-card-ui5,
 ui5-panel.month-detail-panel {
   --sapTile_Background: var(--card);
@@ -1830,7 +1841,8 @@ ui5-card-header {
 }
 
 .month-ui5-card-body,
-.month-detail-panel-body {
+.month-detail-panel-body,
+.content-ui5-card-body {
   padding: 1rem;
   background: var(--sapTile_Background, var(--card));
 }
@@ -2031,6 +2043,7 @@ table tbody tr:hover {
 :root[data-theme="dark"] .detail-strip div,
 :root[data-theme="dark"] .reconciliation-action,
 :root[data-theme="dark"] .hero,
+:root[data-theme="dark"] .content-ui5-card-body,
 :root[data-theme="dark"] .month-ui5-card-body,
 :root[data-theme="dark"] .month-detail-panel-body {
   background: var(--card);
@@ -2041,7 +2054,10 @@ table tbody tr:hover {
 :root[data-theme="dark"] .metric,
 :root[data-theme="dark"] .stat:nth-child(1),
 :root[data-theme="dark"] .stat:nth-child(2),
-:root[data-theme="dark"] .stat:nth-child(3) {
+:root[data-theme="dark"] .stat:nth-child(3),
+:root[data-theme="dark"] .grid.four > .stat-shell:nth-child(1) .stat,
+:root[data-theme="dark"] .grid.four > .stat-shell:nth-child(2) .stat,
+:root[data-theme="dark"] .grid.four > .stat-shell:nth-child(3) .stat {
   background: var(--card);
   border-color: var(--line);
 }
@@ -2051,7 +2067,8 @@ table tbody tr:hover {
   .month-topline {
     grid-template-columns: 1fr;
   }
-  .month-ui5-card-body {
+  .month-ui5-card-body,
+  .content-ui5-card-body {
     padding: 18px;
   }
   .section-head {
@@ -2060,10 +2077,17 @@ table tbody tr:hover {
   .tabs {
     top: 72px;
   }
-  .month-nav-head,
+  .month-nav-head {
+    grid-template-columns: 1fr;
+  }
   .month-nav-actions {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
+  }
+  .month-nav-stepper,
+  .month-picker-row {
+    display: grid;
+    grid-template-columns: 1fr;
   }
   .planner-inputs,
   .mapping-fields,

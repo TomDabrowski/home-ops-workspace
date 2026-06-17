@@ -151,7 +151,7 @@ test("review state tools merge saved reconciliation actions and persist mapping 
   }
 });
 
-test("monthly expense editor defaults to today and stores the month derived from the entered date", async () => {
+test("monthly expense editor defaults to the opened month and stores the month derived from the entered date", async () => {
   const originalDocument = globalThis.document;
   const field = (value: unknown, extra: Record<string, unknown> = {}) => ({
     value,
@@ -210,7 +210,9 @@ test("monthly expense editor defaults to today and stores the month derived from
       statusDetailForMode: () => "Projektdatei",
     });
 
-    assert.equal(elements.get("monthlyExpenseDate")?.value, "2026-04-14");
+    assert.equal(elements.get("monthlyExpenseDate")?.value, "2026-03-01");
+
+    elements.get("monthlyExpenseDate")!.value = "2026-04-14";
 
     const saveButton = elements.get("saveMonthlyExpenseButton") as { onclick?: () => Promise<void> };
     await saveButton.onclick?.();

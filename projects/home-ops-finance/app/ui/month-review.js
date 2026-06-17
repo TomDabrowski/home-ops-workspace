@@ -79,6 +79,46 @@ function incomeEntryDateForDatetimeLocal(value) {
   return "";
 }
 
+function normalizeMonthKeyInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const month = Number(match[2]);
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return "";
+  }
+
+  return `${match[1]}-${String(month).padStart(2, "0")}`;
+}
+
+function normalizeIsoDateInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() !== month - 1 ||
+    candidate.getUTCDate() !== day
+  ) {
+    return "";
+  }
+
+  return `${match[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export function renderMonthIncomeList(importDraft, review, deps) {
   const {
     listTargetId = "monthUnifiedIncomeList",
@@ -135,9 +175,11 @@ export function renderMonthIncomeList(importDraft, review, deps) {
     return `${entry.id}__${streamId}__${monthKey}`;
   }
   const manualIncomeByKey = new Map(
-    readMonthlyMusicIncomeOverrides().map((item) => {
+    readMonthlyMusicIncomeOverrides()
+      .filter((item) => (item.incomeStreamId ?? "music-income") === "music-income")
+      .map((item) => {
       return [overrideKey(item), item];
-    }),
+      }),
   );
   const entryByRowKey = new Map();
 
@@ -246,7 +288,6 @@ export function renderMonthIncomeList(importDraft, review, deps) {
       if (!entry) {
         return;
       }
-      const id = entry.id;
       const source = readMonthlyMusicIncomeOverrides().find((item) => overrideKey(item) === entryOverrideKey(entry));
       if (!source) {
         return;
@@ -254,10 +295,15 @@ export function renderMonthIncomeList(importDraft, review, deps) {
 
       const amount = Number(target.querySelector(`[data-month-income-amount="${rowKey}"]`)?.value);
       const description = target.querySelector(`[data-month-income-description="${rowKey}"]`)?.value?.trim() ?? "";
-      const selectedMonthKey = target.querySelector(`[data-month-income-date="${rowKey}"]`)?.value || review.row.monthKey;
+      const rawMonthKey = target.querySelector(`[data-month-income-date="${rowKey}"]`)?.value ?? "";
+      const selectedMonthKey = normalizeMonthKeyInput(rawMonthKey) || normalizeMonthKeyInput(review.row.monthKey);
       const notes = target.querySelector(`[data-month-income-notes="${rowKey}"]`)?.value?.trim() ?? "";
       if (!Number.isFinite(amount) || amount < 0) {
         showStatus("Einnahme unvollständig", "Bitte einen gültigen Betrag eintragen.", "warn");
+        return;
+      }
+      if (!selectedMonthKey) {
+        showStatus("Einnahme unvollständig", "Bitte einen gueltigen Monat im Format YYYY-MM eintragen.", "warn");
         return;
       }
 
@@ -504,12 +550,17 @@ export function renderMonthExpenseList(importDraft, review, deps) {
 
       const description = target.querySelector(`[data-month-expense-description="${id}"]`)?.value?.trim() ?? "";
       const amount = Number(target.querySelector(`[data-month-expense-amount="${id}"]`)?.value);
-      const entryDate = target.querySelector(`[data-month-expense-date="${id}"]`)?.value || source.entryDate;
+      const rawEntryDate = target.querySelector(`[data-month-expense-date="${id}"]`)?.value ?? "";
+      const entryDate = normalizeIsoDateInput(rawEntryDate) || normalizeIsoDateInput(source.entryDate);
       const categoryId = target.querySelector(`[data-month-expense-category="${id}"]`)?.value || "other";
       const accountId = target.querySelector(`[data-month-expense-account="${id}"]`)?.value || "giro";
       const notes = target.querySelector(`[data-month-expense-notes="${id}"]`)?.value?.trim() ?? "";
       if (!description || !Number.isFinite(amount) || amount <= 0) {
         showStatus("Monatsausgabe unvollständig", "Bitte Beschreibung und positiven Betrag eintragen.", "warn");
+        return;
+      }
+      if (!entryDate) {
+        showStatus("Monatsausgabe unvollständig", "Bitte ein gueltiges Datum im Format YYYY-MM-DD eintragen.", "warn");
         return;
       }
 

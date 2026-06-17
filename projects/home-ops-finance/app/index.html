@@ -98,19 +98,23 @@
     <ui5-card class="month-ui5-card month-nav-bar">
       <div class="month-ui5-card-body">
         <div class="month-nav-head">
-          <div>
+          <div class="month-nav-summary">
             <p class="eyebrow">Aktueller Monat</p>
             <h2 id="monthReviewCurrentLabel">-</h2>
             <p class="section-copy" id="monthBuildInfo">Build: wird geladen...</p>
           </div>
           <div class="month-nav-actions">
-            <ui5-button id="monthPrevButton" design="Transparent">Vorheriger</ui5-button>
-            <label class="select-wrap month-picker">
+            <div class="month-nav-stepper">
+              <ui5-button id="monthPrevButton" design="Transparent">Vorheriger</ui5-button>
+              <ui5-button id="monthNextButton" design="Transparent">Nächster</ui5-button>
+            </div>
+            <div class="select-wrap month-picker">
               <span>Geöffneter Monat</span>
-              <ui5-input id="monthReviewSelect" readonly></ui5-input>
-            </label>
-            <ui5-button id="monthPickerButton" design="Emphasized">Monat wählen</ui5-button>
-            <ui5-button id="monthNextButton" design="Transparent">Nächster</ui5-button>
+              <div class="month-picker-row">
+                <ui5-input id="monthReviewSelect" readonly></ui5-input>
+                <ui5-button id="monthPickerButton" design="Emphasized">Monat wählen</ui5-button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -127,154 +131,189 @@
 
     <section id="overview" class="tab-panel is-active">
       <div class="grid two overview-grid">
-        <article class="card">
-          <h2>Als Nächstes prüfen</h2>
-          <ul class="signal-list" id="validationSignals"></ul>
-        </article>
-        <article class="card">
-          <h2>Monatslage</h2>
-          <dl class="detail-list" id="monthHealth"></dl>
-        </article>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Als Nächstes prüfen</h2>
+            <ul class="signal-list" id="validationSignals"></ul>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Monatslage</h2>
+            <dl class="detail-list" id="monthHealth"></dl>
+          </div>
+        </ui5-card>
       </div>
 
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Zuerst in Monate öffnen</h2>
-            <p class="section-copy">Die wichtigsten Monate zuerst, damit du direkt in den eigentlichen Arbeitsbereich springen kannst.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Zuerst in Monate öffnen</h2>
+              <p class="section-copy">Die wichtigsten Monate zuerst, damit du direkt in den eigentlichen Arbeitsbereich springen kannst.</p>
+            </div>
           </div>
+          <div id="priorityMonths" class="priority-list"></div>
         </div>
-        <div id="priorityMonths" class="priority-list"></div>
-      </article>
+      </ui5-card>
     </section>
 
     <section id="stats" class="tab-panel">
       <div class="grid four">
-        <article class="card stat">
-          <span>Importe gesamt netto</span>
-          <strong id="netFlow">-</strong>
-        </article>
-        <article class="card stat">
-          <span>Importe gesamt Einnahmen</span>
-          <strong id="incomeTotal">-</strong>
-        </article>
-        <article class="card stat">
-          <span>Importe gesamt Ausgaben</span>
-          <strong id="expenseTotal">-</strong>
-        </article>
-      </div>
-
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Finanz-Statistiken</h2>
-            <p class="section-copy">Kategorien, Sparquote, Monatsvergleich und wiederkehrende Ausgaben in einem Blick.</p>
+        <ui5-card class="content-ui5-card stat-shell">
+          <div class="content-ui5-card-body stat">
+            <span>Importe gesamt netto</span>
+            <strong id="netFlow">-</strong>
           </div>
-        </div>
-        <div id="statsKpiCards" class="grid four"></div>
-      </article>
-
-      <div class="grid two">
-        <article class="card">
-          <h2>Monatsvergleich</h2>
-          <dl class="detail-list" id="statsMonthCompare"></dl>
-        </article>
-        <article class="card">
-          <h2>Ausgaben nach Typ (letzte 12 Monate)</h2>
-          <table>
-            <thead><tr><th>Typ</th><th>Summe</th><th>Anteil</th></tr></thead>
-            <tbody id="statsExpenseTypeRows"></tbody>
-          </table>
-        </article>
-      </div>
-
-      <article class="card">
-        <h2>Jahresrückblick Ausgaben</h2>
-        <table>
-          <thead><tr><th>Jahr</th><th>Alltagsausgaben</th><th>Musikinvestitionen</th><th>Gesamt</th><th>Anteil Musik</th></tr></thead>
-          <tbody id="statsYearlyRecapRows"></tbody>
-        </table>
-      </article>
-
-      <article class="card">
-        <h2>Jahresrückblick Musik (P&amp;L)</h2>
-        <table>
-          <thead><tr><th>Jahr</th><th>Musikumsatz</th><th>Musikinvestitionen</th><th>Steuerzahlungen</th><th>Musik-Netto</th></tr></thead>
-          <tbody id="statsMusicYearlyRows"></tbody>
-        </table>
-      </article>
-
-      <div class="grid two">
-        <article class="card">
-          <h2>Top Kategorien (letzte 12 Monate)</h2>
-          <table>
-            <thead><tr><th>Kategorie</th><th>Summe</th><th>Anteil</th></tr></thead>
-            <tbody id="statsCategoryRows"></tbody>
-          </table>
-        </article>
-        <article class="card">
-          <h2>Wiederkehrende Zahlungen</h2>
-          <div id="statsRecurringList" class="mapping-list"></div>
-        </article>
-      </div>
-
-      <article class="card">
-        <h2>Nächster Monat (geplante Posten)</h2>
-        <table>
-          <thead><tr><th>Monat</th><th>Geplante Einnahmen</th><th>Geplante Ausgaben</th><th>Netto</th></tr></thead>
-          <tbody id="statsPlannedNextMonthRows"></tbody>
-        </table>
-      </article>
-
-      <div class="grid two">
-        <article class="card">
-          <h2>Top Ausgabenmonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topExpenseMonths"></tbody>
-          </table>
-        </article>
-        <article class="card">
-          <h2>Top Einnahmemonate</h2>
-          <table>
-            <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
-            <tbody id="topIncomeMonths"></tbody>
-          </table>
-        </article>
-      </div>
-
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Jahresliste Einnahmen & Ausgaben</h2>
-            <p class="section-copy">Komplette Buchungsliste für ein Jahr mit Datum, Kategorie und Betrag.</p>
+        </ui5-card>
+        <ui5-card class="content-ui5-card stat-shell">
+          <div class="content-ui5-card-body stat">
+            <span>Importe gesamt Einnahmen</span>
+            <strong id="incomeTotal">-</strong>
           </div>
-          <label class="select-wrap">
-            <span>Jahr</span>
-            <ui5-select id="statsYearSelect"></ui5-select>
-          </label>
+        </ui5-card>
+        <ui5-card class="content-ui5-card stat-shell">
+          <div class="content-ui5-card-body stat">
+            <span>Importe gesamt Ausgaben</span>
+            <strong id="expenseTotal">-</strong>
+          </div>
+        </ui5-card>
+      </div>
+
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Finanz-Statistiken</h2>
+              <p class="section-copy">Kategorien, Sparquote, Monatsvergleich und wiederkehrende Ausgaben in einem Blick.</p>
+            </div>
+          </div>
+          <div id="statsKpiCards" class="grid four"></div>
         </div>
-        <div class="grid two">
-          <div>
-            <h3 class="subhead">Einnahmen</h3>
+      </ui5-card>
+
+      <div class="grid two">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Monatsvergleich</h2>
+            <dl class="detail-list" id="statsMonthCompare"></dl>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Ausgaben nach Typ (letzte 12 Monate)</h2>
             <table>
-              <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
-              <tbody id="statsYearIncomeRows"></tbody>
+              <thead><tr><th>Typ</th><th>Summe</th><th>Anteil</th></tr></thead>
+              <tbody id="statsExpenseTypeRows"></tbody>
             </table>
           </div>
-          <div>
-            <h3 class="subhead">Ausgaben</h3>
+        </ui5-card>
+      </div>
+
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <h2>Jahresrückblick Ausgaben</h2>
+          <table>
+            <thead><tr><th>Jahr</th><th>Alltagsausgaben</th><th>Musikinvestitionen</th><th>Gesamt</th><th>Anteil Musik</th></tr></thead>
+            <tbody id="statsYearlyRecapRows"></tbody>
+          </table>
+        </div>
+      </ui5-card>
+
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <h2>Jahresrückblick Musik (P&amp;L)</h2>
+          <table>
+            <thead><tr><th>Jahr</th><th>Musikumsatz</th><th>Musikinvestitionen</th><th>Steuerzahlungen</th><th>Musik-Netto</th></tr></thead>
+            <tbody id="statsMusicYearlyRows"></tbody>
+          </table>
+        </div>
+      </ui5-card>
+
+      <div class="grid two">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Top Kategorien (letzte 12 Monate)</h2>
             <table>
-              <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
-              <tbody id="statsYearExpenseRows"></tbody>
+              <thead><tr><th>Kategorie</th><th>Summe</th><th>Anteil</th></tr></thead>
+              <tbody id="statsCategoryRows"></tbody>
             </table>
           </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Wiederkehrende Zahlungen</h2>
+            <div id="statsRecurringList" class="mapping-list"></div>
+          </div>
+        </ui5-card>
+      </div>
+
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <h2>Nächster Monat (geplante Posten)</h2>
+          <table>
+            <thead><tr><th>Monat</th><th>Geplante Einnahmen</th><th>Geplante Ausgaben</th><th>Netto</th></tr></thead>
+            <tbody id="statsPlannedNextMonthRows"></tbody>
+          </table>
         </div>
-      </article>
+      </ui5-card>
+
+      <div class="grid two">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Top Ausgabenmonate</h2>
+            <table>
+              <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+              <tbody id="topExpenseMonths"></tbody>
+            </table>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Top Einnahmemonate</h2>
+            <table>
+              <thead><tr><th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th></tr></thead>
+              <tbody id="topIncomeMonths"></tbody>
+            </table>
+          </div>
+        </ui5-card>
+      </div>
+
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Jahresliste Einnahmen & Ausgaben</h2>
+              <p class="section-copy">Komplette Buchungsliste für ein Jahr mit Datum, Kategorie und Betrag.</p>
+            </div>
+            <label class="select-wrap">
+              <span>Jahr</span>
+              <ui5-select id="statsYearSelect"></ui5-select>
+            </label>
+          </div>
+          <div class="grid two">
+            <div>
+              <h3 class="subhead">Einnahmen</h3>
+              <table>
+                <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+                <tbody id="statsYearIncomeRows"></tbody>
+              </table>
+            </div>
+            <div>
+              <h3 class="subhead">Ausgaben</h3>
+              <table>
+                <thead><tr><th>Datum</th><th>Beschreibung</th><th>Kategorie</th><th>Betrag</th></tr></thead>
+                <tbody id="statsYearExpenseRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </ui5-card>
     </section>
 
     <section id="baseline" class="tab-panel">
-      <article class="card">
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Depot- & Cash-Stand</h2>
@@ -434,33 +473,41 @@
             </div>
           </section>
         </div>
-      </article>
+        </div>
+      </ui5-card>
       <div class="grid two">
-        <article class="card">
-          <h2>Kosten-Basis</h2>
-          <dl class="detail-list" id="baselineSummary"></dl>
-        </article>
-        <article class="card">
-          <h2>Verlauf nach Monaten</h2>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Kosten-Basis</h2>
+            <dl class="detail-list" id="baselineSummary"></dl>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Verlauf nach Monaten</h2>
+            <div class="table-wrap table-wrap--month">
+              <table>
+                <thead><tr><th>Ab</th><th>Verfügbar</th><th>Basis-Investment</th></tr></thead>
+                <tbody id="baselineProfiles"></tbody>
+              </table>
+            </div>
+          </div>
+        </ui5-card>
+      </div>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <h2>Aktive Kostenblöcke</h2>
+          <p class="section-copy" id="baselineActiveTotals">Gesamtausgaben pro Monat ohne Jahreskosten: -</p>
           <div class="table-wrap table-wrap--month">
             <table>
-              <thead><tr><th>Ab</th><th>Verfügbar</th><th>Basis-Investment</th></tr></thead>
-              <tbody id="baselineProfiles"></tbody>
+              <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th><th>Aktion</th></tr></thead>
+              <tbody id="baselineLineItems" data-baseline-actions="true"></tbody>
             </table>
           </div>
-        </article>
-      </div>
-      <article class="card">
-        <h2>Aktive Kostenblöcke</h2>
-        <p class="section-copy" id="baselineActiveTotals">Gesamtausgaben pro Monat ohne Jahreskosten: -</p>
-        <div class="table-wrap table-wrap--month">
-          <table>
-            <thead><tr><th>Posten</th><th>Typ</th><th>Betrag</th><th>Aktion</th></tr></thead>
-            <tbody id="baselineLineItems" data-baseline-actions="true"></tbody>
-          </table>
         </div>
-      </article>
-      <article class="card">
+      </ui5-card>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Kosten und Sparrate anpassen</h2>
@@ -511,8 +558,10 @@
             <div id="fixedCostList" class="mapping-list"></div>
           </div>
         </div>
-      </article>
-      <article class="card">
+        </div>
+      </ui5-card>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Cash-Ziel & Schwellen</h2>
@@ -550,8 +599,10 @@
             <div id="forecastSummary" class="mapping-list"></div>
           </div>
         </div>
-      </article>
-      <article class="card">
+        </div>
+      </ui5-card>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Hauptgehalt</h2>
@@ -586,8 +637,10 @@
             <div id="salaryList" class="mapping-list"></div>
           </div>
         </div>
-      </article>
-      <article class="card" data-dev-only="true">
+        </div>
+      </ui5-card>
+      <ui5-card class="content-ui5-card" data-dev-only="true">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Änderungs-Historie</h2>
@@ -595,7 +648,8 @@
           </div>
         </div>
         <div id="workflowHistoryList" class="mapping-list"></div>
-      </article>
+        </div>
+      </ui5-card>
     </section>
 
     <section id="months" class="tab-panel">
@@ -815,72 +869,79 @@
               </div>
             </div>
           </ui5-card>
-          <article class="card" data-dev-only="true">
-            <div class="section-head">
-              <div>
-                <h2>Reconciliation</h2>
-                <p class="section-copy">Monatlich festhalten, was geprüft und geklärt ist.</p>
+          <ui5-card class="content-ui5-card" data-dev-only="true">
+            <div class="content-ui5-card-body">
+              <div class="section-head">
+                <div>
+                  <h2>Reconciliation</h2>
+                  <p class="section-copy">Monatlich festhalten, was geprüft und geklärt ist.</p>
+                </div>
+              </div>
+              <div class="reconciliation-grid">
+                <label class="select-wrap">
+                  <span>Status</span>
+                  <ui5-select id="reconciliationStatus">
+                    <ui5-option value="open">Offen</ui5-option>
+                    <ui5-option value="in_progress">In Arbeit</ui5-option>
+                    <ui5-option value="resolved">Erledigt</ui5-option>
+                  </ui5-select>
+                </label>
+                <label class="select-wrap">
+                  <span>Notiz</span>
+                  <ui5-textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was in diesem Monat auffällig oder noch offen ist."></ui5-textarea>
+                </label>
+                <h3 class="subhead">Aktionen für diesen Monat</h3>
+                <div id="reconciliationActions" class="reconciliation-actions"></div>
+              </div>
+              <div class="reconciliation-footer">
+                <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
+                <ui5-button class="pill is-active" id="saveReconciliationButton" design="Emphasized">Reconciliation speichern</ui5-button>
               </div>
             </div>
-            <div class="reconciliation-grid">
-              <label class="select-wrap">
-                <span>Status</span>
-                <ui5-select id="reconciliationStatus">
-                  <ui5-option value="open">Offen</ui5-option>
-                  <ui5-option value="in_progress">In Arbeit</ui5-option>
-                  <ui5-option value="resolved">Erledigt</ui5-option>
-                </ui5-select>
-              </label>
-              <label class="select-wrap">
-                <span>Notiz</span>
-                <ui5-textarea id="reconciliationNote" rows="5" placeholder="Kurz festhalten, was in diesem Monat auffällig oder noch offen ist."></ui5-textarea>
-              </label>
-              <h3 class="subhead">Aktionen für diesen Monat</h3>
-              <div id="reconciliationActions" class="reconciliation-actions"></div>
-            </div>
-            <div class="reconciliation-footer">
-              <p class="section-copy" id="reconciliationMeta">Noch nicht lokal gespeichert.</p>
-              <ui5-button class="pill is-active" id="saveReconciliationButton" design="Emphasized">Reconciliation speichern</ui5-button>
-            </div>
-          </article>
+          </ui5-card>
         </aside>
       </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Alle Monatszeilen</h2>
-            <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick öffnet den Monat direkt oben in der Arbeitsfläche.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Alle Monatszeilen</h2>
+              <p class="section-copy">Hier kannst du zwischen Monaten springen. Ein Klick öffnet den Monat direkt oben in der Arbeitsfläche.</p>
+            </div>
+            <div class="filter-group" id="monthFilters">
+              <ui5-button class="pill is-active" design="Emphasized" data-filter="focus">Ab aktuellem Monat</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-filter="all">Alle</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-filter="warning">Warnungen</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-filter="negative">Nur Defizite</ui5-button>
+              <ui5-button class="pill" design="Transparent" data-filter="future">Nur Zukunft</ui5-button>
+            </div>
           </div>
-          <div class="filter-group" id="monthFilters">
-            <ui5-button class="pill is-active" design="Emphasized" data-filter="focus">Ab 2026</ui5-button>
-            <ui5-button class="pill" design="Transparent" data-filter="all">Alle</ui5-button>
-            <ui5-button class="pill" design="Transparent" data-filter="warning">Warnungen</ui5-button>
-            <ui5-button class="pill" design="Transparent" data-filter="negative">Nur Defizite</ui5-button>
-            <ui5-button class="pill" design="Transparent" data-filter="future">Nur Zukunft</ui5-button>
+          <div class="table-wrap table-wrap--months">
+            <table>
+              <thead><tr><th>Monat</th><th>Typ</th><th>Übrig aus Gehalt</th><th>Musik brutto</th><th>Zusätzliche Einnahmen</th><th>Ausgaben</th><th>Tagesgeld</th><th>Gesamtvermögen</th><th>Übrig nach allem</th><th>Signale</th></tr></thead>
+              <tbody id="monthlyRows" data-month-table="true"></tbody>
+            </table>
           </div>
         </div>
-        <div class="table-wrap table-wrap--months">
-          <table>
-            <thead><tr><th>Monat</th><th>Typ</th><th>Übrig aus Gehalt</th><th>Musik brutto</th><th>Zusätzliche Einnahmen</th><th>Ausgaben</th><th>Tagesgeld</th><th>Gesamtvermögen</th><th>Übrig nach allem</th><th>Signale</th></tr></thead>
-            <tbody id="monthlyRows" data-month-table="true"></tbody>
-          </table>
-        </div>
-      </article>
+      </ui5-card>
     </section>
 
     <section id="music" class="tab-panel">
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Musik-Monat</p>
-            <h2 id="musicCurrentMonthLabel">-</h2>
-            <p class="section-copy">Hier stehen zuerst die wichtigsten Werte für den aktuell ausgewählten Monat.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Musik-Monat</p>
+              <h2 id="musicCurrentMonthLabel">-</h2>
+              <p class="section-copy">Hier stehen zuerst die wichtigsten Werte für den aktuell ausgewählten Monat.</p>
+            </div>
           </div>
+          <dl class="detail-list compact-details month-kpi-grid" id="musicSummary"></dl>
         </div>
-        <dl class="detail-list compact-details month-kpi-grid" id="musicSummary"></dl>
-      </article>
+      </ui5-card>
       <div class="grid two">
-        <article class="card">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Musik-Forecast ab Monat</h2>
@@ -914,10 +975,12 @@
               <div id="musicForecastList" class="mapping-list"></div>
             </div>
           </div>
-        </article>
+          </div>
+        </ui5-card>
       </div>
       <div class="grid two">
-        <article class="card">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Musik pro Monat</h2>
@@ -930,8 +993,10 @@
               <tbody id="musicMonthRows"></tbody>
             </table>
           </div>
-        </article>
-        <article class="card">
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Musik-Istwert pflegen</h2>
@@ -969,10 +1034,12 @@
               <div id="musicIncomeActualList" class="mapping-list"></div>
             </div>
           </div>
-        </article>
+          </div>
+        </ui5-card>
       </div>
       <div class="grid two">
-        <article class="card">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Quartals-Vorauszahlung</h2>
@@ -1001,8 +1068,10 @@
             <p class="section-copy" id="musicTaxMeta" data-dev-only="true">Noch keine eigene Steuer-Vorauszahlung gespeichert.</p>
             <ui5-button class="pill is-active" id="saveMusicTaxButton" design="Emphasized">Steuer-Plan speichern</ui5-button>
           </div>
-        </article>
-        <article class="card">
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Steuerlogik im Jahr</h2>
@@ -1010,85 +1079,99 @@
             </div>
           </div>
           <div id="musicTaxSummary" class="mapping-list"></div>
-        </article>
+          </div>
+        </ui5-card>
       </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Musik-Einnahmen und -Ausgaben im geöffneten Monat</h2>
-            <p class="section-copy">So siehst du sofort, welche musiknahen Einnahmen und Ausgaben im aktuellen Monat enthalten sind.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Musik-Einnahmen und -Ausgaben im geöffneten Monat</h2>
+              <p class="section-copy">So siehst du sofort, welche musiknahen Einnahmen und Ausgaben im aktuellen Monat enthalten sind.</p>
+            </div>
+          </div>
+          <div class="grid two">
+            <div class="subcard">
+              <h3 class="subhead">Musik-Einnahmen</h3>
+              <div id="musicIncomeEntries" class="mapping-list"></div>
+            </div>
+            <div class="subcard">
+              <h3 class="subhead">Musik-Ausgaben</h3>
+              <div id="musicExpenseEntries" class="mapping-list"></div>
+            </div>
           </div>
         </div>
-        <div class="grid two">
-          <div class="subcard">
-            <h3 class="subhead">Musik-Einnahmen</h3>
-            <div id="musicIncomeEntries" class="mapping-list"></div>
-          </div>
-          <div class="subcard">
-            <h3 class="subhead">Musik-Ausgaben</h3>
-            <div id="musicExpenseEntries" class="mapping-list"></div>
-          </div>
-        </div>
-      </article>
+      </ui5-card>
     </section>
 
     <section id="imports" class="tab-panel" data-dev-only="true">
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Import-Monat</p>
-            <h2 id="importsCurrentMonthLabel">-</h2>
-            <p class="section-copy">Hier liegt alles, was direkt mit importierten Zeilen und Korrekturen zu tun hat: Quellzeilen, Herkunftsnotizen und Mapping-Anpassungen.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Import-Monat</p>
+              <h2 id="importsCurrentMonthLabel">-</h2>
+              <p class="section-copy">Hier liegt alles, was direkt mit importierten Zeilen und Korrekturen zu tun hat: Quellzeilen, Herkunftsnotizen und Mapping-Anpassungen.</p>
+            </div>
           </div>
         </div>
-      </article>
+      </ui5-card>
       <div class="grid two">
-        <article class="card">
-          <h2>Importierte Einnahmen</h2>
-          <div id="importsIncomeList" class="mapping-list"></div>
-        </article>
-        <article class="card">
-          <h2>Importierte Ausgaben</h2>
-          <div id="importsExpenseList" class="mapping-list"></div>
-        </article>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Importierte Einnahmen</h2>
+            <div id="importsIncomeList" class="mapping-list"></div>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Importierte Ausgaben</h2>
+            <div id="importsExpenseList" class="mapping-list"></div>
+          </div>
+        </ui5-card>
       </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Import-Korrekturen</h2>
-            <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen. Die Herkunftsnotiz unter jedem Eintrag bleibt hier bewusst sichtbar.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Import-Korrekturen</h2>
+              <p class="section-copy">Kategorien und Konten für den geöffneten Monat pflegen. Die Herkunftsnotiz unter jedem Eintrag bleibt hier bewusst sichtbar.</p>
+            </div>
+          </div>
+          <div class="grid two reconciliation-grid">
+            <div>
+              <h3 class="subhead">Einnahmen-Mappings</h3>
+              <div id="incomeMappingRows" class="mapping-list"></div>
+            </div>
+            <div>
+              <h3 class="subhead">Ausgaben-Mappings</h3>
+              <div id="expenseMappingRows" class="mapping-list"></div>
+            </div>
+          </div>
+          <div class="reconciliation-footer">
+            <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
+            <ui5-button class="pill is-active" id="saveMappingButton" design="Emphasized">Mappings speichern</ui5-button>
           </div>
         </div>
-        <div class="grid two reconciliation-grid">
-          <div>
-            <h3 class="subhead">Einnahmen-Mappings</h3>
-            <div id="incomeMappingRows" class="mapping-list"></div>
-          </div>
-          <div>
-            <h3 class="subhead">Ausgaben-Mappings</h3>
-            <div id="expenseMappingRows" class="mapping-list"></div>
-          </div>
-        </div>
-        <div class="reconciliation-footer">
-          <p class="section-copy" id="mappingMeta">Noch keine Mapping-Korrekturen gespeichert.</p>
-          <ui5-button class="pill is-active" id="saveMappingButton" design="Emphasized">Mappings speichern</ui5-button>
-        </div>
-      </article>
+      </ui5-card>
     </section>
 
     <section id="household" class="tab-panel">
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Hausrat</h2>
-            <p class="section-copy">Hier pflegst du deinen Hausrat und dein Musik-Equipment mit Einzelwerten. Am wichtigsten ist oben immer die Gesamtsumme.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Hausrat</h2>
+              <p class="section-copy">Hier pflegst du deinen Hausrat und dein Musik-Equipment mit Einzelwerten. Am wichtigsten ist oben immer die Gesamtsumme.</p>
+            </div>
           </div>
+          <dl class="detail-list compact-details month-kpi-grid" id="householdSummary"></dl>
         </div>
-        <dl class="detail-list compact-details month-kpi-grid" id="householdSummary"></dl>
-      </article>
+      </ui5-card>
 
       <div class="grid two">
-        <article class="card">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Hausrat-Posten pflegen</h2>
@@ -1120,9 +1203,11 @@
             <p class="section-copy" id="householdMeta">Noch keine Hausrat-Änderungen gespeichert.</p>
             <ui5-button class="pill is-active" id="saveHouseholdItemButton" design="Emphasized">Hausrat-Posten speichern</ui5-button>
           </div>
-        </article>
+          </div>
+        </ui5-card>
 
-        <article class="card">
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
           <div class="section-head">
             <div>
               <h2>Versicherungssumme</h2>
@@ -1143,22 +1228,26 @@
             <p class="section-copy" id="householdCoverageMeta">Noch keine Versicherungssumme gespeichert.</p>
             <ui5-button class="pill is-active" id="saveHouseholdCoverageButton" design="Emphasized">Versicherungssumme speichern</ui5-button>
           </div>
-        </article>
+          </div>
+        </ui5-card>
       </div>
 
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Alle Hausrat-Posten</h2>
-            <p class="section-copy">Hier siehst du alle aktiven Posten mit Bereich und Einzelwert.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Alle Hausrat-Posten</h2>
+              <p class="section-copy">Hier siehst du alle aktiven Posten mit Bereich und Einzelwert.</p>
+            </div>
           </div>
+          <div id="householdItemList" class="mapping-list"></div>
         </div>
-        <div id="householdItemList" class="mapping-list"></div>
-      </article>
+      </ui5-card>
     </section>
 
     <section id="retirement" class="tab-panel">
-      <article class="card">
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
         <div class="section-head">
           <div>
             <h2>Ziele & Rente</h2>
@@ -1250,56 +1339,67 @@
             <div id="retirementPlan" class="retirement-summary"></div>
           </article>
         </div>
-      </article>
+        </div>
+      </ui5-card>
 
       <div class="grid two">
-        <article class="card">
-          <h2>Zielbild</h2>
-          <dl class="detail-list" id="retirementSummary"></dl>
-        </article>
-        <article class="card">
-          <h2>Einordnung</h2>
-          <ul class="signal-list" id="retirementSignals"></ul>
-        </article>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Zielbild</h2>
+            <dl class="detail-list" id="retirementSummary"></dl>
+          </div>
+        </ui5-card>
+        <ui5-card class="content-ui5-card">
+          <div class="content-ui5-card-body">
+            <h2>Einordnung</h2>
+            <ul class="signal-list" id="retirementSignals"></ul>
+          </div>
+        </ui5-card>
       </div>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Zielpfad 100k</h2>
-            <p class="section-copy">Kurzfristiger Vermögenspfad bis Ende 2028. Diese Sicht gehört bewusst hierher: Die Monatsansicht bleibt für konkrete Monatsarbeit, der Zielpfad zeigt nur Kontrollpunkte.</p>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Zielpfad 100k</h2>
+              <p class="section-copy">Kurzfristiger Vermögenspfad bis Ende 2028. Diese Sicht gehört bewusst hierher: Die Monatsansicht bleibt für konkrete Monatsarbeit, der Zielpfad zeigt nur Kontrollpunkte.</p>
+            </div>
+          </div>
+          <dl class="detail-list" id="nearTermGoalSummary"></dl>
+          <div id="nearTermGoalCheckpoints" class="milestone-list"></div>
+        </div>
+      </ui5-card>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Jahresansicht mit Musik & Prognose</h2>
+              <p class="section-copy">Hier siehst du den Jahrespfad mit Musik und Vermögen genau dort, wo auch die Zukunftsannahmen gepflegt werden. Die Projektion nutzt Inflation, Gehaltsentwicklung, Mieterhöhung, sonstige Kosten, Musikwachstum, Musiksteuer und für den Investment-Ertrag grob 6 % p.a.</p>
+            </div>
+          </div>
+          <p class="section-copy" id="retirementProjectionMeta">Annahmen werden geladen.</p>
+          <div id="musicYearSummary" class="grid four"></div>
+          <div class="table-wrap table-wrap--months">
+            <table>
+              <thead><tr><th>Jahr</th><th>Typ</th><th>Musik brutto</th><th>Steuer</th><th>Musik-Ausgaben</th><th>Musik netto</th><th>Investment-Ertrag</th><th>Cash Ende Jahr</th><th>Investment Ende Jahr</th><th>Gesamtvermögen Ende Jahr</th></tr></thead>
+              <tbody id="musicYearRows"></tbody>
+            </table>
           </div>
         </div>
-        <dl class="detail-list" id="nearTermGoalSummary"></dl>
-        <div id="nearTermGoalCheckpoints" class="milestone-list"></div>
-      </article>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Jahresansicht mit Musik & Prognose</h2>
-            <p class="section-copy">Hier siehst du den Jahrespfad mit Musik und Vermögen genau dort, wo auch die Zukunftsannahmen gepflegt werden. Die Projektion nutzt Inflation, Gehaltsentwicklung, Mieterhöhung, sonstige Kosten, Musikwachstum, Musiksteuer und für den Investment-Ertrag grob 6 % p.a.</p>
+      </ui5-card>
+      <ui5-card class="content-ui5-card">
+        <div class="content-ui5-card-body">
+          <div class="section-head">
+            <div>
+              <h2>Jahresverlauf ohne Musik</h2>
+              <p class="section-copy">Hier siehst du pro Jahr nur die Jahresendstände ohne Musik: Cash, Investment und Gesamtvermögen.</p>
+            </div>
           </div>
-        </div>
-        <p class="section-copy" id="retirementProjectionMeta">Annahmen werden geladen.</p>
-        <div id="musicYearSummary" class="grid four"></div>
-        <div class="table-wrap table-wrap--months">
           <table>
-            <thead><tr><th>Jahr</th><th>Typ</th><th>Musik brutto</th><th>Steuer</th><th>Musik-Ausgaben</th><th>Musik netto</th><th>Investment-Ertrag</th><th>Cash Ende Jahr</th><th>Investment Ende Jahr</th><th>Gesamtvermögen Ende Jahr</th></tr></thead>
-            <tbody id="musicYearRows"></tbody>
+            <thead><tr><th>Jahr</th><th>Cash Stand</th><th>Investment Stand</th><th>Gesamtvermögen</th></tr></thead>
+            <tbody id="retirementYearRows"></tbody>
           </table>
         </div>
-      </article>
-      <article class="card">
-        <div class="section-head">
-          <div>
-            <h2>Jahresverlauf ohne Musik</h2>
-            <p class="section-copy">Hier siehst du pro Jahr nur die Jahresendstände ohne Musik: Cash, Investment und Gesamtvermögen.</p>
-          </div>
-        </div>
-        <table>
-          <thead><tr><th>Jahr</th><th>Cash Stand</th><th>Investment Stand</th><th>Gesamtvermögen</th></tr></thead>
-          <tbody id="retirementYearRows"></tbody>
-        </table>
-      </article>
+      </ui5-card>
     </section>
 
   </main>

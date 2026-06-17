@@ -231,6 +231,7 @@ export function createMonthReviewNavigation(deps) {
     renderMonthReview,
     formatMonthLabel,
     reviewFocusMonthKey,
+    currentMonthKey,
     renderRows,
     planProfileLabel,
     euro,
@@ -349,13 +350,24 @@ export function createMonthReviewNavigation(deps) {
     const buttons = [...document.querySelectorAll("#monthFilters .pill")];
     const allRows = monthlyPlan.rows;
     const tableTarget = document.getElementById("monthlyRows");
+    const currentMonthValue = typeof currentMonthKey === "function" ? currentMonthKey() : currentMonthKey;
+    const activeStartMonthKey =
+      monthlyPlan.rows.find((row) => row.monthKey >= currentMonthValue)?.monthKey ??
+      reviewFocusMonthKey ??
+      monthlyPlan.rows[0]?.monthKey ??
+      "";
+
+    const focusButton = buttons.find((button) => (button.dataset.filter ?? "") === "focus");
+    if (focusButton) {
+      focusButton.textContent = activeStartMonthKey ? `Ab ${activeStartMonthKey}` : "Ab aktuellem Monat";
+    }
 
     function render(filter) {
       const rows = allRows.filter((row) => {
-        if (filter === "focus") return row.monthKey >= reviewFocusMonthKey;
+        if (filter === "focus") return row.monthKey >= activeStartMonthKey;
         if (filter === "negative") return row.netAfterImportedFlows < 0;
         if (filter === "warning") return row.consistencySignals.some((signal) => signal.severity === "warn");
-        if (filter === "future") return row.monthKey >= "2026-03";
+        if (filter === "future") return row.monthKey > activeStartMonthKey;
         return true;
       });
 

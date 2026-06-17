@@ -1,9 +1,12 @@
+import { currentMonthKey } from "../shared/forecast-helpers.js";
+
 // Browser-owned retirement planner settings. This keeps localStorage concerns
 // out of app.js while leaving the projection math in the core helpers.
 
 export function createPlannerSettingsStore({ storageKey }) {
   function defaultPlannerSettings(monthlyPlan) {
-    const forecastRows = monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03");
+    const forecastStartMonthKey = monthlyPlan.rows.find((row) => row.monthKey >= currentMonthKey())?.monthKey ?? currentMonthKey();
+    const forecastRows = monthlyPlan.rows.filter((row) => row.monthKey >= forecastStartMonthKey);
     const referenceRow = forecastRows[0] ?? monthlyPlan.rows.at(-1);
     const defaultMonthlySpend = referenceRow
       ? Math.round(referenceRow.baselineFixedAmount + referenceRow.baselineVariableAmount + referenceRow.annualReserveAmount)

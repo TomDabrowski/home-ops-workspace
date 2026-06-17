@@ -54,6 +54,46 @@ function parseLocaleNumber(value) {
   return Number(normalized);
 }
 
+function normalizeMonthKeyInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const month = Number(match[2]);
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return "";
+  }
+
+  return `${match[1]}-${String(month).padStart(2, "0")}`;
+}
+
+function normalizeIsoDateInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() !== month - 1 ||
+    candidate.getUTCDate() !== day
+  ) {
+    return "";
+  }
+
+  return `${match[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 let uniqueEntryCounter = 0;
 function uniqueEntryId(prefix) {
   uniqueEntryCounter += 1;
@@ -304,13 +344,14 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
   const items = manualExpensesForMonth(monthKey);
   const supportsUnifiedMovement = Boolean(movementTypeField && incomeStreamField && incomeStreamWrap);
   const incomeStreamOptions = buildCategoryOptions(importDraft.incomeStreams ?? []);
+  const defaultEntryDateForMonth = normalizeIsoDateInput(`${normalizeMonthKeyInput(monthKey)}-01`) || todayIsoDate();
   categoryField.innerHTML = optionMarkup(buildCategoryOptions(importDraft.expenseCategories), categoryField.value || "other");
   if (incomeStreamField) {
     incomeStreamField.innerHTML = optionMarkup(incomeStreamOptions, incomeStreamField.value || "misc-inflows");
   }
   accountField.innerHTML = optionMarkup(accountOptions, accountField.value || "giro");
   if (!(saveButton.dataset.editingId ?? "")) {
-    dateField.value = todayIsoDate();
+    dateField.value = defaultEntryDateForMonth;
   }
   if (movementTypeField && !movementTypeField.value) {
     movementTypeField.value = "expense";
@@ -322,7 +363,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
       const movementType = movementTypeField?.value === "income" ? "income" : "expense";
       const description = String(descriptionField.value ?? "").trim();
       const amount = Number(amountField.value);
-      const entryDate = dateField.value || todayIsoDate();
+      const entryDate = normalizeIsoDateInput(dateField.value) || defaultEntryDateForMonth;
       const targetMonthKey = monthFromDate(entryDate) || monthKey;
       const amountLabel = Number.isFinite(amount) && amount > 0 ? euro.format(amount) : "offener Betrag";
       return movementType === "income"
@@ -378,13 +419,17 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     const editingId = saveButton.dataset.editingId ?? "";
     const description = String(descriptionField.value ?? "").trim();
     const amount = Number(amountField.value);
-    const entryDate = dateField.value || todayIsoDate();
+    const entryDate = normalizeIsoDateInput(dateField.value) || defaultEntryDateForMonth;
     const selectedMonthKey = monthFromDate(entryDate) || monthKey;
     const notes = String(notesField.value ?? "").trim();
     const isIncome = supportsUnifiedMovement && movementTypeField?.value === "income";
 
     if (!description || !Number.isFinite(amount) || amount <= 0) {
       metaTarget.textContent = "Bitte Beschreibung und positiven Betrag eintragen.";
+      return;
+    }
+    if (!normalizeIsoDateInput(dateField.value || defaultEntryDateForMonth)) {
+      metaTarget.textContent = "Bitte ein gueltiges Datum im Format YYYY-MM-DD eintragen.";
       return;
     }
 
@@ -444,7 +489,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
     saveButton.dataset.editingId = "";
     descriptionField.value = "";
     amountField.value = "";
-    dateField.value = todayIsoDate();
+    dateField.value = defaultEntryDateForMonth;
     if (movementTypeField) {
       movementTypeField.value = "expense";
     }

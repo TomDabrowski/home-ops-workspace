@@ -60,7 +60,8 @@ export function assumptionString(importDraft, key, fallback) {
 }
 
 export function futureForecastRows(monthlyPlan) {
-  return monthlyPlan.rows.filter((row) => row.monthKey >= "2026-03" && row.projectedWealthEndAmount !== undefined);
+  const forecastStartMonthKey = monthlyPlan.rows.find((row) => row.monthKey >= currentMonthKey())?.monthKey ?? currentMonthKey();
+  return monthlyPlan.rows.filter((row) => row.monthKey >= forecastStartMonthKey && row.projectedWealthEndAmount !== undefined);
 }
 
 export function buildRecurringForecastTemplates(monthlyPlan) {

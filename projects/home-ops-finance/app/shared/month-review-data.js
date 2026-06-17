@@ -1,6 +1,50 @@
 // Shared month-review data preparation and validations. This stays DOM-free so
 // the app shell and review UIs can reuse the same month-scoped logic.
 
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function isValidUtcDateParts(year, month, day) {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month - 1 &&
+    candidate.getUTCDate() === day;
+}
+
+export function normalizeMonthKeyInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    return "";
+  }
+
+  return `${match[1]}-${padNumber(month)}`;
+}
+
+export function normalizeIsoDateInput(value) {
+  const trimmed = String(value ?? "").trim();
+  const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day) || !isValidUtcDateParts(year, month, day)) {
+    return "";
+  }
+
+  return `${match[1]}-${padNumber(month)}-${padNumber(day)}`;
+}
+
 export function createMonthReviewDataTools(deps) {
   const {
     currentMonthlyPlan,
@@ -52,7 +96,11 @@ export function createMonthReviewDataTools(deps) {
 
   function manualMusicIncomeOverridesForMonth(monthKey) {
     return readMonthlyMusicIncomeOverrides()
-      .filter((entry) => entry.monthKey === monthKey && entry.isActive !== false)
+      .filter((entry) =>
+        (entry.incomeStreamId ?? "music-income") === "music-income" &&
+        entry.monthKey === monthKey &&
+        entry.isActive !== false,
+      )
       .sort((left, right) => left.entryDate.localeCompare(right.entryDate));
   }
 
@@ -104,7 +152,11 @@ export function createMonthReviewDataTools(deps) {
   }
 
   function isManualMusicIncomeEntry(entry) {
-    return readMonthlyMusicIncomeOverrides().some((item) => item.id === entry.id && item.isActive !== false);
+    return readMonthlyMusicIncomeOverrides().some((item) =>
+      item.id === entry.id &&
+      (item.incomeStreamId ?? "music-income") === "music-income" &&
+      item.isActive !== false,
+    );
   }
 
   function unifiedEntrySourceLabel(entry, kind) {
@@ -122,7 +174,8 @@ export function createMonthReviewDataTools(deps) {
     const warnings = [];
     const description = String(draftValue.description ?? "").trim();
     const amount = Number(draftValue.amount);
-    const entryMonthKey = monthFromDate(draftValue.entryDate || `${monthKey}-01`);
+    const normalizedEntryDate = normalizeIsoDateInput(draftValue.entryDate) || `${monthKey}-01`;
+    const entryMonthKey = monthFromDate(normalizedEntryDate);
     const normalizedDescription = description.toLowerCase();
     const review = buildMonthReviewData(importDraft, currentMonthlyPlan(), entryMonthKey);
     const allMonthExpenses = review?.expenseEntries ?? [];
