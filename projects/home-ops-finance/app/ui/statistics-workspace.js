@@ -1,6 +1,7 @@
 // Statistics workspace: Finanzguru-like spending analysis and trends.
 
 import { analyzeFinanzguruActuals } from "../shared/finanzguru-actuals.js";
+import { renderFinanzguruVizCharts } from "./finanzguru-viz-charts.js";
 
 export function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals, deps) {
   const {
@@ -64,6 +65,12 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruAc
       }
       renderEmptyRow("statsActualInsightRows", 4, "Noch keine Finanzguru-Istdaten.");
       renderEmptyRow("statsActualOutlierRows", 4, "Noch keine Finanzguru-Istdaten.");
+      renderFinanzguruVizCharts(null, analysis, {
+        compareMonthKeys,
+        formatMonthLabel,
+        renderDetailEntries,
+        euro,
+      });
       return;
     }
 
@@ -136,6 +143,13 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruAc
     if (analysis.outlierMonths.length === 0) {
       renderEmptyRow("statsActualOutlierRows", 4, "Keine deutlichen Ausreißer.");
     }
+
+    renderFinanzguruVizCharts(actuals, analysis, {
+      compareMonthKeys,
+      formatMonthLabel,
+      renderDetailEntries,
+      euro,
+    });
   }
 
   renderFinanzguruActuals();

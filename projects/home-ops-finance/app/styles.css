@@ -2232,6 +2232,68 @@ table tbody tr:hover {
   background: color-mix(in srgb, var(--card) 78%, rgba(122, 183, 255, 0.14));
 }
 
+.finance-analytics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.finance-analytics-controls .select-wrap {
+  min-width: 190px;
+}
+
+.finance-chart-grid {
+  margin: 18px 0;
+}
+
+.finance-chart-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 92%, var(--panel) 8%);
+  padding: 16px;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 54px;
+  margin-bottom: 10px;
+}
+
+.chart-head strong {
+  color: var(--ink);
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.viz-chart-host {
+  min-height: 320px;
+  width: 100%;
+}
+
+.chart-fallback {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+  padding: 18px;
+}
+
+.detail-list.compact {
+  margin-top: 12px;
+}
+
+:root[data-theme="dark"] .finance-chart-panel {
+  background: color-mix(in srgb, var(--card) 82%, rgba(255, 255, 255, 0.03));
+}
+
 @media (max-width: 1380px) {
   .month-workbench {
     grid-template-columns: minmax(0, 1fr) 340px;

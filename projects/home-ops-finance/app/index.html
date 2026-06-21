@@ -8,6 +8,19 @@
   <link rel="apple-touch-icon" href="/app/assets/home-ops-finance-icon-512.png">
   <meta name="theme-color" content="#0b1320">
   <link rel="stylesheet" href="/app/styles.css">
+  <script
+    id="sap-ui-bootstrap"
+    src="/app/vendor/@openui5/sap.ui.core/src/sap-ui-core.js"
+    data-sap-ui-theme="sap_horizon"
+    data-sap-ui-async="true"
+    data-sap-ui-compat-version="edge"
+    data-sap-ui-libs="sap.m,sap.ui.layout,sap.viz"
+    data-sap-ui-resourceroots='{
+      "sap.m": "/app/vendor/@openui5/sap.m/src/sap/m/",
+      "sap.ui.layout": "/app/vendor/@openui5/sap.ui.layout/src/sap/ui/layout/",
+      "sap.viz": "/app/vendor/@sapui5/sap.viz/src/sap/viz/"
+    }'
+  ></script>
   <script type="importmap">
     {
       "imports": {
@@ -201,6 +214,66 @@
             </div>
           </div>
           <div id="statsActualKpiCards" class="grid four"></div>
+          <div class="finance-analytics-controls">
+            <label class="select-wrap">
+              <span>Zeitraum</span>
+              <ui5-select id="financeAnalyticsRange">
+                <ui5-option value="12m" selected>Letzte 12 Monate</ui5-option>
+                <ui5-option value="6m">Letzte 6 Monate</ui5-option>
+                <ui5-option value="all">Alle vollen Monate</ui5-option>
+              </ui5-select>
+            </label>
+            <label class="select-wrap">
+              <span>Gruppierung</span>
+              <ui5-select id="financeAnalyticsGranularity">
+                <ui5-option value="month" selected>Monate</ui5-option>
+                <ui5-option value="quarter">Quartale</ui5-option>
+                <ui5-option value="year">Jahre</ui5-option>
+              </ui5-select>
+            </label>
+          </div>
+          <div class="grid two finance-chart-grid">
+            <div class="finance-chart-panel">
+              <div class="chart-head">
+                <div>
+                  <h3 class="subhead">Durchschnitt pro Monat</h3>
+                  <p class="section-copy" id="financeAverageChartMeta">-</p>
+                </div>
+                <strong id="financeAverageChartValue">-</strong>
+              </div>
+              <div id="financeCategoryDonutChart" class="viz-chart-host"></div>
+              <dl class="detail-list compact" id="financeCategorySelection"></dl>
+            </div>
+            <div class="finance-chart-panel">
+              <div class="chart-head">
+                <div>
+                  <h3 class="subhead">Einnahmen &amp; Ausgaben</h3>
+                  <p class="section-copy">Letzte 10 Monate aus Finanzguru-Istdaten.</p>
+                </div>
+              </div>
+              <div id="financeIncomeExpenseChart" class="viz-chart-host"></div>
+            </div>
+          </div>
+          <div class="grid two finance-chart-grid">
+            <div class="finance-chart-panel">
+              <div class="chart-head">
+                <div>
+                  <h3 class="subhead">Konsumtrend</h3>
+                  <p class="section-copy" id="financeConsumptionTrendMeta">-</p>
+                </div>
+              </div>
+              <div id="financeConsumptionTrendChart" class="viz-chart-host"></div>
+            </div>
+            <div class="finance-chart-panel">
+              <div class="chart-head">
+                <div>
+                  <h3 class="subhead">Vermögensentwicklung</h3>
+                  <p class="section-copy" id="financeWealthTrendMeta">-</p>
+                </div>
+              </div>
+              <div id="financeWealthTrendChart" class="viz-chart-host"></div>
+            </div>
+          </div>
           <div class="grid two">
             <div>
               <h3 class="subhead">Monate</h3>

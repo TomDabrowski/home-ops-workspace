@@ -20,6 +20,10 @@
     "serve:app:server": "HOME_OPS_FINANCE_SERVER_MODE=1 HOME_OPS_FINANCE_HOST=0.0.0.0 node --experimental-strip-types src/serve-app.ts"
   },
   "dependencies": {
+    "@openui5/sap.m": "^1.149.0",
+    "@openui5/sap.ui.core": "^1.149.0",
+    "@openui5/sap.ui.layout": "^1.149.0",
+    "@sapui5/sap.viz": "^1.149.0",
     "@ui5/webcomponents": "^2.23.1",
     "@ui5/webcomponents-fiori": "^2.23.1"
   },
