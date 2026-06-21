@@ -1,6 +1,8 @@
 // Retirement / goals workspace UI. Projection math should stay in
 // projection-tools or future core modules; this file owns the browser surface.
 
+import { analyzeFinanzguruActuals } from "../shared/finanzguru-actuals.js";
+
 export function renderGoalsWorkspace(importDraft, monthlyPlan, finanzguruActuals, deps) {
   const {
     readPlannerSettings,
@@ -166,101 +168,21 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, finanzguruActuals
     return [...simulation].reverse().find((row) => row.monthKey <= monthKey) ?? simulation.at(-1) ?? null;
   }
 
-  function quantile(sortedValues, percentile) {
-    if (sortedValues.length === 0) {
-      return 0;
-    }
-    const index = (sortedValues.length - 1) * percentile;
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-    if (lower === upper) {
-      return sortedValues[lower];
-    }
-    return sortedValues[lower] + ((sortedValues[upper] - sortedValues[lower]) * (index - lower));
-  }
-
-  function average(values) {
-    return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
-  }
-
-  function trimmedAverage(values) {
-    const sorted = [...values].filter((value) => Number.isFinite(value)).sort((left, right) => left - right);
-    if (sorted.length > 6) {
-      return average(sorted.slice(2, -2));
-    }
-    if (sorted.length > 2) {
-      return average(sorted.slice(1, -1));
-    }
-    return average(sorted);
-  }
-
-  function isStableFinanzguruExpense(entry) {
-    if (!entry || Number(entry.amount ?? 0) >= 0 || entry.isTransfer || entry.excludedFromFreeIncome) {
-      return false;
-    }
-    if (entry.mainCategory === "Sparen" || entry.mainCategory === "Finanzen" || entry.mainCategory === "Sonstiges") {
-      return false;
-    }
-    if (entry.subCategory === "Kapitalanlage" || entry.subCategory === "Sparen") {
-      return false;
-    }
-    return true;
-  }
-
-  function deriveFinanzguruMonthlySpend(actuals) {
-    const transactions = Array.isArray(actuals?.transactions) ? actuals.transactions : [];
-    const completeMin = actuals?.completeMonthRange?.min;
-    const completeMax = actuals?.completeMonthRange?.max;
-    if (!completeMin || !completeMax || transactions.length === 0) {
-      return null;
-    }
-
-    const monthTotals = new Map();
-    const rawCoreByMonth = new Map();
-    const allMonths = (actuals.monthlySummaries ?? [])
-      .map((row) => row.monthKey)
-      .filter((monthKey) => monthKey >= completeMin && monthKey <= completeMax)
-      .sort();
-
-    for (const monthKey of allMonths) {
-      monthTotals.set(monthKey, 0);
-    }
-    for (const summary of actuals.monthlySummaries ?? []) {
-      if (summary.monthKey >= completeMin && summary.monthKey <= completeMax) {
-        rawCoreByMonth.set(summary.monthKey, Number(summary.coreExpenseAmount ?? 0));
-      }
-    }
-    for (const entry of transactions) {
-      if (entry.monthKey < completeMin || entry.monthKey > completeMax || !isStableFinanzguruExpense(entry)) {
-        continue;
-      }
-      monthTotals.set(entry.monthKey, (monthTotals.get(entry.monthKey) ?? 0) + Math.abs(Number(entry.amount ?? 0)));
-    }
-
-    const stableValues = allMonths.map((monthKey) => Number(monthTotals.get(monthKey) ?? 0));
-    const rawCoreValues = allMonths.map((monthKey) => Number(rawCoreByMonth.get(monthKey) ?? 0));
-    if (stableValues.length === 0) {
-      return null;
-    }
-
-    const sortedStable = [...stableValues].sort((left, right) => left - right);
-    const sortedRawCore = [...rawCoreValues].sort((left, right) => left - right);
-    return {
-      amount: Math.round(trimmedAverage(stableValues)),
-      source: "finanzguru",
-      monthCount: stableValues.length,
-      monthRange: `${completeMin} bis ${completeMax}`,
-      median: Math.round(quantile(sortedStable, 0.5)),
-      p75: Math.round(quantile(sortedStable, 0.75)),
-      rawCoreMedian: Math.round(quantile(sortedRawCore, 0.5)),
-      excludedNote: "ohne Sparen, Umbuchungen, Finanzen, Sonstiges und als ausgeschlossen markierte Buchungen",
-    };
-  }
+  const finanzguruAnalysis = analyzeFinanzguruActuals(finanzguruActuals);
 
   function deriveActualMonthlySpend(plan, monthKey) {
-    const finanzguruSpend = deriveFinanzguruMonthlySpend(finanzguruActuals);
-    if (finanzguruSpend) {
-      return finanzguruSpend;
+    if (finanzguruAnalysis.hasActuals && finanzguruAnalysis.monthlySpend > 0) {
+      return {
+        amount: finanzguruAnalysis.monthlySpend,
+        source: "finanzguru",
+        monthCount: finanzguruAnalysis.completeMonths.length,
+        monthRange: `${finanzguruAnalysis.completeMonthRange?.min ?? "-"} bis ${finanzguruAnalysis.completeMonthRange?.max ?? "-"}`,
+        median: finanzguruAnalysis.stableMedian,
+        p75: finanzguruAnalysis.stableP75,
+        rawCoreAverage: finanzguruAnalysis.rawCoreAverage,
+        rawCoreMedian: finanzguruAnalysis.rawCoreMedian,
+        excludedNote: finanzguruAnalysis.excludedNote,
+      };
     }
 
     const row =
@@ -620,8 +542,21 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, finanzguruActuals
       ? `Finanzguru-Ist (${euro.format(derivedActualSpend.amount)} aus ${derivedActualSpend.monthCount} Monaten, ${derivedActualSpend.monthRange})`
       : `Ist-Ausgaben (${euro.format(derivedActualSpend.amount)} aus Monatsplan, editierbar)`;
     const actualSpendFormula = derivedActualSpend.source === "finanzguru"
-      ? `Finanzguru getrimmter Monatswert ${euro.format(derivedActualSpend.amount)}; Median stabile Kategorien ${euro.format(derivedActualSpend.median ?? 0)}, 75%-Wert ${euro.format(derivedActualSpend.p75 ?? 0)}. Roh-Core-Median ${euro.format(derivedActualSpend.rawCoreMedian ?? 0)} wird wegen Ausreißern nicht direkt genutzt; ${derivedActualSpend.excludedNote}.`
+      ? `Finanzguru getrimmter Monatswert ${euro.format(derivedActualSpend.amount)}; Median stabile Kategorien ${euro.format(derivedActualSpend.median ?? 0)}, 75%-Wert ${euro.format(derivedActualSpend.p75 ?? 0)}. Roh-Core-Median ${euro.format(derivedActualSpend.rawCoreMedian ?? 0)} und Roh-Core-Schnitt ${euro.format(derivedActualSpend.rawCoreAverage ?? 0)} werden wegen Ausreißern nicht direkt genutzt; ${derivedActualSpend.excludedNote}.`
       : `Ist-Ausgaben aus Monatsplan (${euro.format(derivedActualSpend.amount)}) oder manuell gesetzt.`;
+    const recurringSummary = finanzguruAnalysis.recurringCandidates.slice(0, 3)
+      .map((entry) => `${entry.label}: ${euro.format(entry.medianMonthlyAmount)}`)
+      .join(" · ");
+    const outlierSummary = finanzguruAnalysis.outlierMonths.slice(0, 3)
+      .map((entry) => `${formatMonthLabel(entry.monthKey)} ${euro.format(entry.rawCoreAmount)}`)
+      .join(" · ");
+    const cashSnapshotFormula = finanzguruAnalysis.latestCashSnapshotDate
+      ? `Summe der pseudonymisierten Finanzguru-Kontostände; neuester Kontostand im Export vom ${finanzguruAnalysis.latestCashSnapshotDate}. Das ist Cash, kein kompletter Depot-/Vermögenswert.`
+      : "Finanzguru liefert hier nur Kontostände aus den exportierten Konten.";
+    const musicTaxFormula = [
+      finanzguruAnalysis.musicExpenseTotal > 0 ? `Musiknahe Ausgaben: ${euro.format(finanzguruAnalysis.musicExpenseTotal)}` : "",
+      finanzguruAnalysis.taxExpenseTotal > 0 ? `Steuern-Kategorie: ${euro.format(finanzguruAnalysis.taxExpenseTotal)}` : "",
+    ].filter(Boolean).join(" · ");
     const spendingBasisLabel = settings.spendingBasis === "actual"
       ? actualSpendLabel
       : `${settings.replacementRate.toFixed(0)} % vom Netto`;
@@ -686,6 +621,30 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, finanzguruActuals
           : "Ziel bis Alter 90 mit 0 € Musik nicht erreicht.",
       },
       ["Anteil vom Netto", `${retirementSpendShareOfCurrentNet.toFixed(1).replace(".", ",")} %`],
+      ...(finanzguruAnalysis.hasActuals
+        ? [
+          {
+            label: "Finanzguru Cash-Snapshot",
+            value: euro.format(finanzguruAnalysis.cashSnapshotTotal),
+            formula: cashSnapshotFormula,
+          },
+          {
+            label: "Fixkosten-Kandidaten",
+            value: recurringSummary || "Keine stabilen Kandidaten",
+            formula: "Nur Vorschläge aus Kategorie/Turnus, weil Buchungstexte im pseudonymisierten Export nicht enthalten sind. Noch nicht automatisch in Fixkosten übernommen.",
+          },
+          {
+            label: "Ausreißer-Monate",
+            value: outlierSummary || "Keine deutlichen Ausreißer",
+            formula: "Diese Monate werden angezeigt, damit einmalige Sondereffekte vor Prognose-Übernahme geprüft werden können.",
+          },
+          {
+            label: "Musik/Steuer-Signale",
+            value: musicTaxFormula || "Keine klaren Kategorie-Signale",
+            formula: "Aus Finanzguru-Kategorien abgeleitet, noch nicht automatisch als Musik-P&L oder Steuerreserve gebucht.",
+          },
+        ]
+        : []),
       ...withdrawalRateTargets.map((item) => [
         `Ziel bei ${item.rate.toFixed(1).replace(".", ",")} % Entnahme`,
         euro.format(item.nestEgg),
