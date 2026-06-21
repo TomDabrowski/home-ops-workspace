@@ -9,6 +9,7 @@ import {
   assertImportDraft,
   parseBaselineOverrideCollection,
   parseForecastSettings,
+  parseFinanzguruActuals,
   parseHouseholdState,
   parseMappingState,
   parseMonthlyExpenseOverrideCollection,
@@ -96,6 +97,7 @@ const salarySettingsPath = financeDataPath("salary-settings.json");
 const wealthSnapshotsPath = financeDataPath("wealth-snapshots.json");
 const allocationActionStatePath = financeDataPath("allocation-action-state.json");
 const householdItemsPath = financeDataPath("household-items.json");
+const finanzguruActualsPath = financeDataPath("finanzguru-actuals.json");
 const importDraftSourcePath = financeDataPath("import-draft.json");
 const activityLogPath = financeDataPath("activity-log.log");
 const autoShutdownGraceMs = 15000;
@@ -851,6 +853,19 @@ const server = createServer(async (req, res) => {
       failureEvent: "hausrat fehlgeschlagen",
       invalidPayloadError: "invalid_household_items_payload",
       saveFailedError: "household_items_save_failed",
+      refreshReviewedArtifacts: false,
+    });
+  }
+
+  if (url.pathname === "/api/finanzguru-actuals") {
+    return handleValidatedStateEndpoint(req, res, {
+      path: finanzguruActualsPath,
+      fallback: null,
+      parser: parseFinanzguruActuals,
+      successEvent: "finanzguru-istdaten gespeichert",
+      failureEvent: "finanzguru-istdaten fehlgeschlagen",
+      invalidPayloadError: "invalid_finanzguru_actuals_payload",
+      saveFailedError: "finanzguru_actuals_save_failed",
       refreshReviewedArtifacts: false,
     });
   }

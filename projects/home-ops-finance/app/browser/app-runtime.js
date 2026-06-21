@@ -75,15 +75,21 @@ export function createAppRuntimeTools({
     const importDraftPromise = fetchJsonWithFallback("/data/import-draft-reviewed.json", "/data/import-draft.json");
     const draftReportPromise = fetchJsonWithFallback("/data/draft-report-reviewed.json", "/data/draft-report.json");
     const monthlyPlanPromise = fetchJsonWithFallback("/data/monthly-plan-reviewed.json", "/data/monthly-plan.json");
+    const finanzguruActualsPromise = fetch("/api/finanzguru-actuals", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .catch(() => fetch("/data/finanzguru-actuals.json", { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null));
 
-    const [draftReport, monthlyPlan, importDraft, accounts] = await Promise.all([
+    const [draftReport, monthlyPlan, importDraft, accounts, finanzguruActuals] = await Promise.all([
       draftReportPromise,
       monthlyPlanPromise,
       importDraftPromise,
       fetch("/data/accounts.json", { cache: "no-store" }).then((response) => response.ok ? response.json() : []),
+      finanzguruActualsPromise,
     ]);
 
-    return applyLocalWorkflowState({ draftReport, monthlyPlan, importDraft, accounts });
+    return applyLocalWorkflowState({ draftReport, monthlyPlan, importDraft, accounts, finanzguruActuals });
   }
 
   async function refreshFinanceView(status = null) {

@@ -1,7 +1,7 @@
 // Retirement / goals workspace UI. Projection math should stay in
 // projection-tools or future core modules; this file owns the browser surface.
 
-export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
+export function renderGoalsWorkspace(importDraft, monthlyPlan, finanzguruActuals, deps) {
   const {
     readPlannerSettings,
     writePlannerSettings,
@@ -166,28 +166,137 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
     return [...simulation].reverse().find((row) => row.monthKey <= monthKey) ?? simulation.at(-1) ?? null;
   }
 
+  function quantile(sortedValues, percentile) {
+    if (sortedValues.length === 0) {
+      return 0;
+    }
+    const index = (sortedValues.length - 1) * percentile;
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    if (lower === upper) {
+      return sortedValues[lower];
+    }
+    return sortedValues[lower] + ((sortedValues[upper] - sortedValues[lower]) * (index - lower));
+  }
+
+  function average(values) {
+    return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+  }
+
+  function trimmedAverage(values) {
+    const sorted = [...values].filter((value) => Number.isFinite(value)).sort((left, right) => left - right);
+    if (sorted.length > 6) {
+      return average(sorted.slice(2, -2));
+    }
+    if (sorted.length > 2) {
+      return average(sorted.slice(1, -1));
+    }
+    return average(sorted);
+  }
+
+  function isStableFinanzguruExpense(entry) {
+    if (!entry || Number(entry.amount ?? 0) >= 0 || entry.isTransfer || entry.excludedFromFreeIncome) {
+      return false;
+    }
+    if (entry.mainCategory === "Sparen" || entry.mainCategory === "Finanzen" || entry.mainCategory === "Sonstiges") {
+      return false;
+    }
+    if (entry.subCategory === "Kapitalanlage" || entry.subCategory === "Sparen") {
+      return false;
+    }
+    return true;
+  }
+
+  function deriveFinanzguruMonthlySpend(actuals) {
+    const transactions = Array.isArray(actuals?.transactions) ? actuals.transactions : [];
+    const completeMin = actuals?.completeMonthRange?.min;
+    const completeMax = actuals?.completeMonthRange?.max;
+    if (!completeMin || !completeMax || transactions.length === 0) {
+      return null;
+    }
+
+    const monthTotals = new Map();
+    const rawCoreByMonth = new Map();
+    const allMonths = (actuals.monthlySummaries ?? [])
+      .map((row) => row.monthKey)
+      .filter((monthKey) => monthKey >= completeMin && monthKey <= completeMax)
+      .sort();
+
+    for (const monthKey of allMonths) {
+      monthTotals.set(monthKey, 0);
+    }
+    for (const summary of actuals.monthlySummaries ?? []) {
+      if (summary.monthKey >= completeMin && summary.monthKey <= completeMax) {
+        rawCoreByMonth.set(summary.monthKey, Number(summary.coreExpenseAmount ?? 0));
+      }
+    }
+    for (const entry of transactions) {
+      if (entry.monthKey < completeMin || entry.monthKey > completeMax || !isStableFinanzguruExpense(entry)) {
+        continue;
+      }
+      monthTotals.set(entry.monthKey, (monthTotals.get(entry.monthKey) ?? 0) + Math.abs(Number(entry.amount ?? 0)));
+    }
+
+    const stableValues = allMonths.map((monthKey) => Number(monthTotals.get(monthKey) ?? 0));
+    const rawCoreValues = allMonths.map((monthKey) => Number(rawCoreByMonth.get(monthKey) ?? 0));
+    if (stableValues.length === 0) {
+      return null;
+    }
+
+    const sortedStable = [...stableValues].sort((left, right) => left - right);
+    const sortedRawCore = [...rawCoreValues].sort((left, right) => left - right);
+    return {
+      amount: Math.round(trimmedAverage(stableValues)),
+      source: "finanzguru",
+      monthCount: stableValues.length,
+      monthRange: `${completeMin} bis ${completeMax}`,
+      median: Math.round(quantile(sortedStable, 0.5)),
+      p75: Math.round(quantile(sortedStable, 0.75)),
+      rawCoreMedian: Math.round(quantile(sortedRawCore, 0.5)),
+      excludedNote: "ohne Sparen, Umbuchungen, Finanzen, Sonstiges und als ausgeschlossen markierte Buchungen",
+    };
+  }
+
   function deriveActualMonthlySpend(plan, monthKey) {
+    const finanzguruSpend = deriveFinanzguruMonthlySpend(finanzguruActuals);
+    if (finanzguruSpend) {
+      return finanzguruSpend;
+    }
+
     const row =
       plan.rows.find((entry) => entry.monthKey === monthKey) ??
       plan.rows.find((entry) => entry.monthKey >= monthKey) ??
       plan.rows.at(-1);
     if (!row) {
-      return 1700;
+      return {
+        amount: 1700,
+        source: "fallback",
+        monthCount: 0,
+        monthRange: "-",
+      };
     }
     const baseline =
       Number(row.baselineFixedAmount ?? 0) +
       Number(row.baselineVariableAmount ?? 0) +
       Number(row.annualReserveAmount ?? 0) / 12;
     const imported = Number(row.importedExpenseAmount ?? 0);
-    return Math.round(baseline + imported);
+    return {
+      amount: Math.round(baseline + imported),
+      source: "monthlyPlan",
+      monthCount: 1,
+      monthRange: row.monthKey,
+    };
   }
 
   function resolveMonthlyRetirementSpend(settings, currentNetSalary, derivedActualSpend) {
     if (settings.spendingBasis === "replacement") {
       return currentNetSalary * (settings.replacementRate / 100);
     }
+    if (derivedActualSpend.source === "finanzguru" && derivedActualSpend.amount > 0) {
+      return derivedActualSpend.amount;
+    }
     const manualSpend = Number(settings.retirementSpend);
-    return Number.isFinite(manualSpend) && manualSpend > 0 ? manualSpend : derivedActualSpend;
+    return Number.isFinite(manualSpend) && manualSpend > 0 ? manualSpend : derivedActualSpend.amount;
   }
 
   function nestEggTargets(monthlySpend, withdrawalRate, inflationRate, targetYears, spendingBasis) {
@@ -507,8 +616,14 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
       currentSelectedMonthKey() ?? currentMonthKey() ?? firstForecastMonthKey,
     );
 
+    const actualSpendLabel = derivedActualSpend.source === "finanzguru"
+      ? `Finanzguru-Ist (${euro.format(derivedActualSpend.amount)} aus ${derivedActualSpend.monthCount} Monaten, ${derivedActualSpend.monthRange})`
+      : `Ist-Ausgaben (${euro.format(derivedActualSpend.amount)} aus Monatsplan, editierbar)`;
+    const actualSpendFormula = derivedActualSpend.source === "finanzguru"
+      ? `Finanzguru getrimmter Monatswert ${euro.format(derivedActualSpend.amount)}; Median stabile Kategorien ${euro.format(derivedActualSpend.median ?? 0)}, 75%-Wert ${euro.format(derivedActualSpend.p75 ?? 0)}. Roh-Core-Median ${euro.format(derivedActualSpend.rawCoreMedian ?? 0)} wird wegen Ausreißern nicht direkt genutzt; ${derivedActualSpend.excludedNote}.`
+      : `Ist-Ausgaben aus Monatsplan (${euro.format(derivedActualSpend.amount)}) oder manuell gesetzt.`;
     const spendingBasisLabel = settings.spendingBasis === "actual"
-      ? `Ist-Ausgaben (${euro.format(derivedActualSpend)} aus Monatsplan, editierbar)`
+      ? actualSpendLabel
       : `${settings.replacementRate.toFixed(0)} % vom Netto`;
     assumptionsTarget.textContent =
       `Bedarf: ${spendingBasisLabel}. Zielvermögen in heutiger Kaufkraft: ${euro.format(requiredNestEggToday)} bei ${settings.withdrawalRate.toFixed(1)} % Entnahme. FI-Zeitpunkt = erstes Erreichen dieses Ziels (Horizont bis Alter 90). 'Ohne Musik' = 0 € Musik ab jetzt. 'Mit Musik' = Prognose plus mindestens ${euro.format(settings.minimumMusicGrossPerMonth)} brutto/Monat. Gesetzliche Rente ab ~63–67 ist nicht eingerechnet.`;
@@ -534,7 +649,7 @@ export function renderGoalsWorkspace(importDraft, monthlyPlan, deps) {
         label: "Monatsbedarf (heutige Kaufkraft)",
         value: euro.format(retirementSpendNow),
         formula: settings.spendingBasis === "actual"
-          ? `Ist-Ausgaben aus Monatsplan (${euro.format(derivedActualSpend)}) oder manuell gesetzt.`
+          ? actualSpendFormula
           : `${settings.replacementRate.toFixed(0)} % von ${euro.format(currentNetSalary)}.`,
       },
       {

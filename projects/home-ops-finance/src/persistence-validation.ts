@@ -155,6 +155,56 @@ export interface HouseholdState {
   updatedAt?: string;
 }
 
+export interface FinanzguruActualTransaction {
+  id: string;
+  bookingDate: string;
+  monthKey: string;
+  amount: number;
+  currency: string;
+  accountId: string;
+  mainCategory: string;
+  subCategory: string;
+  contractTurnus?: string;
+  isTransfer: boolean;
+  excludedFromFreeIncome: boolean;
+  transactionType?: string;
+  splitType?: string;
+  isPending: boolean;
+}
+
+export interface FinanzguruActualMonthlySummary {
+  monthKey: string;
+  transactionCount: number;
+  incomeAmount: number;
+  expenseAmount: number;
+  transferAmount: number;
+  investmentLikeAmount: number;
+  coreExpenseAmount: number;
+}
+
+export interface FinanzguruActualsState {
+  source: "finanzguru";
+  generatedAt: string;
+  sourceFileName?: string;
+  dateRange: {
+    min: string;
+    max: string;
+  };
+  completeMonthRange?: {
+    min: string;
+    max: string;
+  };
+  accountSnapshots: Array<{
+    accountId: string;
+    latestDate: string;
+    balance: number;
+  }>;
+  sanitizedColumns: string[];
+  removedColumns: string[];
+  transactions: FinanzguruActualTransaction[];
+  monthlySummaries: FinanzguruActualMonthlySummary[];
+}
+
 export type MappingState = Record<string, EntryMappingState>;
 export type ReconciliationState = Record<string, ReconciliationMonthState>;
 export type BaselineOverrideCollection = BaselineOverrideState[];
@@ -165,6 +215,7 @@ export type MusicTaxSetting = MusicTaxSettingState | null;
 export type ForecastSettings = ForecastSettingsState | null;
 export type SalarySettingCollection = SalarySettingState[];
 export type WealthSnapshotCollection = WealthSnapshotState[];
+export type FinanzguruActuals = FinanzguruActualsState | null;
 
 function fail(path: string, expected: string): never {
   throw new ValidationError(`Invalid value at ${path}: expected ${expected}`);
@@ -227,6 +278,10 @@ function asOptionalBoolean(value: unknown, path: string): boolean | undefined {
     return undefined;
   }
 
+  return asBoolean(value, path);
+}
+
+function asBoolean(value: unknown, path: string): boolean {
   if (typeof value !== "boolean") {
     fail(path, "boolean");
   }
@@ -234,17 +289,21 @@ function asOptionalBoolean(value: unknown, path: string): boolean | undefined {
   return value;
 }
 
-function asOptionalEnum<T extends string>(value: unknown, allowed: readonly T[], path: string): T | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
+function asEnum<T extends string>(value: unknown, allowed: readonly T[], path: string): T {
   const next = asString(value, path);
   if (!allowed.includes(next as T)) {
     fail(path, `one of ${allowed.join(", ")}`);
   }
 
   return next as T;
+}
+
+function asOptionalEnum<T extends string>(value: unknown, allowed: readonly T[], path: string): T | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return asEnum(value, allowed, path);
 }
 
 function parseOptionalWealthSnapshotMonthlyStatus(value: unknown, path: string): WealthSnapshotState["monthlyStatus"] {
@@ -489,6 +548,83 @@ export function parseHouseholdState(value: unknown): HouseholdState {
     insuranceCoverageAmount: asOptionalNumber(item.insuranceCoverageAmount, "householdState.insuranceCoverageAmount"),
     insuranceCoverageLabel: asOptionalString(item.insuranceCoverageLabel, "householdState.insuranceCoverageLabel"),
     updatedAt: asOptionalString(item.updatedAt, "householdState.updatedAt"),
+  };
+}
+
+export function parseFinanzguruActuals(value: unknown): FinanzguruActuals {
+  if (value == null) {
+    return null;
+  }
+
+  const actuals = asObject(value, "finanzguruActuals");
+  const dateRange = asObject(actuals.dateRange, "finanzguruActuals.dateRange");
+  const completeMonthRange =
+    actuals.completeMonthRange == null
+      ? undefined
+      : asObject(actuals.completeMonthRange, "finanzguruActuals.completeMonthRange");
+
+  return {
+    source: asEnum(actuals.source, ["finanzguru"], "finanzguruActuals.source"),
+    generatedAt: asString(actuals.generatedAt, "finanzguruActuals.generatedAt"),
+    sourceFileName: asOptionalString(actuals.sourceFileName, "finanzguruActuals.sourceFileName"),
+    dateRange: {
+      min: asString(dateRange.min, "finanzguruActuals.dateRange.min"),
+      max: asString(dateRange.max, "finanzguruActuals.dateRange.max"),
+    },
+    completeMonthRange: completeMonthRange
+      ? {
+          min: asString(completeMonthRange.min, "finanzguruActuals.completeMonthRange.min"),
+          max: asString(completeMonthRange.max, "finanzguruActuals.completeMonthRange.max"),
+        }
+      : undefined,
+    accountSnapshots: asArray(actuals.accountSnapshots ?? [], "finanzguruActuals.accountSnapshots").map((entry, index) => {
+      const snapshot = asObject(entry, `finanzguruActuals.accountSnapshots[${index}]`);
+      return {
+        accountId: asString(snapshot.accountId, `finanzguruActuals.accountSnapshots[${index}].accountId`),
+        latestDate: asString(snapshot.latestDate, `finanzguruActuals.accountSnapshots[${index}].latestDate`),
+        balance: asNumber(snapshot.balance, `finanzguruActuals.accountSnapshots[${index}].balance`),
+      };
+    }),
+    sanitizedColumns: asArray(actuals.sanitizedColumns ?? [], "finanzguruActuals.sanitizedColumns").map((entry, index) =>
+      asString(entry, `finanzguruActuals.sanitizedColumns[${index}]`)
+    ),
+    removedColumns: asArray(actuals.removedColumns ?? [], "finanzguruActuals.removedColumns").map((entry, index) =>
+      asString(entry, `finanzguruActuals.removedColumns[${index}]`)
+    ),
+    transactions: asArray(actuals.transactions ?? [], "finanzguruActuals.transactions").map((entry, index) => {
+      const tx = asObject(entry, `finanzguruActuals.transactions[${index}]`);
+      return {
+        id: asString(tx.id, `finanzguruActuals.transactions[${index}].id`),
+        bookingDate: asString(tx.bookingDate, `finanzguruActuals.transactions[${index}].bookingDate`),
+        monthKey: asString(tx.monthKey, `finanzguruActuals.transactions[${index}].monthKey`),
+        amount: asNumber(tx.amount, `finanzguruActuals.transactions[${index}].amount`),
+        currency: asString(tx.currency, `finanzguruActuals.transactions[${index}].currency`),
+        accountId: asString(tx.accountId, `finanzguruActuals.transactions[${index}].accountId`),
+        mainCategory: asString(tx.mainCategory, `finanzguruActuals.transactions[${index}].mainCategory`),
+        subCategory: asString(tx.subCategory, `finanzguruActuals.transactions[${index}].subCategory`),
+        contractTurnus: asOptionalString(tx.contractTurnus, `finanzguruActuals.transactions[${index}].contractTurnus`),
+        isTransfer: asBoolean(tx.isTransfer, `finanzguruActuals.transactions[${index}].isTransfer`),
+        excludedFromFreeIncome: asBoolean(
+          tx.excludedFromFreeIncome,
+          `finanzguruActuals.transactions[${index}].excludedFromFreeIncome`,
+        ),
+        transactionType: asOptionalString(tx.transactionType, `finanzguruActuals.transactions[${index}].transactionType`),
+        splitType: asOptionalString(tx.splitType, `finanzguruActuals.transactions[${index}].splitType`),
+        isPending: asBoolean(tx.isPending, `finanzguruActuals.transactions[${index}].isPending`),
+      };
+    }),
+    monthlySummaries: asArray(actuals.monthlySummaries ?? [], "finanzguruActuals.monthlySummaries").map((entry, index) => {
+      const summary = asObject(entry, `finanzguruActuals.monthlySummaries[${index}]`);
+      return {
+        monthKey: asString(summary.monthKey, `finanzguruActuals.monthlySummaries[${index}].monthKey`),
+        transactionCount: asNumber(summary.transactionCount, `finanzguruActuals.monthlySummaries[${index}].transactionCount`),
+        incomeAmount: asNumber(summary.incomeAmount, `finanzguruActuals.monthlySummaries[${index}].incomeAmount`),
+        expenseAmount: asNumber(summary.expenseAmount, `finanzguruActuals.monthlySummaries[${index}].expenseAmount`),
+        transferAmount: asNumber(summary.transferAmount, `finanzguruActuals.monthlySummaries[${index}].transferAmount`),
+        investmentLikeAmount: asNumber(summary.investmentLikeAmount, `finanzguruActuals.monthlySummaries[${index}].investmentLikeAmount`),
+        coreExpenseAmount: asNumber(summary.coreExpenseAmount, `finanzguruActuals.monthlySummaries[${index}].coreExpenseAmount`),
+      };
+    }),
   };
 }
 

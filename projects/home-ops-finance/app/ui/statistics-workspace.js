@@ -1,6 +1,6 @@
 // Statistics workspace: Finanzguru-like spending analysis and trends.
 
-export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
+export function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals, deps) {
   const {
     currentMonthKey,
     addMonths,
@@ -16,12 +16,126 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
   } = deps;
 
   const kpiTarget = document.getElementById("statsKpiCards");
+  const actualsMetaTarget = document.getElementById("statsActualsMeta");
+  const actualsKpiTarget = document.getElementById("statsActualKpiCards");
   const monthCompareTarget = document.getElementById("statsMonthCompare");
   const recurringTarget = document.getElementById("statsRecurringList");
   const yearSelect = document.getElementById("statsYearSelect");
   if (!kpiTarget || !monthCompareTarget || !recurringTarget || !yearSelect || !("value" in yearSelect)) {
     return;
   }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function renderFinanzguruActuals() {
+    if (!actualsMetaTarget || !actualsKpiTarget) {
+      return;
+    }
+
+    const monthRowsTarget = document.getElementById("statsActualMonthRows");
+    const categoryRowsTarget = document.getElementById("statsActualCategoryRows");
+    const actuals = finanzguruActuals && typeof finanzguruActuals === "object" ? finanzguruActuals : null;
+    const transactions = Array.isArray(actuals?.transactions) ? actuals.transactions : [];
+    const monthlySummaries = Array.isArray(actuals?.monthlySummaries) ? actuals.monthlySummaries : [];
+
+    if (!actuals || transactions.length === 0) {
+      actualsMetaTarget.textContent = "Noch keine Finanzguru-Istdaten geladen.";
+      actualsKpiTarget.innerHTML = [
+        `<article class="card stat"><span>Buchungen</span><strong>-</strong></article>`,
+        `<article class="card stat"><span>Zeitraum</span><strong>-</strong></article>`,
+        `<article class="card stat"><span>Ø bereinigt</span><strong>-</strong></article>`,
+        `<article class="card stat"><span>Cash-Snapshot</span><strong>-</strong></article>`,
+      ].join("");
+      if (monthRowsTarget) {
+        renderEmptyRow("statsActualMonthRows", 4, "Noch keine Finanzguru-Istdaten.");
+      }
+      if (categoryRowsTarget) {
+        renderEmptyRow("statsActualCategoryRows", 3, "Noch keine Finanzguru-Kategorien.");
+      }
+      return;
+    }
+
+    const completeMin = actuals.completeMonthRange?.min ?? "";
+    const completeMax = actuals.completeMonthRange?.max ?? "";
+    const completeMonthlyRows = monthlySummaries.filter((row) =>
+      (!completeMin || compareMonthKeys(row.monthKey, completeMin) >= 0) &&
+      (!completeMax || compareMonthKeys(row.monthKey, completeMax) <= 0)
+    );
+    const averageCoreExpense = completeMonthlyRows.length > 0
+      ? completeMonthlyRows.reduce((sum, row) => sum + Number(row.coreExpenseAmount ?? 0), 0) / completeMonthlyRows.length
+      : 0;
+    const cashSnapshotTotal = (actuals.accountSnapshots ?? [])
+      .reduce((sum, entry) => sum + Number(entry.balance ?? 0), 0);
+    const pendingCount = transactions.filter((entry) => entry.isPending).length;
+    const transferCount = transactions.filter((entry) => entry.isTransfer).length;
+    const investmentLikeTotal = monthlySummaries
+      .reduce((sum, row) => sum + Number(row.investmentLikeAmount ?? 0), 0);
+
+    actualsMetaTarget.textContent = [
+      `${transactions.length} Buchungen`,
+      `${actuals.dateRange?.min ?? "-"} bis ${actuals.dateRange?.max ?? "-"}`,
+      completeMin && completeMax ? `volle Monate ${completeMin} bis ${completeMax}` : "",
+      pendingCount > 0 ? `${pendingCount} vorgemerkt` : "",
+    ].filter(Boolean).join(" · ");
+
+    actualsKpiTarget.innerHTML = [
+      `<article class="card stat"><span>Buchungen</span><strong>${transactions.length}</strong></article>`,
+      `<article class="card stat"><span>Ø bereinigt</span><strong>${euro.format(averageCoreExpense)}</strong></article>`,
+      `<article class="card stat"><span>Invest/Sparen</span><strong>${euro.format(investmentLikeTotal)}</strong></article>`,
+      `<article class="card stat"><span>Cash-Snapshot</span><strong>${euro.format(cashSnapshotTotal)}</strong></article>`,
+    ].join("");
+
+    const recentActualMonths = [...monthlySummaries]
+      .sort((left, right) => compareMonthKeys(left.monthKey, right.monthKey))
+      .slice(-12)
+      .reverse();
+    renderRows("statsActualMonthRows", recentActualMonths, (row) => `
+      <tr>
+        <td>${formatMonthLabel(row.monthKey)}</td>
+        <td>${euro.format(Number(row.coreExpenseAmount ?? 0))}</td>
+        <td>${euro.format(Number(row.investmentLikeAmount ?? 0))}</td>
+        <td>${euro.format(Number(row.transferAmount ?? 0))}</td>
+      </tr>
+    `);
+    if (recentActualMonths.length === 0) {
+      renderEmptyRow("statsActualMonthRows", 4, "Keine Finanzguru-Monate.");
+    }
+
+    const categoryTotals = new Map();
+    for (const entry of transactions) {
+      if (entry.isTransfer || Number(entry.amount ?? 0) >= 0) {
+        continue;
+      }
+      if (entry.mainCategory === "Sparen" || entry.subCategory === "Kapitalanlage" || entry.subCategory === "Sparen") {
+        continue;
+      }
+      const key = String(entry.mainCategory || "Sonstiges");
+      categoryTotals.set(key, (categoryTotals.get(key) ?? 0) + Math.abs(Number(entry.amount ?? 0)));
+    }
+    const categoryTotal = [...categoryTotals.values()].reduce((sum, value) => sum + value, 0);
+    const actualCategoryRows = [...categoryTotals.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 10);
+    renderRows("statsActualCategoryRows", actualCategoryRows, ([category, amount]) => `
+      <tr>
+        <td>${escapeHtml(category)}</td>
+        <td>${euro.format(amount)}</td>
+        <td>${formatPercent(categoryTotal > 0 ? amount / categoryTotal : 0)}</td>
+      </tr>
+    `);
+    if (actualCategoryRows.length === 0) {
+      renderEmptyRow("statsActualCategoryRows", 3, "Keine Finanzguru-Kategorien.");
+    }
+  }
+
+  renderFinanzguruActuals();
 
   function isMusicInvestmentExpense(entry) {
     return (
@@ -361,5 +475,5 @@ export function renderStatisticsWorkspace(importDraft, monthlyPlan, deps) {
     renderEmptyRow("statsYearExpenseRows", 4, "Keine Ausgaben für dieses Jahr.");
   }
 
-  yearSelect.onchange = () => renderStatisticsWorkspace(importDraft, monthlyPlan, deps);
+  yearSelect.onchange = () => renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals, deps);
 }

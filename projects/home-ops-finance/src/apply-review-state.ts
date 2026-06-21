@@ -416,17 +416,18 @@ export function applyReviewState(
       : entry,
   );
   const musicTaxBaseIncomeKey = "music_tax_base_income_annual";
+  const explicitMusicTaxBaseIncome = musicTaxSetting?.annualBaseTaxableIncome;
   const hasExplicitMusicTaxBaseIncome =
     musicTaxSetting?.isActive !== false &&
-    typeof musicTaxSetting?.annualBaseTaxableIncome === "number" &&
-    Number.isFinite(musicTaxSetting.annualBaseTaxableIncome);
+    typeof explicitMusicTaxBaseIncome === "number" &&
+    Number.isFinite(explicitMusicTaxBaseIncome);
   if (musicTaxSetting?.isActive !== false && !hasExplicitMusicTaxBaseIncome) {
     nextForecastAssumptions = nextForecastAssumptions.filter((entry) => entry.key !== musicTaxBaseIncomeKey);
   }
-  if (hasExplicitMusicTaxBaseIncome) {
+  if (hasExplicitMusicTaxBaseIncome && musicTaxSetting) {
     const existing = nextForecastAssumptions.find((entry) => entry.key === musicTaxBaseIncomeKey);
     if (existing) {
-      existing.value = musicTaxSetting.annualBaseTaxableIncome;
+      existing.value = explicitMusicTaxBaseIncome;
       existing.valueType = "number";
       existing.notes = mergeNotes(existing.notes, [
         musicTaxSetting.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",
@@ -434,7 +435,7 @@ export function applyReviewState(
     } else {
       nextForecastAssumptions.push({
         key: musicTaxBaseIncomeKey,
-        value: musicTaxSetting.annualBaseTaxableIncome,
+        value: explicitMusicTaxBaseIncome,
         valueType: "number",
         notes: mergeNotes(musicTaxSetting.notes, [
           musicTaxSetting.updatedAt ? `music tax plan ${musicTaxSetting.updatedAt}` : "music tax plan",

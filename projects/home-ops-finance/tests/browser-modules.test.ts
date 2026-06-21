@@ -447,7 +447,7 @@ test("wealth snapshot history allows deleting a saved snapshot", async () => {
     ...extra,
   });
 
-  let deleteHandler: null | (() => Promise<void>) = null;
+  let deleteHandler: (() => Promise<void>) | undefined;
   const deleteButton = {
     getAttribute(name: string) {
       return name === "data-wealth-snapshot-delete" ? "snapshot-delete" : null;
@@ -550,7 +550,9 @@ test("wealth snapshot history allows deleting a saved snapshot", async () => {
       confirmAction: () => true,
     });
 
-    await deleteHandler?.();
+    const handler = deleteHandler;
+    assert.ok(handler);
+    await handler();
 
     assert.equal(savedSnapshots.length, 0);
     assert.equal(refreshStatus?.title, "Ist-Stand gelöscht");

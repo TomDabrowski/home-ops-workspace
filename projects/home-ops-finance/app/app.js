@@ -2231,8 +2231,8 @@ function renderFixedCostPlanner(importDraft, selectedMonthKey = null) {
   });
 }
 
-function renderGoals(importDraft, monthlyPlan) {
-  renderGoalsWorkspaceView(importDraft, monthlyPlan, {
+function renderGoals(importDraft, monthlyPlan, finanzguruActuals = null) {
+  renderGoalsWorkspaceView(importDraft, monthlyPlan, finanzguruActuals, {
     readPlannerSettings,
     writePlannerSettings,
     futureForecastRows,
@@ -2252,8 +2252,8 @@ function renderGoals(importDraft, monthlyPlan) {
   });
 }
 
-function renderStatisticsWorkspace(importDraft, monthlyPlan) {
-  renderStatisticsWorkspaceView(importDraft, monthlyPlan, {
+function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals = null) {
+  renderStatisticsWorkspaceView(importDraft, monthlyPlan, finanzguruActuals, {
     currentMonthKey,
     addMonths,
     compareMonthKeys,
@@ -2268,7 +2268,7 @@ function renderStatisticsWorkspace(importDraft, monthlyPlan) {
   });
 }
 
-function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewState = {}) {
+function renderApp({ draftReport, monthlyPlan, importDraft, accounts, finanzguruActuals }, viewState = {}) {
   const { bindMonthFilters, bindMonthReview, openMonthReview } = createMonthReviewNavigation({
     saveViewState,
     currentImportDraft,
@@ -2288,7 +2288,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   });
   accountOptions = buildAccountOptions(accounts, fallbackAccountOptions);
   window.__importDraft = importDraft;
-  window.__financeState = { draftReport, monthlyPlan, importDraft, accounts };
+  window.__financeState = { draftReport, monthlyPlan, importDraft, accounts, finanzguruActuals };
 
   const viewRecalculatedAt = formatHistoryTimestamp(draftReport.generatedAt);
   const bundleAt = draftReport.importBundleGeneratedAt;
@@ -2343,12 +2343,12 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts }, viewStat
   renderWealthSnapshotPlanner(importDraft);
   renderMusicTaxPlanner(importDraft);
   renderHouseholdWorkspace();
-  renderStatisticsWorkspace(importDraft, monthlyPlan);
+  renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals);
 
   let retirementInitialized = false;
   const initRetirement = () => {
     if (retirementInitialized) return;
-    renderGoals(importDraft, monthlyPlan);
+    renderGoals(importDraft, monthlyPlan, finanzguruActuals);
     retirementInitialized = true;
   };
 

@@ -80,6 +80,48 @@ Start with `npm install`, then `npm run typecheck` and `npm test`.
 
 Private workbook and generated JSON data can live outside the repo checkout via a local-only `config.local.json` next to `package.json`.
 
+### Current Real Data Source
+
+For Tom's current setup, do not use `data/sample-finance.json` for real analysis.
+
+Authoritative real-data order:
+
+1. If reachable, use the live Synology app at `http://192.168.178.74:4310`.
+   - Verify with `/api/runtime-info`.
+   - Read live JSON through `/data/import-draft-reviewed.json`, `/data/draft-report-reviewed.json`, and `/data/monthly-plan-reviewed.json`.
+   - The server reports `dataDir: "/data"` and `dataMode: "external"`, with `/data` mapped from `/volume1/docker/home-ops-finance/data` on the NAS.
+2. If the server is unreachable, use `HOME_OPS_FINANCE_DATA_DIR` and `HOME_OPS_FINANCE_WORKBOOK_PATH`, when set.
+3. If those are unset, stop and ask where the current private data is. Do not recreate or infer an iCloud fallback.
+4. Repo `data/` files are only sanitized development examples.
+
+Verified on 2026-05-31, the live Synology app reported:
+
+```json
+{
+  "dataDir": "/data",
+  "dataMode": "external",
+  "buildNumber": "129",
+  "buildStartedAt": "2026-05-25T13:12:44.997Z"
+}
+```
+
+The live reviewed report was generated at `2026-05-30T14:15:37.886Z` from:
+
+```text
+/Users/tom/Downloads/Daten 5.xlsx
+```
+
+The previous local iCloud mirror was deleted on 2026-05-31 because it was stale compared with the NAS:
+
+```json
+{
+  "dataDir": "/Users/tom/Library/Mobile Documents/com~apple~CloudDocs/Dokumente/Finanziell (privat)/Home Ops Finance/data",
+  "workbookPath": "/Users/tom/Library/Mobile Documents/com~apple~CloudDocs/Dokumente/Finanziell (privat)/Home Ops Finance/Bilanz Tom.xlsx"
+}
+```
+
+The repo-local `config.local.json` symlink that pointed to that iCloud config was also removed.
+
 Example:
 
 ```json
