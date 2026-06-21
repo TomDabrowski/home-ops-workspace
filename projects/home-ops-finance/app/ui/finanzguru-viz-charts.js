@@ -28,12 +28,12 @@ export function renderFinanzguruVizCharts(actuals, analysis, deps) {
 
   const completeMonths = [...analysis.completeMonths].sort(compareMonthKeys);
   const selectedMonths = selectMonths(completeMonths, range);
-  const groupedRows = groupMonthlySummaries(actuals.monthlySummaries ?? [], selectedMonths, granularity);
+  const groupedRows = groupTransactions(actuals.transactions ?? [], selectedMonths, granularity);
   const categoryRows = categoryTotalsForMonths(actuals.transactions ?? [], selectedMonths);
   const selectedMonthCount = Math.max(1, selectedMonths.length);
   const categoryAverageRows = categoryRows
     .map((row) => ({
-      category: row.category,
+      category: displayCategory(row.category),
       amount: Math.round(row.amount / selectedMonthCount),
       totalAmount: row.amount,
     }))
@@ -41,6 +41,7 @@ export function renderFinanzguruVizCharts(actuals, analysis, deps) {
     .slice(0, 8);
   const totalExpense = categoryRows.reduce((sum, row) => sum + row.amount, 0);
   const averageExpense = totalExpense / selectedMonthCount;
+  const tradingNetAmount = groupedRows.reduce((sum, row) => sum + row.tradingNetAmount, 0);
 
   const averageMetaTarget = document.getElementById("financeAverageChartMeta");
   const averageValueTarget = document.getElementById("financeAverageChartValue");
@@ -55,28 +56,28 @@ export function renderFinanzguruVizCharts(actuals, analysis, deps) {
 
   const consumptionRows = groupedRows.map((row) => ({
     period: row.label,
-    amount: row.coreExpenseAmount,
-    average: average(groupedRows.map((entry) => entry.coreExpenseAmount)),
+    amount: row.consumerExpenseAmount,
+    average: average(groupedRows.map((entry) => entry.consumerExpenseAmount)),
   }));
   const consumptionTrend = trendPerPeriod(consumptionRows.map((row) => row.amount));
   if (consumptionMetaTarget) {
-    consumptionMetaTarget.textContent = `Trend ${trendLabel(consumptionTrend, euro)} pro ${granularityLabel(granularity)} · Durchschnitt ${euro.format(average(consumptionRows.map((row) => row.amount)))}`;
+    consumptionMetaTarget.textContent = `Trend ${trendLabel(consumptionTrend, euro)} pro ${granularityLabel(granularity)} · Durchschnitt ${euro.format(average(consumptionRows.map((row) => row.amount)))} · Trading ausgeschlossen`;
   }
 
   const wealthRows = groupedRows.map((row) => ({
     period: row.label,
-    amount: row.netAmount + row.investmentLikeAmount,
-    average: average(groupedRows.map((entry) => entry.netAmount + entry.investmentLikeAmount)),
+    amount: row.regularIncomeAmount - row.consumerExpenseAmount,
+    average: average(groupedRows.map((entry) => entry.regularIncomeAmount - entry.consumerExpenseAmount)),
   }));
   const wealthTrend = trendPerPeriod(wealthRows.map((row) => row.amount));
   if (wealthMetaTarget) {
-    wealthMetaTarget.textContent = `Tendenz ${trendLabel(wealthTrend, euro)} pro ${granularityLabel(granularity)} · Cash-Snapshot ${euro.format(analysis.cashSnapshotTotal)}`;
+    wealthMetaTarget.textContent = `Tendenz ${trendLabel(wealthTrend, euro)} pro ${granularityLabel(granularity)} · Trading/Investment separat ${euro.format(tradingNetAmount)}`;
   }
 
   const incomeExpenseRows = groupedRows.slice(-10).map((row) => ({
     period: row.label,
-    einnahmen: row.incomeAmount,
-    ausgaben: row.expenseAmount,
+    einnahmen: row.regularIncomeAmount,
+    ausgaben: row.consumerExpenseAmount,
   }));
 
   void renderVizFrames({
@@ -111,7 +112,7 @@ async function renderVizFrames(input) {
   });
   renderColumnChart(modules, "financeIncomeExpenseChart", input.incomeExpenseRows);
   renderLineChart(modules, "financeConsumptionTrendChart", input.consumptionRows, "Konsum");
-  renderLineChart(modules, "financeWealthTrendChart", input.wealthRows, "Vermoegen");
+  renderLineChart(modules, "financeWealthTrendChart", input.wealthRows, "Vermögen");
 }
 
 function loadSapVizModules() {
@@ -121,6 +122,7 @@ function loadSapVizModules() {
       resolve(null);
       return;
     }
+    applySapUiTheme();
     sapUi.require(
       [
         "sap/viz/ui5/controls/VizFrame",
@@ -137,6 +139,16 @@ function loadSapVizModules() {
       () => resolve(null),
     );
   });
+}
+
+function applySapUiTheme() {
+  const sapUi = window.sap?.ui;
+  const theme = document.documentElement?.dataset?.theme === "dark" ? "sap_horizon_dark" : "sap_horizon";
+  try {
+    sapUi?.getCore?.().applyTheme?.(theme);
+  } catch {
+    // SAPUI5 chart theming is a best-effort layer inside the Web Components app.
+  }
 }
 
 function renderDonutChart(modules, hostId, rows, options = {}) {
@@ -225,6 +237,7 @@ function renderLineChart(modules, hostId, rows, measureName) {
 
 function createVizFrame(modules, hostId, vizType, rows, config) {
   const { VizFrame, FlattenedDataset, FeedItem, JSONModel } = modules;
+  const style = chartStyle();
   const chart = new VizFrame({
     width: "100%",
     height: "320px",
@@ -241,8 +254,28 @@ function createVizFrame(modules, hostId, vizType, rows, config) {
   }
   chart.setVizProperties({
     title: { visible: false },
+    general: { background: { color: "transparent" } },
+    legend: {
+      label: { style: { color: style.textColor } },
+      title: { visible: false },
+    },
+    valueAxis: {
+      label: { style: { color: style.mutedColor } },
+      title: { visible: false },
+      axisLine: { visible: false },
+      gridline: { color: style.gridColor },
+    },
+    categoryAxis: {
+      label: { style: { color: style.mutedColor } },
+      title: { visible: false },
+      axisLine: { color: style.gridColor },
+    },
+    plotArea: {
+      colorPalette: style.palette,
+      background: { color: "transparent" },
+    },
     interaction: { selectability: { mode: "single" } },
-    ...config.properties,
+    ...mergeVizProperties(config.properties, style),
   });
   chartState.set(hostId, chart);
   return chart;
@@ -292,35 +325,38 @@ function selectMonths(months, range) {
   return months.slice(-count);
 }
 
-function groupMonthlySummaries(summaries, months, granularity) {
+function groupTransactions(transactions, months, granularity) {
   const groups = new Map();
   const selected = new Set(months);
-  for (const summary of summaries) {
-    if (!selected.has(summary.monthKey)) {
+  for (const entry of transactions) {
+    if (!selected.has(entry.monthKey)) {
       continue;
     }
-    const key = periodKey(summary.monthKey, granularity);
+    const key = periodKey(entry.monthKey, granularity);
     const group = groups.get(key) ?? {
       key,
       label: periodLabel(key, granularity),
-      incomeAmount: 0,
-      expenseAmount: 0,
-      coreExpenseAmount: 0,
-      investmentLikeAmount: 0,
-      transferAmount: 0,
+      regularIncomeAmount: 0,
+      consumerExpenseAmount: 0,
+      tradingNetAmount: 0,
       monthCount: 0,
-      netAmount: 0,
     };
-    group.incomeAmount += Number(summary.incomeAmount ?? 0);
-    group.expenseAmount += Number(summary.expenseAmount ?? 0);
-    group.coreExpenseAmount += Number(summary.coreExpenseAmount ?? 0);
-    group.investmentLikeAmount += Number(summary.investmentLikeAmount ?? 0);
-    group.transferAmount += Number(summary.transferAmount ?? 0);
-    group.netAmount += Number(summary.incomeAmount ?? 0) - Number(summary.expenseAmount ?? 0);
-    group.monthCount += 1;
+    const amount = Number(entry.amount ?? 0);
+    if (isRegularIncome(entry)) {
+      group.regularIncomeAmount += amount;
+    } else if (isConsumerExpense(entry)) {
+      group.consumerExpenseAmount += Math.abs(amount);
+    } else if (isTradingOrInvestmentFlow(entry)) {
+      group.tradingNetAmount += amount;
+    }
     groups.set(key, group);
   }
-  return [...groups.values()].sort((left, right) => left.key.localeCompare(right.key));
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      monthCount: months.filter((monthKey) => periodKey(monthKey, granularity) === group.key).length,
+    }))
+    .sort((left, right) => left.key.localeCompare(right.key));
 }
 
 function categoryTotalsForMonths(transactions, months) {
@@ -349,6 +385,74 @@ function isConsumerExpense(entry) {
     return false;
   }
   return true;
+}
+
+function isRegularIncome(entry) {
+  if (!entry || Number(entry.amount ?? 0) <= 0 || entry.isTransfer || entry.excludedFromFreeIncome) {
+    return false;
+  }
+  const subCategory = String(entry.subCategory ?? "");
+  return entry.mainCategory === "Einnahmen" && /lohn|gehalt|rente|pension/i.test(subCategory);
+}
+
+function isTradingOrInvestmentFlow(entry) {
+  const text = `${entry.mainCategory ?? ""} ${entry.subCategory ?? ""}`;
+  return /kapitalertraege|kapitalanlage|sparen|finanzen|steuer/i.test(text);
+}
+
+function displayCategory(category) {
+  return String(category ?? "")
+    .replaceAll("Mobilitaet", "Mobilität")
+    .replaceAll("regelmaessig", "regelmäßig");
+}
+
+function chartStyle() {
+  const dark = document.documentElement?.dataset?.theme === "dark";
+  return {
+    textColor: dark ? "#e9f0f7" : "#17202a",
+    mutedColor: dark ? "#b7c3cf" : "#516070",
+    gridColor: dark ? "#3a4755" : "#d7dde4",
+    palette: [
+      "#4db1ff",
+      "#69d18f",
+      "#ffc857",
+      "#ff8a65",
+      "#b48cff",
+      "#4dd0c7",
+      "#f06292",
+      "#a7c957",
+      "#90a4ae",
+    ],
+  };
+}
+
+function mergeVizProperties(properties = {}, style) {
+  return {
+    ...properties,
+    plotArea: {
+      colorPalette: style.palette,
+      background: { color: "transparent" },
+      ...(properties.plotArea ?? {}),
+    },
+    legend: {
+      label: { style: { color: style.textColor } },
+      title: { visible: false },
+      ...(properties.legend ?? {}),
+    },
+    valueAxis: {
+      label: { style: { color: style.mutedColor } },
+      title: { visible: false },
+      axisLine: { visible: false },
+      gridline: { color: style.gridColor },
+      ...(properties.valueAxis ?? {}),
+    },
+    categoryAxis: {
+      label: { style: { color: style.mutedColor } },
+      title: { visible: false },
+      axisLine: { color: style.gridColor },
+      ...(properties.categoryAxis ?? {}),
+    },
+  };
 }
 
 function periodKey(monthKey, granularity) {

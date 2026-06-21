@@ -10,6 +10,7 @@ const stylesSource = readFileSync(`${testDir}../app/styles.css`, "utf8");
 const appSource = readFileSync(`${testDir}../app/app.js`, "utf8");
 const monthReviewSource = readFileSync(`${testDir}../app/ui/month-review.js`, "utf8");
 const indexSource = readFileSync(`${testDir}../app/index.html`, "utf8");
+const finanzguruVizSource = readFileSync(`${testDir}../app/ui/finanzguru-viz-charts.js`, "utf8");
 
 test("ui5 loader registers the dark theme assets before setting the theme", () => {
   assert.match(ui5LoaderSource, /@ui5\/webcomponents\/dist\/Assets\.js/);
@@ -49,4 +50,14 @@ test("SAPUI5 VizFrame assets are installed and bootstrapped for finance charts",
     existsSync(`${projectDir}/node_modules/@sapui5/sap.viz/src/sap/viz/ui5/controls/common/feeds/FeedItem.js`),
     true,
   );
+});
+
+test("finance VizFrame charts exclude trading from everyday trends and use German labels", () => {
+  assert.match(indexSource, /Trading und Kapitalbewegungen sind ausgeklammert/);
+  assert.match(indexSource, /Vermögensaufbau/);
+  assert.match(finanzguruVizSource, /isTradingOrInvestmentFlow/);
+  assert.match(finanzguruVizSource, /isRegularIncome/);
+  assert.match(finanzguruVizSource, /Trading\/Investment separat/);
+  assert.match(finanzguruVizSource, /Vermögen/);
+  assert.doesNotMatch(finanzguruVizSource, /Vermoegen/);
 });
