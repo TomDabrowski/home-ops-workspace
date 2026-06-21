@@ -298,15 +298,11 @@ function renderMonthDataStatus(monthlyPlan, monthKey) {
   });
 
   summaryTarget.innerHTML = renderDetailEntries(status.summaryEntries);
-  const statusDesign = status.status === "Prüfen"
-    ? "Warning"
-    : status.status === "Info"
-      ? "Information"
-      : "Positive";
   alertTarget.innerHTML = `
-    <ui5-message-strip design="${statusDesign}" hide-close-button class="month-message-strip">
-      <strong>${status.status}</strong> ${escapeHtml(status.detail)}
-    </ui5-message-strip>
+    <div class="month-inline-alert ${status.status === "Prüfen" ? "is-warn" : status.status === "Info" ? "is-info" : "is-ok"}" role="status" aria-live="polite">
+      <strong>${status.status}</strong>
+      <p>${escapeHtml(status.detail)}</p>
+    </div>
   `;
 }
 
@@ -389,7 +385,7 @@ function latestSnapshotEntryFormula({ monthKey, latestSnapshot, latestSnapshotCa
   }
 
   if (explicitAnchorMode === "month_start" && explicitAnchorMonthKey === monthKey) {
-    return `${formatDisplayDate(latestSnapshot.snapshotDate)} ist als Monatsanfang fuer ${monthKey} gespeichert: ${euro.format(latestSnapshotCashAmount ?? 0)} Cash und ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment. Darauf baut die ganze Monatsrechnung auf.`;
+    return `${formatDisplayDate(latestSnapshot.snapshotDate)} ist als Monatsanfang für ${monthKey} gespeichert: ${euro.format(latestSnapshotCashAmount ?? 0)} Cash und ${euro.format(latestSnapshotInvestmentAmount ?? 0)} Investment. Darauf baut die ganze Monatsrechnung auf.`;
   }
 
   const snapshotMonthKey = String(latestSnapshot.snapshotDate ?? "").slice(0, 7);
@@ -476,7 +472,7 @@ function monthEndSafetyFormula({
         ? `${euro.format(musicSafetyConsumedAmount)} davon wurden ins Cash-Ziel ${thresholdTargetLabel} gelenkt, um es wieder Richtung ${euro.format(thresholdAmount)} zu bringen.`
         : "",
       musicNetConsumedAmount > 0 && musicDateLabel
-        ? `Die beruecksichtigte Musik stammt aus ${musicDateLabel} und war bis zum Stichtag bereits verarbeitet.`
+        ? `Die berücksichtigte Musik stammt aus ${musicDateLabel} und war bis zum Stichtag bereits verarbeitet.`
         : "",
       `Bis zum Stichtag waren ausserdem ${euro.format(importedExpenseConsumedAmount)} importierte und ${euro.format(manualExpenseConsumedAmount)} manuelle Zusatz-Ausgaben schon im Snapshot enthalten.`,
       thresholdRoutingLine,
@@ -1519,7 +1515,7 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         label: "Letzter Ist-Stand",
         value: latestSnapshot ? formatDisplayDate(latestSnapshot.snapshotDate) : "Keiner",
         formula: latestSnapshot
-          ? `${formatDisplayDate(latestSnapshot.snapshotDate)} ist der zuletzt bekannte Ist-Stand fuer diesen oder einen frueheren Monat.`
+          ? `${formatDisplayDate(latestSnapshot.snapshotDate)} ist der zuletzt bekannte Ist-Stand für diesen oder einen früheren Monat.`
           : "Es gibt noch keinen gespeicherten Ist-Stand als Anker.",
       },
     ]);
@@ -1782,18 +1778,18 @@ function renderMonthReview(importDraft, monthlyPlan, monthKey) {
         formula: joinTooltipLines([
           `Musik-Einnahmen im Monat: ${euro.format(musicGrossTotalAmount)}${entryDatesLabel(musicIncomeEntries) ? ` aus ${entryDatesLabel(musicIncomeEntries)}` : ""}.`,
           musicReserveTotalAmount > 0
-            ? `${euro.format(musicReserveTotalAmount)} davon sind als Steuer/Ruecklage markiert. Netto verfuegbar bleiben ${euro.format(musicNetTotalAmount)}.`
-            : `Der gespeicherte Monatswert wird direkt als netto verfuegbar behandelt.`,
+            ? `${euro.format(musicReserveTotalAmount)} davon sind als Steuer/Rücklage markiert. Netto verfügbar bleiben ${euro.format(musicNetTotalAmount)}.`
+            : `Der gespeicherte Monatswert wird direkt als netto verfügbar behandelt.`,
           hasAnyActiveSnapshot
-            ? `Bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits verarbeitet: ${euro.format(musicGrossConsumedAmountDisplay)} Gesamtwert (${euro.format(musicReserveConsumedAmountDisplay)} Steuer/Ruecklage, ${euro.format(musicNetConsumedAmountDisplay)} netto)`
+            ? `Bis zum Ist-Stand vom ${formatDisplayDate(latestSnapshotDate)} bereits verarbeitet: ${euro.format(musicGrossConsumedAmountDisplay)} Gesamtwert (${euro.format(musicReserveConsumedAmountDisplay)} Steuer/Rücklage, ${euro.format(musicNetConsumedAmountDisplay)} netto)`
             : "",
           hasAnyActiveSnapshot
-            ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmountDisplay)} Gesamtwert (${euro.format(musicReserveRemainingAmountDisplay)} Steuer/Ruecklage, ${euro.format(musicNetRemainingAmountDisplay)} netto)`
+            ? `Nach dem Ist-Stand noch offen: ${euro.format(musicGrossRemainingAmountDisplay)} Gesamtwert (${euro.format(musicReserveRemainingAmountDisplay)} Steuer/Rücklage, ${euro.format(musicNetRemainingAmountDisplay)} netto)`
             : `Ohne aktiven Ist-Stand ist der volle Monatsblock offen.`,
           hasAnyActiveSnapshot
             ? `Vom bereits verarbeiteten Netto gingen ${euro.format(musicSafetyConsumedAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentConsumedAmount)} ins Investment.`
             : "",
-          `Insgesamt sind fuer diesen Monat ${euro.format(musicSafetyTotalAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentTotalAmount)} ins Investment geroutet.`,
+          `Insgesamt sind für diesen Monat ${euro.format(musicSafetyTotalAmount)} ins Cash/Threshold und ${euro.format(musicInvestmentTotalAmount)} ins Investment geroutet.`,
           hasAnyActiveSnapshot
             ? `Davon sind nach dem Ist-Stand noch ${euro.format(musicSafetyRemainingAmountDisplay)} ins Cash/Threshold und ${euro.format(musicInvestmentRemainingAmount)} ins Investment offen.`
             : "",

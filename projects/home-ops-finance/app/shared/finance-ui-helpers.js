@@ -24,7 +24,10 @@ export function wealthSnapshotCashTotal(entry, roundCurrency) {
 }
 
 export function thresholdAccountLabel(accountOptions, accountId) {
-  return accountOptions.find((entry) => entry.id === accountId)?.label ?? accountId;
+  const label = accountOptions.find((entry) => entry.id === accountId)?.label ?? accountId;
+  return String(label)
+    .replaceAll("Ruecklage", "Rücklage")
+    .replaceAll("Tagesgeld", "Tagesgeld");
 }
 
 export function buildCategoryOptions(items) {

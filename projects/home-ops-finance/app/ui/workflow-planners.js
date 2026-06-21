@@ -429,7 +429,7 @@ export function renderMonthlyExpenseEditor(importDraft, monthKey, deps) {
       return;
     }
     if (!normalizeIsoDateInput(dateField.value || defaultEntryDateForMonth)) {
-      metaTarget.textContent = "Bitte ein gueltiges Datum im Format YYYY-MM-DD eintragen.";
+      metaTarget.textContent = "Bitte ein gültiges Datum im Format YYYY-MM-DD eintragen.";
       return;
     }
 
@@ -1292,7 +1292,7 @@ export function renderWealthSnapshotPlanner(importDraft, deps) {
       (musicIncludedField.checked && !musicIncludedForMonthField.value) ||
       (musicIncludedField.checked && musicThresholdBeforeAmountField.value && !Number.isFinite(parseLocaleNumber(musicThresholdBeforeAmountField.value)))
     ) {
-      metaTarget.textContent = "Bitte Datum sowie gueltige Cash-, Investment- und Monatsstart-Werte eintragen (Threshold vor Musik mit Punkt oder Komma ist erlaubt).";
+      metaTarget.textContent = "Bitte Datum sowie gültige Cash-, Investment- und Monatsstart-Werte eintragen (Threshold vor Musik mit Punkt oder Komma ist erlaubt).";
       return;
     }
 

@@ -370,10 +370,10 @@ test("builds date-based allocation instructions for salary and music", () => {
   assert.equal(instructions[1]?.toInvestmentAmount, 1333.51);
   assert.equal(instructions[2]?.kind, "music");
   assert.equal(instructions[2]?.effectiveDate, "2026-03-10");
-  assert.equal(instructions[2]?.reserveAmount, 576.21);
-  assert.equal(instructions[2]?.expenseReserveAmount, 250);
-  assert.equal(instructions[2]?.toCashAmount, 973.79);
-  assert.equal(instructions[2]?.toInvestmentAmount, 0);
+  assert.equal(instructions[2]?.reserveAmount, 0);
+  assert.equal(instructions[2]?.expenseReserveAmount, 0);
+  assert.equal(instructions[2]?.toCashAmount, 1000);
+  assert.equal(instructions[2]?.toInvestmentAmount, 800);
 });
 
 test("uses the latest prior wealth snapshot for next-month threshold instructions", () => {
@@ -422,7 +422,7 @@ test("uses the latest prior wealth snapshot for next-month threshold instruction
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
   assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
 });
 
 test("keeps a planned month instruction when music was already received before month start", () => {
@@ -473,7 +473,7 @@ test("keeps a planned month instruction when music was already received before m
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 10000);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 0);
   assert.equal(musicInstruction?.toCashAmount, 0);
-  assert.equal(musicInstruction?.toInvestmentAmount, 1223.79);
+  assert.equal(musicInstruction?.toInvestmentAmount, 1642.65);
 });
 
 test("selects imported flows for a specific month", () => {

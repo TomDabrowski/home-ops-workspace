@@ -17,23 +17,25 @@ export function renderMonthTagesgeldWithdrawalHint(review, deps) {
   if (shortfall > 0.009) {
     target.className = "month-tagesgeld-withdrawal-hint is-warn";
     target.innerHTML = `
-      <ui5-message-strip design="Warning" hide-close-button class="month-message-strip">
-        <strong>Tagesgeld-Entnahme für den Monatsplan</strong><br>
-        Für <strong>${escapeHtml(monthKey)}</strong> übersteigen die Monatsausgaben das, was aus Hauptgehalt-Rest und geplanten Zuflüssen übrig bleibt —
-        der Saldo „Übrig nach allem“ liegt bei <strong>${euro.format(net)}</strong>.
-        Plane voraussichtlich <strong>${euro.format(shortfall)}</strong> vom <strong>Tagesgeld</strong> auf <strong>${checkingLabel}</strong>.
-        <br><span class="mapping-source">Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.</span>
-      </ui5-message-strip>
+      <div class="month-inline-alert is-warn" role="status" aria-live="polite">
+        <strong>Tagesgeld-Entnahme für den Monatsplan</strong>
+        <p>
+          Für <strong>${escapeHtml(monthKey)}</strong> übersteigen die Monatsausgaben das, was aus Hauptgehalt-Rest und geplanten Zuflüssen übrig bleibt.
+          Der Saldo „Übrig nach allem“ liegt bei <strong>${euro.format(net)}</strong>.
+          Plane voraussichtlich <strong>${euro.format(shortfall)}</strong> vom <strong>Tagesgeld</strong> auf <strong>${checkingLabel}</strong>.
+        </p>
+        <p class="month-inline-alert-note">Zweck: Ausgleich des Monatsdefizits und Deckung laufender Monatskosten.</p>
+      </div>
     `;
     return;
   }
 
   target.className = "month-tagesgeld-withdrawal-hint is-ok";
   target.innerHTML = `
-    <ui5-message-strip design="Positive" hide-close-button class="month-message-strip">
-      <strong>Tagesgeld und Monatsplan</strong><br>
-      Für <strong>${escapeHtml(monthKey)}</strong> ist keine zusätzliche Entnahme aus dem Tagesgeld nötig (Übrig nach allem: ${euro.format(net)}).
-    </ui5-message-strip>
+    <div class="month-inline-alert is-ok" role="status" aria-live="polite">
+      <strong>Tagesgeld und Monatsplan</strong>
+      <p>Für <strong>${escapeHtml(monthKey)}</strong> ist keine zusätzliche Entnahme aus dem Tagesgeld nötig (Übrig nach allem: ${euro.format(net)}).</p>
+    </div>
   `;
 }
 
@@ -303,7 +305,7 @@ export function renderMonthIncomeList(importDraft, review, deps) {
         return;
       }
       if (!selectedMonthKey) {
-        showStatus("Einnahme unvollständig", "Bitte einen gueltigen Monat im Format YYYY-MM eintragen.", "warn");
+        showStatus("Einnahme unvollständig", "Bitte einen gültigen Monat im Format YYYY-MM eintragen.", "warn");
         return;
       }
 
@@ -560,7 +562,7 @@ export function renderMonthExpenseList(importDraft, review, deps) {
         return;
       }
       if (!entryDate) {
-        showStatus("Monatsausgabe unvollständig", "Bitte ein gueltiges Datum im Format YYYY-MM-DD eintragen.", "warn");
+        showStatus("Monatsausgabe unvollständig", "Bitte ein gültiges Datum im Format YYYY-MM-DD eintragen.", "warn");
         return;
       }
 
@@ -649,16 +651,10 @@ export function renderMonthExpenseList(importDraft, review, deps) {
 export function renderMonthAllocationGuidance(importDraft, review, deps) {
   const {
     buildMonthAllocationInstructionsFromReview,
-    allocationInstructionKey,
-    readAllocationActionState,
-    formatHistoryTimestamp,
     euro,
     thresholdAccountLabel,
     formatDisplayDate,
     escapeHtml,
-    saveAllocationActionState,
-    refreshFinanceView,
-    statusDetailForMode,
   } = deps;
 
   const target = document.getElementById("monthAllocationGuidance");
@@ -674,10 +670,6 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
   }
 
   target.innerHTML = instructions.map((instruction) => {
-    const actionKey = allocationInstructionKey(review.row.monthKey, instruction);
-    const actionState = readAllocationActionState()[actionKey];
-    const isDone = actionState?.done === true;
-    const completedAt = actionState?.completedAt ? formatHistoryTimestamp(actionState.completedAt) : "";
     if (instruction.kind === "salary") {
       const thresholdTarget = instruction.thresholdAccountId ? thresholdAccountLabel(instruction.thresholdAccountId) : "dein Cash-Puffer";
       return `
@@ -685,10 +677,6 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
           <strong>${instruction.title}</strong>
           <p>${euro.format(instruction.toInvestmentAmount)} direkt ins Investment. ${euro.format(instruction.toCashAmount)} bleiben zunächst in ${thresholdTarget}.</p>
           <p class="mapping-source">Monatslogik für ${review.row.monthKey}. Das ist deine sofortige Aktion beim Gehaltseingang.</p>
-          <div class="filter-group">
-            <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Erledigt" : "Als erledigt markieren"}</ui5-button>
-          </div>
-          ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
         </div>
       `;
     }
@@ -701,13 +689,9 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
       return `
         <div class="mapping-card">
           <strong>${instruction.title}</strong>
-          <p>${euro.format(instruction.toCashAmount)} fuer spaetere Abbuchungen reservieren. Falls die Abbuchung nicht direkt aus ${thresholdTarget} laeuft, bis zum Faelligkeitsdatum auf das Abbuchungskonto legen.</p>
+          <p>${euro.format(instruction.toCashAmount)} für spätere Abbuchungen reservieren. Falls die Abbuchung nicht direkt aus ${thresholdTarget} läuft, bis zum Fälligkeitsdatum auf das Abbuchungskonto legen.</p>
           <p class="mapping-source">${expenseList}</p>
-          <p class="mapping-source">Diese Ausgabe ist fachlich dem Monat ${review.row.monthKey} zugeordnet, auch wenn du sie frueher angelegt hast. Das Abbuchungsdatum steuert die Monatsreserve.</p>
-          <div class="filter-group">
-            <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Reserviert" : "Als reserviert markieren"}</ui5-button>
-          </div>
-          ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
+          <p class="mapping-source">Diese Ausgabe ist fachlich dem Monat ${review.row.monthKey} zugeordnet, auch wenn du sie früher angelegt hast. Das Abbuchungsdatum steuert die Monatsreserve.</p>
         </div>
       `;
     }
@@ -719,40 +703,16 @@ export function renderMonthAllocationGuidance(importDraft, review, deps) {
     const statusReason = instruction.happenedBeforeMonthStart
       ? `Der Zufluss kam schon vor Monatsbeginn ${review.row.monthKey}, bleibt fachlich aber diesem Monat zugeordnet.`
       : `Das ist die konkrete Verteilung zum Zuflussdatum ${formatDisplayDate(instruction.effectiveDate)}.`;
+    const musicFlowText = instruction.toCashAmount > 0
+      ? `Von ${euro.format(instruction.availableAmount)} Musik gehen ${euro.format(instruction.toCashAmount)} zu ${thresholdTarget} und ${euro.format(instruction.toInvestmentAmount)} direkt ins Investment.`
+      : `${euro.format(instruction.availableAmount)} Musik gehen direkt ins Investment. ${thresholdTarget} ist dafür schon auf Zielniveau.`;
     return `
       <div class="mapping-card">
         <strong>${instruction.title}</strong>
-        <p>${euro.format(instruction.reserveAmount)} für Steuer parken. ${euro.format(instruction.expenseReserveAmount ?? 0)} für Monatsausgaben zurückhalten. Von ${euro.format(instruction.availableAmount)} nach Steuer gehen ${euro.format(instruction.toCashAmount)} zu ${thresholdTarget} und ${euro.format(instruction.toInvestmentAmount)} ins Investment.</p>
+        <p>${musicFlowText}</p>
         <p class="mapping-source">${thresholdReason}</p>
         <p class="mapping-source">${statusReason}</p>
-        <div class="filter-group">
-          <ui5-button class="pill ${isDone ? "is-active" : ""}" design="${isDone ? "Positive" : "Transparent"}" data-allocation-done="${escapeHtml(actionKey)}" ${isDone ? "disabled" : ""}>${isDone ? "Umbuchung erledigt" : "Umbuchung fertig"}</ui5-button>
-        </div>
-        ${isDone ? `<p class="mapping-source">Für diesen Monat erledigt am ${completedAt}.</p>` : ""}
       </div>
     `;
   }).join("");
-
-  for (const button of target.querySelectorAll("[data-allocation-done]")) {
-    button.addEventListener("click", async () => {
-      const key = button.getAttribute("data-allocation-done");
-      if (!key) {
-        return;
-      }
-
-      const nextState = {
-        ...readAllocationActionState(),
-        [key]: {
-          done: !(readAllocationActionState()[key]?.done === true),
-          completedAt: new Date().toISOString(),
-        },
-      };
-      const result = await saveAllocationActionState(nextState);
-      await refreshFinanceView({
-        title: nextState[key].done ? "Anweisung als erledigt markiert" : "Anweisung wieder geöffnet",
-        detail: `${statusDetailForMode(result.mode)} Deine Ist-Stände bleiben davon unverändert.`,
-        tone: result.mode === "project" ? "success" : "warn",
-      });
-    });
-  }
 }

@@ -1,4 +1,5 @@
 const ui5Modules = [
+  "/app/vendor/@ui5/webcomponents/dist/Assets.js",
   "/app/vendor/@ui5/webcomponents/dist/Button.js",
   "/app/vendor/@ui5/webcomponents/dist/Input.js",
   "/app/vendor/@ui5/webcomponents/dist/TextArea.js",
@@ -11,6 +12,7 @@ const ui5Modules = [
   "/app/vendor/@ui5/webcomponents/dist/Bar.js",
   "/app/vendor/@ui5/webcomponents/dist/Card.js",
   "/app/vendor/@ui5/webcomponents/dist/CardHeader.js",
+  "/app/vendor/@ui5/webcomponents-fiori/dist/Assets.js",
 ];
 
 function initialThemeMode() {

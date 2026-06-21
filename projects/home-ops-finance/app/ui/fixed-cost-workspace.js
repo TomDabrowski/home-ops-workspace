@@ -97,7 +97,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
 
   function updateAmountFieldUi() {
     const isAnnualReserve = categoryField.value === "annual_reserve";
-    amountLabel.textContent = isAnnualReserve ? "Jaehrlicher Betrag" : "Betrag pro Monat";
+    amountLabel.textContent = isAnnualReserve ? "Jährlicher Betrag" : "Betrag pro Monat";
     amountField.placeholder = isAnnualReserve ? "0 pro Jahr" : "0";
   }
 
@@ -172,8 +172,8 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
 
   const persistenceLabel = persistenceModeLabel(baselinePersistence);
   metaTarget.textContent = overrides.length > 0
-    ? `${overrides.length} Grundplan-Aenderungen gespeichert · Speicherort: ${persistenceLabel}`
-    : `Noch keine zusätzlichen Grundplan-Aenderungen gespeichert · Speicherort: ${persistenceLabel}`;
+    ? `${overrides.length} Grundplan-Änderungen gespeichert · Speicherort: ${persistenceLabel}`
+    : `Noch keine zusätzlichen Grundplan-Änderungen gespeichert · Speicherort: ${persistenceLabel}`;
 
   if (!editingId && !sourceLineItemId) {
     effectiveFromField.value = suggestedMonth;
@@ -326,7 +326,7 @@ export function renderFixedCostPlanner(importDraft, selectedMonthKey, deps) {
     }
 
     if (!Number.isFinite(rawAmount) || rawAmount < 0) {
-      metaTarget.textContent = "Bitte einen gueltigen Betrag eintragen.";
+      metaTarget.textContent = "Bitte einen gültigen Betrag eintragen.";
       return;
     }
 

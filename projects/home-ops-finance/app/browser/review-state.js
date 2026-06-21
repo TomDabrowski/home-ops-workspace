@@ -9,22 +9,22 @@ export function createReviewStateTools({
 }) {
   function suggestionForSignal(signal) {
     if (signal.code === "baseline_anchor_mismatch") {
-      return "Grundplan-Posten und Monatswerte fuer diesen Monat gemeinsam pruefen.";
+      return "Grundplan-Posten und Monatswerte für diesen Monat gemeinsam prüfen.";
     }
     if (signal.code === "baseline_deficit") {
-      return "Grundplan pruefen: Basis-Investment, variable Basis und Fixkosten wirken fuer diesen Monat zu hoch.";
+      return "Grundplan prüfen: Basis-Investment, variable Basis und Fixkosten wirken für diesen Monat zu hoch.";
     }
     if (signal.code === "monthly_deficit") {
-      return "Einzelne Bewegungen und fehlende Zufluesse im Defizitmonat gemeinsam pruefen.";
+      return "Einzelne Bewegungen und fehlende Zuflüsse im Defizitmonat gemeinsam prüfen.";
     }
     if (signal.code === "expense_over_baseline_available") {
-      return "Ausgaben pruefen und entscheiden, ob sie in den Grundplan, die Ruecklage oder nur als Einzelereignis gehoeren.";
+      return "Ausgaben prüfen und entscheiden, ob sie in den Grundplan, die Rücklage oder nur als Einzelereignis gehören.";
     }
     if (signal.code === "expense_spike") {
-      return "Ausgabenspitze auf Sonderfall, falsche Zuordnung oder fehlende Gegenbuchung pruefen.";
+      return "Ausgabenspitze auf Sonderfall, falsche Zuordnung oder fehlende Gegenbuchung prüfen.";
     }
 
-    return "Monat kurz manuell pruefen.";
+    return "Monat kurz manuell prüfen.";
   }
 
   function defaultReconciliationForMonth(row) {

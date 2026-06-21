@@ -53,8 +53,9 @@ test("builds stable month allocation instructions for next-month music from late
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
   assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
   assert.equal(musicInstruction?.expenseReserveAmount, 0);
+  assert.equal(musicInstruction?.reserveAmount, 0);
 });
 
 test("keeps April music instructions visible when the money arrived before month start", () => {
@@ -110,7 +111,7 @@ test("keeps April music instructions visible when the money arrived before month
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 10000);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 0);
   assert.equal(musicInstruction?.toCashAmount, 0);
-  assert.equal(musicInstruction?.toInvestmentAmount, 1223.79);
+  assert.equal(musicInstruction?.toInvestmentAmount, 1642.65);
 });
 
 test("prefers the reviewed threshold-account start over total cash when building music instructions", () => {
@@ -158,8 +159,9 @@ test("prefers the reviewed threshold-account start over total cash when building
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9059.49);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 940.51);
   assert.equal(musicInstruction?.toCashAmount, 940.51);
-  assert.equal(musicInstruction?.toInvestmentAmount, 283.28);
+  assert.equal(musicInstruction?.toInvestmentAmount, 702.14);
   assert.equal(musicInstruction?.expenseReserveAmount, 0);
+  assert.equal(musicInstruction?.reserveAmount, 0);
 });
 
 test("adds a month-start reserve instruction for future-dated threshold expenses", () => {
@@ -258,9 +260,10 @@ test("splits music between monthly expenses, threshold top-up, and investment", 
 
   assert.equal(reserveInstruction?.toCashAmount, 720);
   assert.ok(musicInstruction);
-  assert.equal(musicInstruction?.expenseReserveAmount, 720);
+  assert.equal(musicInstruction?.expenseReserveAmount, 0);
   assert.equal(musicInstruction?.thresholdAmountBeforeEntry, 9873);
   assert.equal(musicInstruction?.thresholdGapBeforeEntry, 127);
   assert.equal(musicInstruction?.toCashAmount, 127);
-  assert.equal(musicInstruction?.toInvestmentAmount, 1313);
+  assert.equal(musicInstruction?.toInvestmentAmount, 2033);
+  assert.equal(musicInstruction?.reserveAmount, 0);
 });
