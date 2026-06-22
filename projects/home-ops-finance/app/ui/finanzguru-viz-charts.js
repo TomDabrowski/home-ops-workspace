@@ -53,6 +53,7 @@ export function renderFinanzguruVizCharts(actuals, analysis, deps) {
   if (averageValueTarget) {
     averageValueTarget.textContent = euro.format(averageExpense);
   }
+  renderCategoryLegend("financeCategoryDonutChart", categoryAverageRows, averageExpense, euro);
 
   const consumptionRows = groupedRows.map((row) => ({
     period: row.label,
@@ -79,6 +80,18 @@ export function renderFinanzguruVizCharts(actuals, analysis, deps) {
     einnahmen: row.regularIncomeAmount,
     ausgaben: row.consumerExpenseAmount,
   }));
+  renderSeriesLegend("financeIncomeExpenseChart", [
+    { label: "Einnahmen", value: average(incomeExpenseRows.map((row) => row.einnahmen)), tone: "blue" },
+    { label: "Ausgaben", value: average(incomeExpenseRows.map((row) => row.ausgaben)), tone: "green" },
+  ], euro, "Ø pro angezeigtem Monat");
+  renderSeriesLegend("financeConsumptionTrendChart", [
+    { label: "Konsum", value: average(consumptionRows.map((row) => row.amount)), tone: "blue" },
+    { label: "Durchschnitt", value: average(consumptionRows.map((row) => row.average)), tone: "green" },
+  ], euro, "bereinigt");
+  renderSeriesLegend("financeWealthTrendChart", [
+    { label: "Aufbau", value: average(wealthRows.map((row) => row.amount)), tone: "blue" },
+    { label: "Trading/Investment", value: tradingNetAmount, tone: "amber" },
+  ], euro, "separat ausgewiesen");
 
   void renderVizFrames({
     categoryRows: categoryAverageRows,
@@ -153,6 +166,7 @@ function applySapUiTheme() {
 
 function renderDonutChart(modules, hostId, rows, options = {}) {
   const host = resetChartHost(hostId);
+  setChartPanelModifier(hostId, "has-category-chart");
   if (!host || rows.length === 0) {
     renderChartFallback(hostId, "Keine Kategorien im gewählten Zeitraum.");
     return;
@@ -167,9 +181,9 @@ function renderDonutChart(modules, hostId, rows, options = {}) {
     ],
     properties: {
       plotArea: {
-        dataLabel: { visible: true, type: "percentage" },
+        dataLabel: { visible: false },
       },
-      legend: { visible: true },
+      legend: { visible: false },
     },
   });
   chart.attachSelectData((event) => {
@@ -185,6 +199,7 @@ function renderDonutChart(modules, hostId, rows, options = {}) {
 
 function renderColumnChart(modules, hostId, rows) {
   const host = resetChartHost(hostId);
+  setChartPanelModifier(hostId, "has-column-chart");
   if (!host || rows.length === 0) {
     renderChartFallback(hostId, "Keine Monatswerte im gewählten Zeitraum.");
     return;
@@ -204,13 +219,14 @@ function renderColumnChart(modules, hostId, rows) {
       plotArea: { dataLabel: { visible: false } },
       valueAxis: { title: { visible: false } },
       categoryAxis: { title: { visible: false } },
-      legend: { visible: true },
+      legend: { visible: false },
     },
   }).placeAt(host);
 }
 
 function renderLineChart(modules, hostId, rows, measureName) {
   const host = resetChartHost(hostId);
+  setChartPanelModifier(hostId, "has-trend-chart");
   if (!host || rows.length === 0) {
     renderChartFallback(hostId, "Keine Werte im gewählten Zeitraum.");
     return;
@@ -230,7 +246,7 @@ function renderLineChart(modules, hostId, rows, measureName) {
       plotArea: { dataLabel: { visible: false } },
       valueAxis: { title: { visible: false } },
       categoryAxis: { title: { visible: false } },
-      legend: { visible: true },
+      legend: { visible: false },
     },
   }).placeAt(host);
 }
@@ -299,6 +315,85 @@ function renderChartFallback(hostId, message) {
   if (host) {
     host.innerHTML = `<div class="chart-fallback">${escapeHtml(message)}</div>`;
   }
+}
+
+function renderCategoryLegend(hostId, rows, totalAverage, euro) {
+  const legend = ensureChartCompanion(hostId, "finance-chart-legend category-legend");
+  if (!legend) {
+    return;
+  }
+  const style = chartStyle();
+  const visibleRows = rows.slice(0, 7);
+  const total = Number.isFinite(totalAverage) && totalAverage > 0 ? totalAverage : rows.reduce((sum, row) => sum + row.amount, 0);
+  legend.innerHTML = visibleRows.map((row, index) => {
+    const share = total > 0 ? row.amount / total : 0;
+    return `
+      <button class="chart-legend-row" type="button" data-chart-category="${escapeHtml(row.category)}">
+        <span class="chart-legend-swatch" style="--series-color: ${style.palette[index % style.palette.length]}"></span>
+        <span class="chart-legend-label">${escapeHtml(row.category)}</span>
+        <strong class="finance-chart-chip">${euro.format(row.amount)}</strong>
+        <small>${Math.round(share * 100)} % vom Schnitt</small>
+      </button>
+    `;
+  }).join("");
+  for (const button of legend.querySelectorAll("[data-chart-category]")) {
+    button.addEventListener("click", () => {
+      const row = rows.find((entry) => entry.category === button.getAttribute("data-chart-category"));
+      if (row) {
+        renderSelectedCategory(row, { euro, renderDetailEntries: renderLegendDetails });
+      }
+    });
+  }
+}
+
+function renderSeriesLegend(hostId, rows, euro, caption) {
+  const legend = ensureChartCompanion(hostId, "finance-chart-legend series-legend");
+  if (!legend) {
+    return;
+  }
+  legend.innerHTML = rows.map((row) => `
+    <div class="chart-legend-row">
+      <span class="chart-legend-swatch is-${escapeHtml(row.tone)}"></span>
+      <span class="chart-legend-label">${escapeHtml(row.label)}</span>
+      <strong class="finance-chart-chip">${euro.format(row.value)}</strong>
+      <small>${escapeHtml(caption)}</small>
+    </div>
+  `).join("");
+}
+
+function ensureChartCompanion(hostId, className) {
+  const host = document.getElementById(hostId);
+  if (!host?.parentElement) {
+    return null;
+  }
+  const companionId = `${hostId}Legend`;
+  let companion = document.getElementById(companionId);
+  if (!companion) {
+    companion = document.createElement("div");
+    companion.id = companionId;
+    host.insertAdjacentElement("afterend", companion);
+  }
+  companion.className = className;
+  return companion;
+}
+
+function setChartPanelModifier(hostId, className) {
+  const host = document.getElementById(hostId);
+  const panel = host?.closest?.(".finance-chart-panel");
+  if (!panel) {
+    return;
+  }
+  panel.classList.remove("has-category-chart", "has-column-chart", "has-trend-chart");
+  panel.classList.add(className);
+}
+
+function renderLegendDetails(entries) {
+  return entries.map(([label, value]) => `
+    <div>
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(value)}</dd>
+    </div>
+  `).join("");
 }
 
 function renderSelectedCategory(row, input) {
@@ -396,8 +491,8 @@ function isRegularIncome(entry) {
 }
 
 function isTradingOrInvestmentFlow(entry) {
-  const text = `${entry.mainCategory ?? ""} ${entry.subCategory ?? ""}`;
-  return /kapitalertraege|kapitalanlage|sparen|finanzen|steuer/i.test(text);
+  const text = `${entry.mainCategory ?? ""} ${entry.subCategory ?? ""} ${entry.description ?? ""} ${entry.counterparty ?? ""}`;
+  return /day-trading|daytrading|trading|investment|kapitalertraege|kapitalanlage|sparen|finanzen|steuer/i.test(text);
 }
 
 function displayCategory(category) {

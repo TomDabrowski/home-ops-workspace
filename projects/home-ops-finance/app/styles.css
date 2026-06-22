@@ -2264,21 +2264,20 @@ table tbody tr:hover {
 .finance-chart-panel {
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 96%, transparent), color-mix(in srgb, var(--card) 94%, transparent)),
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 10%, transparent), transparent 14rem);
+    linear-gradient(180deg, color-mix(in srgb, var(--card-strong) 98%, transparent), color-mix(in srgb, var(--card) 96%, transparent));
   box-shadow: var(--shadow-soft);
-  padding: 1.35rem 1.45rem 1.5rem;
+  padding: 1.25rem;
 }
 
 .chart-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
-  min-height: 72px;
-  margin-bottom: 16px;
+  gap: 16px;
+  min-height: 64px;
+  margin-bottom: 10px;
 }
 
 .chart-head strong {
@@ -2290,32 +2289,140 @@ table tbody tr:hover {
 
 .chart-head .subhead {
   margin-bottom: 0.35rem;
-  font-size: 1.34rem;
-  line-height: 1.08;
+  font-size: 1.18rem;
+  line-height: 1.12;
 }
 
 .chart-head-value {
   align-self: center;
-  padding: 0.8rem 1rem;
+  padding: 0.65rem 0.82rem;
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
-  border-radius: 18px;
+  border-radius: 12px;
   background: color-mix(in srgb, var(--card) 82%, var(--bg-contrast) 18%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  font-size: 1.55rem !important;
+  font-size: 1.34rem !important;
   line-height: 1;
 }
 
 .viz-chart-host {
-  min-height: 390px;
+  min-height: 305px;
   width: 100%;
+}
+
+.finance-chart-panel.has-category-chart .viz-chart-host {
+  min-height: 285px;
+}
+
+.finance-chart-panel.has-trend-chart .viz-chart-host {
+  min-height: 285px;
+}
+
+.viz-chart-host svg text,
+.viz-chart-host .v-axis text,
+.viz-chart-host .v-m-title text,
+.viz-chart-host .v-datalabel text {
+  fill: var(--muted) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif !important;
+  font-size: 12px !important;
+  letter-spacing: 0 !important;
+}
+
+.viz-chart-host .v-gridline line,
+.viz-chart-host .v-axis line,
+.viz-chart-host svg line {
+  stroke: color-mix(in srgb, var(--line) 74%, transparent) !important;
+}
+
+.finance-chart-legend {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.category-legend {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.series-legend {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-soft) 78%, var(--card) 22%);
+  color: var(--ink);
+  text-align: left;
+}
+
+button.chart-legend-row {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.chart-legend-row:hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--bg-soft) 58%);
+}
+
+.chart-legend-swatch {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: var(--series-color, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--series-color, var(--accent)) 18%, transparent);
+}
+
+.chart-legend-swatch.is-blue { --series-color: #2f9af0; }
+.chart-legend-swatch.is-green { --series-color: #40ba72; }
+.chart-legend-swatch.is-amber { --series-color: #d89a26; }
+
+.chart-legend-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finance-chart-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: max-content;
+  padding: 0.22rem 0.44rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-strong) 76%, var(--bg-soft) 24%);
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chart-legend-row small {
+  grid-column: 2 / 4;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .chart-fallback {
   display: grid;
-  min-height: 350px;
+  min-height: 280px;
   place-items: center;
   border: 1px dashed var(--line);
-  border-radius: 18px;
+  border-radius: 14px;
   color: var(--muted);
   text-align: center;
   padding: 24px;
@@ -2327,9 +2434,35 @@ table tbody tr:hover {
 
 :root[data-theme="dark"] .finance-chart-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--card-elevated) 92%, transparent), color-mix(in srgb, var(--card) 92%, transparent)),
-    radial-gradient(circle at top right, rgba(105, 168, 255, 0.08), transparent 14rem);
+    linear-gradient(180deg, color-mix(in srgb, var(--card-elevated) 92%, transparent), color-mix(in srgb, var(--card) 92%, transparent));
   border-color: color-mix(in srgb, var(--line) 82%, rgba(105, 168, 255, 0.18));
+}
+
+:root[data-theme="dark"] .viz-chart-host svg text,
+:root[data-theme="dark"] .viz-chart-host .v-axis text,
+:root[data-theme="dark"] .viz-chart-host .v-m-title text,
+:root[data-theme="dark"] .viz-chart-host .v-datalabel text {
+  fill: #d8e2ee !important;
+}
+
+:root[data-theme="dark"] .viz-chart-host .v-gridline line,
+:root[data-theme="dark"] .viz-chart-host .v-axis line,
+:root[data-theme="dark"] .viz-chart-host svg line {
+  stroke: rgba(216, 226, 238, 0.22) !important;
+}
+
+:root[data-theme="dark"] .chart-legend-row {
+  border-color: color-mix(in srgb, var(--line) 78%, rgba(105, 168, 255, 0.1));
+  background: color-mix(in srgb, var(--card-elevated) 80%, rgba(255, 255, 255, 0.02));
+}
+
+:root[data-theme="dark"] .finance-chart-chip {
+  background: color-mix(in srgb, var(--card-elevated) 72%, rgba(255, 255, 255, 0.05));
+  border-color: color-mix(in srgb, var(--line) 72%, rgba(105, 168, 255, 0.16));
+}
+
+:root[data-theme="dark"] button.chart-legend-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 44%, var(--card-elevated) 56%);
 }
 
 .finance-analytics-body {
@@ -2732,6 +2865,13 @@ td {
   .viz-chart-host,
   .chart-fallback {
     min-height: 300px;
+  }
+  .category-legend,
+  .series-legend {
+    grid-template-columns: 1fr;
+  }
+  .chart-legend-row {
+    min-height: 40px;
   }
   .section-head {
     flex-direction: column;
