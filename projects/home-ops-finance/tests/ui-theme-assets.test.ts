@@ -44,6 +44,16 @@ test("dark mode month cards keep readable text colors", () => {
   assert.match(stylesSource, /color-mix\(in srgb,\s*var\(--ink\)\s*70%,\s*var\(--card\)\s*30%\)/);
 });
 
+test("UI5 controls use app tokens for focus, fields, and dropdown selections", () => {
+  assert.match(stylesSource, /ui5-button,\s*\nui5-select,\s*\nui5-input,\s*\nui5-textarea,\s*\nui5-checkbox,\s*\nui5-option\s*\{/);
+  assert.match(stylesSource, /--sapContent_FocusColor:\s*var\(--accent\);/);
+  assert.match(stylesSource, /--sapField_Focus_BorderColor:\s*var\(--accent\);/);
+  assert.match(stylesSource, /--sapList_SelectionBackgroundColor:\s*color-mix\(in srgb,\s*var\(--accent\)\s*20%,\s*var\(--card\)\)/);
+  assert.match(stylesSource, /ui5-option\[selected\],\s*\nui5-option\[focused\],\s*\nui5-option:hover\s*\{/);
+  assert.match(stylesSource, /ui5-select::part\(icon-wrapper\),\s*\nui5-select::part\(icon\)\s*\{/);
+  assert.doesNotMatch(stylesSource, /#0071e3|rgba\(0,\s*113,\s*227|#69a8ff|rgba\(105,\s*168,\s*255|#dbe7ff|#1c6f8f|#78c3d6/i);
+});
+
 test("month status hints use the custom inline alert surface instead of ui5 message strips", () => {
   assert.match(stylesSource, /\.month-inline-alert\s*\{/);
   assert.match(appSource, /month-inline-alert/);

@@ -1689,12 +1689,22 @@ th:first-child {
   --sapObjectHeader_Background: #fffaf0;
   --sapList_Background: #fffdf8;
   --sapList_HeaderBackground: #eee7d8;
+  --sapList_TextColor: #1f2422;
+  --sapList_Hover_Background: #f0eadf;
+  --sapList_SelectionBackgroundColor: #d9eee8;
+  --sapList_Hover_SelectionBackground: #c8e5de;
+  --sapList_SelectionBorderColor: #1c7f74;
+  --sapList_Active_Background: #c8e5de;
   --sapGroup_ContentBackground: #f7f3ea;
   --sapTextColor: #1f2422;
   --sapContent_LabelColor: #6f675b;
   --sapContent_ForegroundBorderColor: rgba(62, 57, 49, 0.18);
+  --sapContent_FocusColor: #1c7f74;
+  --sapContent_ContrastFocusColor: #fffdf8;
   --sapHighlightColor: #1c7f74;
   --sapLinkColor: #1c7f74;
+  --sapSelectedColor: #1c7f74;
+  --sapSelected_TextColor: #fffdf8;
   --sapButton_TextColor: #24403c;
   --sapButton_Lite_TextColor: #24403c;
   --sapButton_Lite_Hover_TextColor: #1f2422;
@@ -1709,6 +1719,9 @@ th:first-child {
   --sapField_Background: #fffdf8;
   --sapField_TextColor: #1f2422;
   --sapField_BorderColor: rgba(62, 57, 49, 0.26);
+  --sapField_Hover_Background: #fffaf0;
+  --sapField_Hover_BorderColor: #1c7f74;
+  --sapField_Focus_BorderColor: #1c7f74;
   --sapField_ReadOnly_Background: #f0eadf;
   --sapField_ReadOnly_BorderColor: rgba(62, 57, 49, 0.18);
   --sapField_PlaceholderTextColor: #8a8174;
@@ -1750,12 +1763,22 @@ th:first-child {
   --sapObjectHeader_Background: #282418;
   --sapList_Background: #242118;
   --sapList_HeaderBackground: #302b1f;
+  --sapList_TextColor: #f2eadb;
+  --sapList_Hover_Background: #302b1f;
+  --sapList_SelectionBackgroundColor: #27443c;
+  --sapList_Hover_SelectionBackground: #31554c;
+  --sapList_SelectionBorderColor: #5bb5a7;
+  --sapList_Active_Background: #31554c;
   --sapGroup_ContentBackground: #1b1913;
   --sapTextColor: #f2eadb;
   --sapContent_LabelColor: #b9ad99;
   --sapContent_ForegroundBorderColor: rgba(242, 234, 219, 0.16);
+  --sapContent_FocusColor: #5bb5a7;
+  --sapContent_ContrastFocusColor: #fffdf8;
   --sapHighlightColor: #5bb5a7;
   --sapLinkColor: #5bb5a7;
+  --sapSelectedColor: #5bb5a7;
+  --sapSelected_TextColor: #fffdf8;
   --sapButton_TextColor: #e7f2ef;
   --sapButton_Lite_TextColor: #e7f2ef;
   --sapButton_Lite_Hover_TextColor: #f2eadb;
@@ -1767,9 +1790,12 @@ th:first-child {
   --sapButton_Hover_Background: #3a3426;
   --sapButton_Emphasized_Background: #237c72;
   --sapButton_Emphasized_TextColor: #ffffff;
-  --sapField_Background: #171611;
+  --sapField_Background: #242118;
   --sapField_TextColor: #f2eadb;
   --sapField_BorderColor: rgba(242, 234, 219, 0.28);
+  --sapField_Hover_Background: #302b1f;
+  --sapField_Hover_BorderColor: #5bb5a7;
+  --sapField_Focus_BorderColor: #5bb5a7;
   --sapField_ReadOnly_Background: #211f18;
   --sapField_ReadOnly_BorderColor: rgba(242, 234, 219, 0.18);
   --sapField_PlaceholderTextColor: #9f9482;
@@ -1790,6 +1816,91 @@ th:first-child {
   --amber: #ddb064;
   --danger: #e58d82;
   --shadow: 0 0 0 1px rgba(242, 234, 219, 0.08), 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+ui5-button,
+ui5-select,
+ui5-input,
+ui5-textarea,
+ui5-checkbox,
+ui5-option {
+  --sapContent_FocusColor: var(--accent);
+  --sapContent_ContrastFocusColor: #fffdf8;
+  --sapHighlightColor: var(--accent);
+  --sapSelectedColor: var(--accent);
+  --sapSelected_TextColor: #fffdf8;
+  --sapField_Background: var(--card);
+  --sapField_TextColor: var(--ink);
+  --sapField_BorderColor: var(--line);
+  --sapField_Hover_Background: var(--card-elevated);
+  --sapField_Hover_BorderColor: var(--accent);
+  --sapField_Focus_BorderColor: var(--accent);
+  --sapField_PlaceholderTextColor: var(--muted);
+  --sapList_Background: var(--card);
+  --sapList_TextColor: var(--ink);
+  --sapList_Hover_Background: var(--card-elevated);
+  --sapList_SelectionBackgroundColor: color-mix(in srgb, var(--accent) 20%, var(--card));
+  --sapList_Hover_SelectionBackground: color-mix(in srgb, var(--accent) 28%, var(--card));
+  --sapList_SelectionBorderColor: var(--accent);
+  --sapList_Active_Background: color-mix(in srgb, var(--accent) 28%, var(--card));
+  color: var(--ink);
+}
+
+ui5-select::part(icon-wrapper),
+ui5-select::part(icon) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card-elevated) 72%, transparent);
+  border-color: var(--line);
+}
+
+ui5-input::part(root),
+ui5-input::part(input),
+ui5-textarea::part(textarea) {
+  color: var(--ink);
+  background: var(--card);
+  border-color: var(--line);
+}
+
+ui5-input[focused]::part(root),
+ui5-textarea[focused]::part(textarea),
+ui5-select[opened],
+ui5-select:focus-within {
+  --sapContent_FocusColor: var(--accent);
+  --sapField_BorderColor: var(--accent);
+  --sapField_Focus_BorderColor: var(--accent);
+}
+
+ui5-option {
+  background: var(--card);
+  color: var(--ink);
+}
+
+ui5-option::part(content),
+ui5-option::part(title),
+ui5-option::part(additional-text) {
+  color: var(--ink);
+}
+
+ui5-option[selected],
+ui5-option[focused],
+ui5-option:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--card));
+  color: var(--ink);
+  --sapContent_FocusColor: var(--accent);
+}
+
+ui5-option[selected]::part(content),
+ui5-option[focused]::part(content),
+ui5-option:hover::part(content) {
+  background: color-mix(in srgb, var(--accent) 20%, var(--card));
+}
+
+ui5-checkbox::part(root) {
+  color: var(--ink);
+}
+
+ui5-checkbox::part(icon) {
+  color: var(--accent);
 }
 
 html {
