@@ -240,7 +240,7 @@ function createVizFrame(modules, hostId, vizType, rows, config) {
   const style = chartStyle();
   const chart = new VizFrame({
     width: "100%",
-    height: "320px",
+    height: chartHeight(vizType),
     vizType,
   });
   chart.setDataset(new FlattenedDataset({
@@ -260,13 +260,13 @@ function createVizFrame(modules, hostId, vizType, rows, config) {
       title: { visible: false },
     },
     valueAxis: {
-      label: { style: { color: style.mutedColor } },
+      label: { style: { color: style.mutedColor, fontSize: "13px" } },
       title: { visible: false },
       axisLine: { visible: false },
       gridline: { color: style.gridColor },
     },
     categoryAxis: {
-      label: { style: { color: style.mutedColor } },
+      label: { style: { color: style.mutedColor, fontSize: "13px" } },
       title: { visible: false },
       axisLine: { color: style.gridColor },
     },
@@ -409,19 +409,19 @@ function displayCategory(category) {
 function chartStyle() {
   const dark = document.documentElement?.dataset?.theme === "dark";
   return {
-    textColor: dark ? "#e9f0f7" : "#17202a",
-    mutedColor: dark ? "#b7c3cf" : "#516070",
-    gridColor: dark ? "#3a4755" : "#d7dde4",
+    textColor: dark ? "#f2f6fb" : "#17202a",
+    mutedColor: dark ? "#c7d1dd" : "#516070",
+    gridColor: dark ? "#44515f" : "#d7dde4",
     palette: [
-      "#4db1ff",
-      "#69d18f",
-      "#ffc857",
-      "#ff8a65",
-      "#b48cff",
-      "#4dd0c7",
-      "#f06292",
-      "#a7c957",
-      "#90a4ae",
+      dark ? "#74bbff" : "#2892ef",
+      dark ? "#79e1a0" : "#38b46d",
+      dark ? "#ffd36e" : "#d89a26",
+      dark ? "#ff9d7b" : "#ee6f4b",
+      dark ? "#c8a5ff" : "#8f6bff",
+      dark ? "#72e4df" : "#18bcb0",
+      dark ? "#ff89b4" : "#df4e84",
+      dark ? "#c6ea76" : "#93bd38",
+      dark ? "#aab7c6" : "#718196",
     ],
   };
 }
@@ -435,24 +435,35 @@ function mergeVizProperties(properties = {}, style) {
       ...(properties.plotArea ?? {}),
     },
     legend: {
-      label: { style: { color: style.textColor } },
+      label: { style: { color: style.textColor, fontSize: "13px" } },
       title: { visible: false },
       ...(properties.legend ?? {}),
     },
     valueAxis: {
-      label: { style: { color: style.mutedColor } },
+      label: { style: { color: style.mutedColor, fontSize: "13px" } },
       title: { visible: false },
       axisLine: { visible: false },
       gridline: { color: style.gridColor },
       ...(properties.valueAxis ?? {}),
     },
     categoryAxis: {
-      label: { style: { color: style.mutedColor } },
+      label: { style: { color: style.mutedColor, fontSize: "13px" } },
       title: { visible: false },
       axisLine: { color: style.gridColor },
       ...(properties.categoryAxis ?? {}),
     },
   };
+}
+
+function chartHeight(vizType) {
+  const width = window.innerWidth || 1440;
+  if (width <= 720) {
+    return vizType === "donut" ? "300px" : "320px";
+  }
+  if (width <= 1240) {
+    return vizType === "donut" ? "340px" : "360px";
+  }
+  return vizType === "donut" ? "400px" : "390px";
 }
 
 function periodKey(monthKey, granularity) {

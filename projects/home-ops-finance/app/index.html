@@ -206,7 +206,7 @@
       </ui5-card>
 
       <ui5-card class="content-ui5-card">
-        <div class="content-ui5-card-body">
+        <div class="content-ui5-card-body finance-analytics-body">
           <div class="section-head">
             <div>
               <h2>Ist aus Finanzguru</h2>
@@ -239,7 +239,7 @@
                   <h3 class="subhead">Durchschnitt pro Monat</h3>
                   <p class="section-copy" id="financeAverageChartMeta">-</p>
                 </div>
-                <strong id="financeAverageChartValue">-</strong>
+                <strong id="financeAverageChartValue" class="chart-head-value">-</strong>
               </div>
               <div id="financeCategoryDonutChart" class="viz-chart-host"></div>
               <dl class="detail-list compact" id="financeCategorySelection"></dl>
@@ -274,37 +274,63 @@
               <div id="financeWealthTrendChart" class="viz-chart-host"></div>
             </div>
           </div>
-          <div class="grid two">
-            <div>
-              <h3 class="subhead">Monate</h3>
-              <table>
-                <thead><tr><th>Monat</th><th>Bereinigt</th><th>Invest/Sparen</th><th>Umbuchungen</th></tr></thead>
-                <tbody id="statsActualMonthRows"></tbody>
-              </table>
-            </div>
-            <div>
-              <h3 class="subhead">Kategorien</h3>
-              <table>
-                <thead><tr><th>Kategorie</th><th>Summe</th><th>Anteil</th></tr></thead>
-                <tbody id="statsActualCategoryRows"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="grid two">
-            <div>
-              <h3 class="subhead">Fixkosten-Kandidaten</h3>
-              <table>
-                <thead><tr><th>Kategorie/Turnus</th><th>Monate</th><th>Median</th><th>Summe</th></tr></thead>
-                <tbody id="statsActualInsightRows"></tbody>
-              </table>
-            </div>
-            <div>
-              <h3 class="subhead">Ausreißer</h3>
-              <table>
-                <thead><tr><th>Monat</th><th>Stabil</th><th>Roh-Core</th><th>Hinweis</th></tr></thead>
-                <tbody id="statsActualOutlierRows"></tbody>
-              </table>
-            </div>
+          <div class="finance-disclosure-grid">
+            <details class="finance-disclosure" open>
+              <summary>
+                <span>Monatsstrom</span>
+                <small>Bereinigte Monatswerte, Invest/Sparen und Umbuchungen im Verlauf.</small>
+              </summary>
+              <div class="finance-disclosure-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Monat</th><th>Bereinigt</th><th>Invest/Sparen</th><th>Umbuchungen</th></tr></thead>
+                    <tbody id="statsActualMonthRows"></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+            <details class="finance-disclosure">
+              <summary>
+                <span>Kategorien</span>
+                <small>Welche Bereiche den Konsum im gewählten Zeitraum wirklich treiben.</small>
+              </summary>
+              <div class="finance-disclosure-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Kategorie</th><th>Summe</th><th>Anteil</th></tr></thead>
+                    <tbody id="statsActualCategoryRows"></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+            <details class="finance-disclosure">
+              <summary>
+                <span>Fixkosten-Kandidaten</span>
+                <small>Regelmäßige Belastungen, die nach echten Dauerposten aussehen.</small>
+              </summary>
+              <div class="finance-disclosure-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Kategorie/Turnus</th><th>Monate</th><th>Median</th><th>Summe</th></tr></thead>
+                    <tbody id="statsActualInsightRows"></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+            <details class="finance-disclosure">
+              <summary>
+                <span>Ausreißer</span>
+                <small>Monate, die deutlich vom normalen Konsumverlauf abweichen.</small>
+              </summary>
+              <div class="finance-disclosure-body">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Monat</th><th>Stabil</th><th>Roh-Core</th><th>Hinweis</th></tr></thead>
+                    <tbody id="statsActualOutlierRows"></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </ui5-card>
