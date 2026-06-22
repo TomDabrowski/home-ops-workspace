@@ -322,6 +322,43 @@ h2 {
   align-items: start;
   margin-bottom: 12px;
 }
+
+.collapse-head {
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+
+.collapse-toggle {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  border-radius: var(--radius);
+  background: var(--sapButton_Background, var(--card));
+  color: var(--sapButton_TextColor, var(--ink));
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  min-height: 2.15rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.collapse-toggle:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: var(--sapButton_Hover_Background, var(--bg-soft));
+}
+
+.collapsible-card-content {
+  display: block;
+}
+
+[data-collapse-card].is-collapsed .collapsible-card-content {
+  display: none;
+}
+
+[data-collapse-card].is-collapsed .content-ui5-card-body,
+[data-collapse-card].is-collapsed .month-ui5-card-body {
+  padding-bottom: 1.1rem;
+}
 .section-copy {
   margin: -4px 0 0;
   color: var(--muted);
@@ -1582,26 +1619,55 @@ th:first-child {
 /* UI5 cohesion pass: keep the app surface aligned with Horizon tokens. */
 :root {
   color-scheme: light;
-  --bg: var(--sapBackgroundColor, #f7f7f7);
-  --bg-soft: var(--sapGroup_ContentBackground, #f7f7f7);
-  --bg-contrast: var(--sapShell_Background, #ffffff);
-  --card: var(--sapTile_Background, #ffffff);
-  --card-strong: var(--sapTile_Background, #ffffff);
-  --card-elevated: var(--sapList_Background, #ffffff);
-  --ink: var(--sapTextColor, #1d2d3e);
-  --muted: var(--sapContent_LabelColor, #556b82);
-  --line: var(--sapContent_ForegroundBorderColor, #d5dadd);
-  --accent: var(--sapHighlightColor, #0070f2);
-  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
-  --teal: var(--sapPositiveColor, #30914c);
+  --sapBackgroundColor: #f4f1ea;
+  --sapBaseColor: #fbfaf7;
+  --sapShell_Background: #ece7dd;
+  --sapShellColor: #201f1b;
+  --sapTile_Background: #fffdf8;
+  --sapObjectHeader_Background: #fffaf0;
+  --sapList_Background: #fffdf8;
+  --sapList_HeaderBackground: #eee7d8;
+  --sapGroup_ContentBackground: #f7f3ea;
+  --sapTextColor: #1f2422;
+  --sapContent_LabelColor: #6f675b;
+  --sapContent_ForegroundBorderColor: rgba(62, 57, 49, 0.18);
+  --sapHighlightColor: #1c7f74;
+  --sapLinkColor: #1c6f8f;
+  --sapButton_TextColor: #24403c;
+  --sapButton_BorderColor: rgba(28, 127, 116, 0.3);
+  --sapButton_Background: #fffaf0;
+  --sapButton_Hover_Background: #f0eadf;
+  --sapButton_Emphasized_Background: #1c7f74;
+  --sapButton_Emphasized_TextColor: #ffffff;
+  --sapField_Background: #fffdf8;
+  --sapField_TextColor: #1f2422;
+  --sapField_BorderColor: rgba(62, 57, 49, 0.26);
+  --sapField_ReadOnly_Background: #f0eadf;
+  --sapField_ReadOnly_BorderColor: rgba(62, 57, 49, 0.18);
+  --sapField_PlaceholderTextColor: #8a8174;
+  --sapPositiveColor: #2f8f67;
+  --sapCriticalColor: #b57922;
+  --sapNegativeColor: #b94d45;
+  --bg: var(--sapBackgroundColor);
+  --bg-soft: var(--sapGroup_ContentBackground);
+  --bg-contrast: var(--sapShell_Background);
+  --card: var(--sapTile_Background);
+  --card-strong: var(--sapObjectHeader_Background);
+  --card-elevated: #f8f0e1;
+  --ink: var(--sapTextColor);
+  --muted: var(--sapContent_LabelColor);
+  --line: var(--sapContent_ForegroundBorderColor);
+  --accent: var(--sapHighlightColor);
+  --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
+  --teal: var(--sapPositiveColor);
   --teal-soft: color-mix(in srgb, var(--teal) 12%, transparent);
-  --amber: var(--sapCriticalColor, #e76500);
+  --amber: var(--sapCriticalColor);
   --amber-soft: color-mix(in srgb, var(--amber) 12%, transparent);
-  --rose: var(--sapIndicationColor_6, #c0399f);
+  --rose: #a95d78;
   --rose-soft: color-mix(in srgb, var(--rose) 10%, transparent);
-  --success: var(--sapPositiveColor, #30914c);
-  --danger: var(--sapNegativeColor, #bb0000);
-  --shadow: var(--sapContent_Shadow0, 0 0 0 1px rgba(85, 107, 130, 0.08));
+  --success: var(--sapPositiveColor);
+  --danger: var(--sapNegativeColor);
+  --shadow: 0 0 0 1px rgba(62, 57, 49, 0.08), 0 10px 24px rgba(62, 57, 49, 0.08);
   --shadow-soft: none;
   --radius: 8px;
   --surface-padding: 1rem;
@@ -1609,35 +1675,35 @@ th:first-child {
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --sapBackgroundColor: #12171f;
-  --sapBaseColor: #18212b;
-  --sapShell_Background: #0e141b;
-  --sapShellColor: #e8edf2;
-  --sapTile_Background: #18212b;
-  --sapObjectHeader_Background: #18212b;
-  --sapList_Background: #18212b;
-  --sapList_HeaderBackground: #202b37;
-  --sapGroup_ContentBackground: #12171f;
-  --sapTextColor: #eef3f7;
-  --sapContent_LabelColor: #a9b8c6;
-  --sapContent_ForegroundBorderColor: rgba(169, 184, 198, 0.2);
-  --sapHighlightColor: #7ab7ff;
-  --sapLinkColor: #7ab7ff;
-  --sapButton_TextColor: #d8e8ff;
-  --sapButton_BorderColor: rgba(122, 183, 255, 0.45);
-  --sapButton_Background: #202b37;
-  --sapButton_Hover_Background: #263442;
-  --sapButton_Emphasized_Background: #0a6ed1;
+  --sapBackgroundColor: #171611;
+  --sapBaseColor: #211f18;
+  --sapShell_Background: #11100d;
+  --sapShellColor: #f1eadc;
+  --sapTile_Background: #242118;
+  --sapObjectHeader_Background: #282418;
+  --sapList_Background: #242118;
+  --sapList_HeaderBackground: #302b1f;
+  --sapGroup_ContentBackground: #1b1913;
+  --sapTextColor: #f2eadb;
+  --sapContent_LabelColor: #b9ad99;
+  --sapContent_ForegroundBorderColor: rgba(242, 234, 219, 0.16);
+  --sapHighlightColor: #5bb5a7;
+  --sapLinkColor: #78c3d6;
+  --sapButton_TextColor: #e7f2ef;
+  --sapButton_BorderColor: rgba(91, 181, 167, 0.38);
+  --sapButton_Background: #302b1f;
+  --sapButton_Hover_Background: #3a3426;
+  --sapButton_Emphasized_Background: #237c72;
   --sapButton_Emphasized_TextColor: #ffffff;
-  --sapField_Background: #0f151c;
-  --sapField_TextColor: #eef3f7;
-  --sapField_BorderColor: rgba(169, 184, 198, 0.34);
-  --sapField_ReadOnly_Background: #151d26;
-  --sapField_ReadOnly_BorderColor: rgba(169, 184, 198, 0.24);
-  --sapField_PlaceholderTextColor: #8fa0ae;
-  --sapPositiveColor: #57c27d;
-  --sapCriticalColor: #ffb469;
-  --sapNegativeColor: #ff8a84;
+  --sapField_Background: #171611;
+  --sapField_TextColor: #f2eadb;
+  --sapField_BorderColor: rgba(242, 234, 219, 0.28);
+  --sapField_ReadOnly_Background: #211f18;
+  --sapField_ReadOnly_BorderColor: rgba(242, 234, 219, 0.18);
+  --sapField_PlaceholderTextColor: #9f9482;
+  --sapPositiveColor: #72c58d;
+  --sapCriticalColor: #ddb064;
+  --sapNegativeColor: #e58d82;
   --bg: var(--sapBackgroundColor);
   --bg-soft: var(--sapGroup_ContentBackground);
   --bg-contrast: var(--sapShell_Background);
@@ -1651,7 +1717,7 @@ th:first-child {
   --teal: var(--sapPositiveColor);
   --amber: var(--sapCriticalColor);
   --danger: var(--sapNegativeColor);
-  --shadow: 0 0 0 1px rgba(169, 184, 198, 0.08);
+  --shadow: 0 0 0 1px rgba(242, 234, 219, 0.08), 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
 html {
@@ -2381,9 +2447,9 @@ button.chart-legend-row:hover {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--series-color, var(--accent)) 18%, transparent);
 }
 
-.chart-legend-swatch.is-blue { --series-color: #2f9af0; }
-.chart-legend-swatch.is-green { --series-color: #40ba72; }
-.chart-legend-swatch.is-amber { --series-color: #d89a26; }
+.chart-legend-swatch.is-blue { --series-color: #248276; }
+.chart-legend-swatch.is-green { --series-color: #6fa36b; }
+.chart-legend-swatch.is-amber { --series-color: #b9852d; }
 
 .chart-legend-label {
   min-width: 0;

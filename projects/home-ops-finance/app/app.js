@@ -2264,6 +2264,61 @@ function renderStatisticsWorkspace(importDraft, monthlyPlan, finanzguruActuals =
   });
 }
 
+function bindCollapsibleCards(root = document) {
+  for (const card of root.querySelectorAll("[data-collapse-card]")) {
+    if (card.dataset.collapseBound === "true") {
+      continue;
+    }
+    const body = card.querySelector(".content-ui5-card-body, .month-ui5-card-body");
+    if (!body) {
+      continue;
+    }
+    const sectionHead = body.querySelector(":scope > .section-head");
+    const directHeading = body.querySelector(":scope > h2");
+    let header = sectionHead;
+    if (!header && directHeading) {
+      header = document.createElement("div");
+      header.className = "section-head collapse-head";
+      directHeading.insertAdjacentElement("beforebegin", header);
+      header.append(directHeading);
+    }
+    if (!header) {
+      continue;
+    }
+
+    const content = document.createElement("div");
+    content.className = "collapsible-card-content";
+    const siblings = [...body.children];
+    let afterHeader = false;
+    for (const child of siblings) {
+      if (child === header) {
+        afterHeader = true;
+        continue;
+      }
+      if (afterHeader) {
+        content.append(child);
+      }
+    }
+    body.append(content);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "collapse-toggle";
+    button.setAttribute("aria-expanded", "true");
+    button.textContent = "Einklappen";
+    header.append(button);
+
+    const setCollapsed = (collapsed) => {
+      card.classList.toggle("is-collapsed", collapsed);
+      button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      button.textContent = collapsed ? "Aufklappen" : "Einklappen";
+    };
+    setCollapsed(card.dataset.collapseDefault === "closed");
+    button.addEventListener("click", () => setCollapsed(!card.classList.contains("is-collapsed")));
+    card.dataset.collapseBound = "true";
+  }
+}
+
 function renderApp({ draftReport, monthlyPlan, importDraft, accounts, finanzguruActuals }, viewState = {}) {
   const { bindMonthFilters, bindMonthReview, openMonthReview } = createMonthReviewNavigation({
     saveViewState,
@@ -2345,6 +2400,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts, finanzguru
   const initRetirement = () => {
     if (retirementInitialized) return;
     renderGoals(importDraft, monthlyPlan, finanzguruActuals);
+    bindCollapsibleCards();
     retirementInitialized = true;
   };
 
@@ -2370,6 +2426,7 @@ function renderApp({ draftReport, monthlyPlan, importDraft, accounts, finanzguru
   );
   bindDeveloperModeToggle();
   bindTabs({ retirement: initRetirement });
+  bindCollapsibleCards();
   activateInitialTab(viewState);
 }
 
