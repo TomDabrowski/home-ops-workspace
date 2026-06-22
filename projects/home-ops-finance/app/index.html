@@ -6,7 +6,7 @@
   <title>Home Ops Finance</title>
   <link rel="icon" href="/app/assets/home-ops-finance-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/app/assets/home-ops-finance-icon-512.png">
-  <meta name="theme-color" content="#0b1320">
+  <meta name="theme-color" content="#171611">
   <link rel="stylesheet" href="/app/styles.css">
   <script
     id="sap-ui-bootstrap"
@@ -93,6 +93,7 @@
           <div class="tab-group">
             <span class="tab-group-label">Plan</span>
             <ui5-button class="tab" design="Transparent" data-tab="baseline">Kosten & Ist-Stand</ui5-button>
+            <ui5-button class="tab" design="Transparent" data-tab="household">Hausrat</ui5-button>
             <ui5-button class="tab" design="Transparent" data-tab="retirement">Ziele & Rente</ui5-button>
           </div>
           <div class="tab-group">
@@ -932,7 +933,7 @@
               <ul class="signal-list" id="monthReviewSignals"></ul>
             </div>
           </ui5-card>
-          <ui5-card class="month-ui5-card" data-collapse-card data-collapse-default="closed">
+          <ui5-card class="month-ui5-card" data-collapse-card>
             <div class="month-ui5-card-body">
               <div class="section-head">
                 <div>
@@ -1087,7 +1088,7 @@
         </div>
       </ui5-card>
       <div class="grid two">
-        <ui5-card class="content-ui5-card" data-collapse-card data-collapse-default="closed">
+        <ui5-card class="content-ui5-card" data-collapse-card>
           <div class="content-ui5-card-body">
           <div class="section-head">
             <div>

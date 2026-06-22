@@ -127,6 +127,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 22px;
   background: var(--card-strong);
+  color: var(--ink);
   box-shadow: var(--shadow);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
@@ -146,6 +147,12 @@ body {
   justify-content: flex-start;
   width: 100%;
   padding: 12px 14px;
+  color: var(--ink);
+  --sapButton_Background: var(--card);
+  --sapButton_BorderColor: var(--line);
+  --sapButton_TextColor: var(--ink);
+  --sapButton_Hover_Background: var(--card-elevated);
+  --sapButton_Hover_TextColor: var(--ink);
 }
 .floating-controls .pill[hidden] {
   display: none;
@@ -419,7 +426,7 @@ h2 {
   display: block;
   width: 100%;
   max-width: 70ch;
-  color: rgba(243, 245, 249, 0.68);
+  color: var(--muted);
   font-size: 0.74rem;
   text-transform: none;
   letter-spacing: normal;
@@ -580,16 +587,16 @@ h2 {
 :root[data-theme="dark"] .stat:nth-child(1),
 :root[data-theme="dark"] .stat:nth-child(2),
 :root[data-theme="dark"] .stat:nth-child(3) {
-  background: linear-gradient(180deg, rgba(26, 31, 42, 0.96), rgba(18, 22, 30, 0.92));
+  background: var(--card);
 }
 :root[data-theme="dark"] .table-wrap {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 :root[data-theme="dark"] .positive {
-  color: #8dc0ff;
+  color: var(--success);
 }
 :root[data-theme="dark"] .negative {
-  color: #ff9a95;
+  color: var(--danger);
 }
 @media (max-width: 720px) {
   html,
@@ -616,7 +623,7 @@ h2 {
     width: auto;
   }
   .shell {
-    padding-top: 132px;
+    padding-top: 72px;
     padding-left: 14px;
     padding-right: 14px;
     padding-bottom: 40px;
@@ -624,8 +631,8 @@ h2 {
   .hero,
   .card,
   .subcard {
-    padding: 18px;
-    border-radius: 22px;
+    padding: 16px;
+    border-radius: var(--radius);
     min-width: 0;
     max-width: 100%;
   }
@@ -640,7 +647,13 @@ h2 {
     max-width: 100%;
   }
   .hero {
-    gap: 16px;
+    gap: 12px;
+  }
+  .hero h1 {
+    font-size: 1.55rem;
+  }
+  .hero .lede {
+    font-size: 0.9rem;
   }
   .tabs {
     position: sticky;
@@ -1648,25 +1661,25 @@ th:first-child {
   --sapPositiveColor: #2f8f67;
   --sapCriticalColor: #b57922;
   --sapNegativeColor: #b94d45;
-  --bg: var(--sapBackgroundColor);
-  --bg-soft: var(--sapGroup_ContentBackground);
-  --bg-contrast: var(--sapShell_Background);
-  --card: var(--sapTile_Background);
-  --card-strong: var(--sapObjectHeader_Background);
+  --bg: #f4f1ea;
+  --bg-soft: #f7f3ea;
+  --bg-contrast: #ece7dd;
+  --card: #fffdf8;
+  --card-strong: #fffaf0;
   --card-elevated: #f8f0e1;
-  --ink: var(--sapTextColor);
-  --muted: var(--sapContent_LabelColor);
-  --line: var(--sapContent_ForegroundBorderColor);
-  --accent: var(--sapHighlightColor);
+  --ink: #1f2422;
+  --muted: #6f675b;
+  --line: rgba(62, 57, 49, 0.18);
+  --accent: #1c7f74;
   --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
-  --teal: var(--sapPositiveColor);
+  --teal: #2f8f67;
   --teal-soft: color-mix(in srgb, var(--teal) 12%, transparent);
-  --amber: var(--sapCriticalColor);
+  --amber: #b57922;
   --amber-soft: color-mix(in srgb, var(--amber) 12%, transparent);
   --rose: #a95d78;
   --rose-soft: color-mix(in srgb, var(--rose) 10%, transparent);
-  --success: var(--sapPositiveColor);
-  --danger: var(--sapNegativeColor);
+  --success: #2f8f67;
+  --danger: #b94d45;
   --shadow: 0 0 0 1px rgba(62, 57, 49, 0.08), 0 10px 24px rgba(62, 57, 49, 0.08);
   --shadow-soft: none;
   --radius: 8px;
@@ -1704,19 +1717,19 @@ th:first-child {
   --sapPositiveColor: #72c58d;
   --sapCriticalColor: #ddb064;
   --sapNegativeColor: #e58d82;
-  --bg: var(--sapBackgroundColor);
-  --bg-soft: var(--sapGroup_ContentBackground);
-  --bg-contrast: var(--sapShell_Background);
-  --card: var(--sapTile_Background);
-  --card-strong: var(--sapTile_Background);
-  --card-elevated: var(--sapList_HeaderBackground);
-  --ink: var(--sapTextColor);
-  --muted: var(--sapContent_LabelColor);
-  --line: var(--sapContent_ForegroundBorderColor);
-  --accent: var(--sapHighlightColor);
-  --teal: var(--sapPositiveColor);
-  --amber: var(--sapCriticalColor);
-  --danger: var(--sapNegativeColor);
+  --bg: #171611;
+  --bg-soft: #1b1913;
+  --bg-contrast: #11100d;
+  --card: #242118;
+  --card-strong: #242118;
+  --card-elevated: #302b1f;
+  --ink: #f2eadb;
+  --muted: #b9ad99;
+  --line: rgba(242, 234, 219, 0.16);
+  --accent: #5bb5a7;
+  --teal: #72c58d;
+  --amber: #ddb064;
+  --danger: #e58d82;
   --shadow: 0 0 0 1px rgba(242, 234, 219, 0.08), 0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
@@ -1732,7 +1745,7 @@ body {
 
 .shell {
   max-width: 1440px;
-  padding: 5rem 1.5rem 3.5rem;
+  padding: 1.25rem 1.5rem 3.5rem;
 }
 
 h1,
@@ -1746,8 +1759,10 @@ th,
 }
 
 h1 {
-  font-size: clamp(2.75rem, 5vw, 4.5rem);
-  line-height: 1;
+  font-size: 2rem;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: 0;
 }
 
 .card,
@@ -1803,25 +1818,47 @@ h1 {
 }
 
 .hero {
-  grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.6fr);
+  grid-template-columns: minmax(18rem, 1fr) minmax(16rem, 22rem);
   align-items: center;
-  padding: 1.5rem;
-  background: var(--sapObjectHeader_Background, var(--card));
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: var(--card-strong);
   border: 1px solid var(--line);
 }
 
 .hero .lede {
-  max-width: 54rem;
+  max-width: 48rem;
+  margin-top: 0.35rem;
+  font-size: 0.98rem;
 }
 
 .hero-meta {
-  justify-items: start;
+  width: 100%;
+  min-width: 0;
+  justify-items: stretch;
+  gap: 0.65rem;
+}
+
+.hero-meta .metric,
+.hero-meta .pill {
+  padding: 0.75rem 0.85rem;
+}
+
+.hero-meta .metric strong {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.hero-meta .metric span {
+  margin-bottom: 0.35rem;
 }
 
 .metric,
 .stat {
   width: 100%;
-  background: var(--sapList_Background, var(--card));
+  min-width: 0;
+  background: var(--card);
   border-color: var(--line);
 }
 
@@ -1834,7 +1871,7 @@ h1 {
 
 .tabs {
   top: 0;
-  margin: 1rem 0 1.25rem;
+  margin: 0.8rem 0 1rem;
   padding: 0.75rem 0;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(12px);
@@ -1843,7 +1880,7 @@ h1 {
 
 .app-tab-bar {
   padding: 0.875rem 1rem;
-  background: var(--sapObjectHeader_Background, var(--card));
+  background: var(--card-strong);
   border-color: var(--line);
   display: block;
   min-height: 0;
@@ -1851,6 +1888,9 @@ h1 {
 }
 
 .app-tab-groups {
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
   gap: 0.875rem;
 }
 
@@ -1894,7 +1934,7 @@ h1 {
 .month-nav-bar {
   top: 4.25rem;
   padding: 0;
-  background: var(--sapObjectHeader_Background, var(--card));
+  background: var(--card-strong);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   backdrop-filter: none;
@@ -2713,7 +2753,7 @@ button.chart-legend-row:hover {
 
 .shell {
   max-width: 1580px;
-  padding: 5.25rem 1.75rem 4rem;
+  padding: 1.25rem 1.5rem 3.5rem;
 }
 
 .tab-panel.is-active {
